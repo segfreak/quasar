@@ -1,0 +1,292 @@
+use crate::ir::*;
+
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum VerifyError {
+    #[error("block B{0} is empty (no insts/terminator)")]
+    EmptyBlock(BlockId),
+
+    #[error("block B{0} has invalid inst {1}")]
+    InvalidInstInBlock(BlockId, InstId),
+
+    #[error("value {0} has invalid def {1}")]
+    InvalidValueDef(ValueId, InstId),
+
+    #[error("inst {0} uses undefined value {1}")]
+    UndefinedValueUse(InstId, ValueId),
+
+    #[error("inst {0} has invalid result value {1}")]
+    InvalidResultValue(InstId, ValueId),
+
+    #[error("value {0} def mismatch: expected {1}, got {2}")]
+    ValueDefMismatch(ValueId, InstId, InstId),
+
+    #[error("inst {0:?} expects {1} operands")]
+    OperandCountMismatch(InstId, usize),
+
+    #[error("ret inst {0} has invalid operand count")]
+    RetOperandMismatch(InstId),
+
+    #[error("ret inst {0} expects {1:?} args, got {2:?}")]
+    RetTypeMismatch(InstId, Type, Type),
+
+    #[error("jump to invalid block B{0}")]
+    InvalidJumpTarget(BlockId),
+
+    #[error("jump mismatch: B{0} expects {1} args, got {2}")]
+    JumpArityMismatch(BlockId, usize, usize),
+
+    #[error("jump type mismatch: B{0} param {1}, expects {2:?} got {3:?}")]
+    JumpTypeMismatch(BlockId, usize, Type, Type),
+
+    #[error("use index out of bounds: v{0} in inst {1}")]
+    UseIndexOutOfBounds(ValueId, InstId),
+
+    #[error("use mismatch: v{0} in inst {1}")]
+    UseMismatch(ValueId, InstId),
+
+    #[error("value {0} has invalid use inst {1}")]
+    InvalidUse(ValueId, InstId),
+
+    #[error("inst {0} produces value but has no result")]
+    MissingResult(InstId),
+
+    #[error("jump B{0} not listed as successor of B{1}")]
+    CFGMissingEdge(BlockId, BlockId),
+
+    #[error("block B{0} has invalid successor B{1}")]
+    InvalidSuccessor(BlockId, BlockId),
+
+    #[error("invalid terminator in block B{0}")]
+    InvalidTerminator(BlockId),
+
+    #[error("undeclared function fn{0}")]
+    UndeclaredFunction(FuncId),
+
+    #[error("arg count mismatch: fn{0} expects {1} args, got {2}")]
+    FuncArgCountMismatch(FuncId, usize, usize),
+
+    #[error("arg type mismatch: fn{0} param {1}, expects {2:?} got {3:?}")]
+    FuncArgTypeMismatch(FuncId, usize, Type, Type),
+}
+
+impl Module {
+    pub fn verify(&self) -> Result<(), VerifyError> {
+        for (_, f) in self.iter_functions() {
+            self.verify_function(f)?;
+        }
+
+        Ok(())
+    }
+
+    fn verify_function(&self, f: &Function) -> Result<(), VerifyError> {
+        let sig = f.signature.clone();
+        let f = f.get_definition().unwrap();
+
+        // block verify
+        for (bid, block) in &f.blocks {
+            if block.insts.is_empty() && block.term.is_none() {
+                return Err(VerifyError::EmptyBlock(*bid));
+            }
+
+            if let Some(&last) = block.insts.last() {
+                let inst = f
+                    .insts
+                    .get(&last)
+                    .ok_or(VerifyError::InvalidInstInBlock(*bid, last))?;
+
+                if !inst.kind.is_terminator() && block.term.is_none() {
+                    return Err(VerifyError::InvalidTerminator(*bid));
+                }
+            }
+        }
+
+        for (id, inst) in &f.insts {
+            for &op in &inst.operands {
+                if !f.values.contains_key(&op) {
+                    return Err(VerifyError::UndefinedValueUse(*id, op));
+                }
+            }
+
+            if let Some(res) = inst.result {
+                let val = f
+                    .values
+                    .get(&res)
+                    .ok_or(VerifyError::InvalidResultValue(*id, res))?;
+
+                if val.def != *id {
+                    return Err(VerifyError::ValueDefMismatch(res, *id, val.def));
+                }
+            } else {
+                if !inst.kind.is_terminator() && !matches!(inst.kind, InstKind::Store) {
+                    return Err(VerifyError::MissingResult(*id));
+                }
+            }
+
+            let nops = inst.kind.operand_count();
+
+            #[allow(clippy::collapsible_match)]
+            match inst.kind {
+                InstKind::Add
+                | InstKind::Sub
+                | InstKind::Mul
+                | InstKind::Div
+                | InstKind::And
+                | InstKind::Or
+                | InstKind::Xor
+                | InstKind::LShl
+                | InstKind::LShr
+                | InstKind::AShr => {
+                    if inst.operands.len() != nops {
+                        return Err(VerifyError::OperandCountMismatch(*id, nops));
+                    }
+                }
+
+                InstKind::Cmp(_) => {
+                    if inst.operands.len() != nops {
+                        return Err(VerifyError::OperandCountMismatch(*id, nops));
+                    }
+                }
+
+                InstKind::Ret => {
+                    let sret_ty = sig.returns;
+                    let op_count = inst.operands.len();
+
+                    match (sret_ty.is_void(), op_count) {
+                        // void function must have ret without operands
+                        (true, 0) => {}
+
+                        // non-void function must have exactly one operand
+                        (false, 1) => {
+                            let ret_ty = f.get_type(inst.operands[0]);
+                            if ret_ty != sret_ty {
+                                return Err(VerifyError::RetTypeMismatch(*id, sret_ty, ret_ty));
+                            }
+                        }
+
+                        _ => {
+                            return Err(VerifyError::RetOperandMismatch(*id));
+                        }
+                    }
+                }
+
+                InstKind::Jump(target) => {
+                    let target_block = f
+                        .blocks
+                        .get(&target)
+                        .ok_or(VerifyError::InvalidJumpTarget(target))?;
+
+                    let expected = target_block.params.len();
+                    let actual = inst.operands.len();
+
+                    if expected != actual {
+                        return Err(VerifyError::JumpArityMismatch(target, expected, actual));
+                    }
+
+                    // type checking
+                    for (i, &op) in inst.operands.iter().enumerate() {
+                        let op_ty = f.get_type(op);
+
+                        let param_id = target_block.params[i];
+                        let param_ty = f.get_type(param_id);
+
+                        if op_ty != param_ty {
+                            return Err(VerifyError::JumpTypeMismatch(target, i, param_ty, op_ty));
+                        }
+                    }
+                }
+
+                InstKind::Call(fid) => {
+                    let func = self
+                        .get_function(fid)
+                        .ok_or(VerifyError::UndeclaredFunction(fid))?;
+
+                    let expected = func.signature.params.len();
+                    let actual = inst.operands.len();
+
+                    if expected != actual {
+                        return Err(VerifyError::FuncArgCountMismatch(fid, expected, actual));
+                    }
+
+                    for (i, &op) in inst.operands.iter().enumerate() {
+                        let op_ty = f.get_type(op);
+
+                        let param_ty = func.signature.params[i];
+
+                        if op_ty != param_ty {
+                            return Err(VerifyError::FuncArgTypeMismatch(fid, i, param_ty, op_ty));
+                        }
+                    }
+                }
+
+                _ => {
+                    if inst.operands.len() != nops {
+                        return Err(VerifyError::OperandCountMismatch(*id, nops));
+                    }
+                }
+            }
+        }
+
+        // verify values
+        for (vid, val) in &f.values {
+            #[allow(clippy::collapsible_if)]
+            if val.def != InstId::MAX {
+                if !f.insts.contains_key(&val.def) {
+                    return Err(VerifyError::InvalidValueDef(*vid, val.def));
+                }
+            }
+
+            for u in &val.uses {
+                let inst = f
+                    .insts
+                    .get(&u.inst)
+                    .ok_or(VerifyError::InvalidUse(*vid, u.inst))?;
+
+                if u.index as usize >= inst.operands.len() {
+                    return Err(VerifyError::UseIndexOutOfBounds(*vid, u.inst));
+                }
+
+                if inst.operands[u.index as usize] != *vid {
+                    return Err(VerifyError::UseMismatch(*vid, u.inst));
+                }
+            }
+        }
+
+        // verify cfg
+        for (bid, block) in &f.blocks {
+            for &inst_id in &block.insts {
+                let inst = &f.insts[&inst_id];
+
+                match &inst.kind {
+                    InstKind::Jump(target) => {
+                        if !f.blocks.contains_key(target) {
+                            return Err(VerifyError::InvalidJumpTarget(*target));
+                        }
+
+                        if !block.succs.contains(target) {
+                            return Err(VerifyError::CFGMissingEdge(*bid, *target));
+                        }
+                    }
+
+                    InstKind::Ret => {}
+
+                    _ => {
+                        if inst.kind.is_terminator() {
+                            return Err(VerifyError::InvalidTerminator(*bid));
+                        }
+                    }
+                }
+            }
+
+            // check preds/succs consistency
+            for succ in &block.succs {
+                if !f.blocks.contains_key(succ) {
+                    return Err(VerifyError::InvalidSuccessor(*bid, *succ));
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
