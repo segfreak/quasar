@@ -1,8 +1,9 @@
 use crate::ir::*;
+use crate::prelude::*;
 
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error)]
 pub enum VerifyError {
     #[error("block B{0} is empty (no insts/terminator)")]
     EmptyBlock(BlockId),
@@ -61,6 +62,9 @@ pub enum VerifyError {
     #[error("invalid terminator in block B{0}")]
     InvalidTerminator(BlockId),
 
+    #[error("type mismatch: expected {expected:?} got {got:?}")]
+    TypeMismatch { expected: Type, got: Type },
+
     #[error("undeclared function fn{0}")]
     UndeclaredFunction(FuncId),
 
@@ -72,12 +76,20 @@ pub enum VerifyError {
 }
 
 impl Module {
-    pub fn verify(&self) -> Result<(), VerifyError> {
-        for (_, f) in self.iter_functions() {
-            self.verify_function(f)?;
+    pub fn verify(&self) -> Result<(), HashMap<FuncId, VerifyError>> {
+        let mut errs = HashMap::<FuncId, VerifyError>::new();
+        for (id, f) in self.iter_functions() {
+            if let Err(e) = self.verify_function(f) {
+                errs.insert(id, e.clone());
+                log::error!("verify error in {}: {}", f.name, e);
+            }
         }
 
-        Ok(())
+        if errs.is_empty() {
+            Ok(())
+        } else {
+            Err(errs)
+        }
     }
 
     fn verify_function(&self, f: &Function) -> Result<(), VerifyError> {
@@ -119,7 +131,7 @@ impl Module {
                     return Err(VerifyError::ValueDefMismatch(res, *id, val.def));
                 }
             } else {
-                if !inst.kind.is_terminator() && !matches!(inst.kind, InstKind::Store) {
+                if !inst.kind.is_terminator() && !matches!(inst.kind, InstKind::Store { .. }) {
                     return Err(VerifyError::MissingResult(*id));
                 }
             }
@@ -197,6 +209,78 @@ impl Module {
                     }
                 }
 
+                InstKind::JumpIf {
+                    then_block,
+                    else_block,
+                } => {
+                    let ops = f.get_jumpif_params(inst).unwrap();
+
+                    let then_target = f
+                        .blocks
+                        .get(&then_block)
+                        .ok_or(VerifyError::InvalidJumpTarget(then_block))?;
+
+                    let else_target = f
+                        .blocks
+                        .get(&else_block)
+                        .ok_or(VerifyError::InvalidJumpTarget(else_block))?;
+
+                    let cond_val = inst.operands[0];
+                    let cond_ty = f.get_type(cond_val);
+                    if cond_ty != Type::I1 {
+                        return Err(VerifyError::TypeMismatch {
+                            expected: Type::I1,
+                            got: cond_ty,
+                        });
+                    }
+
+                    let then_param_count = then_target.params.len();
+                    let else_param_count = else_target.params.len();
+
+                    if then_param_count != ops.1.len() {
+                        return Err(VerifyError::OperandCountMismatch(*id, then_param_count));
+                    }
+
+                    if else_param_count != ops.2.len() {
+                        return Err(VerifyError::OperandCountMismatch(*id, else_param_count));
+                    }
+
+                    for (i, &op) in ops.1.iter().enumerate() {
+                        let op_ty = f.get_type(op);
+                        let param_id = then_target.params[i];
+                        let param_ty = f.get_type(param_id);
+
+                        if op_ty != param_ty {
+                            return Err(VerifyError::JumpTypeMismatch(
+                                then_block, i, param_ty, op_ty,
+                            ));
+                        }
+                    }
+
+                    for (i, &op) in ops.2.iter().enumerate() {
+                        let op_ty = f.get_type(op);
+                        let param_id = else_target.params[i];
+                        let param_ty = f.get_type(param_id);
+
+                        if op_ty != param_ty {
+                            return Err(VerifyError::JumpTypeMismatch(
+                                then_block, i, param_ty, op_ty,
+                            ));
+                        }
+                    }
+                }
+
+                InstKind::Store { .. } | InstKind::Load { .. } => {
+                    let expected = Type::Ptr;
+                    let actual = f.get_type(inst.operands[0]);
+                    if expected != actual {
+                        return Err(VerifyError::TypeMismatch {
+                            expected,
+                            got: actual,
+                        });
+                    }
+                }
+
                 InstKind::Call(fid) => {
                     let func = self
                         .get_function(fid)
@@ -266,6 +350,27 @@ impl Module {
 
                         if !block.succs.contains(target) {
                             return Err(VerifyError::CFGMissingEdge(*bid, *target));
+                        }
+                    }
+
+                    InstKind::JumpIf {
+                        then_block,
+                        else_block,
+                    } => {
+                        if !f.blocks.contains_key(then_block) {
+                            return Err(VerifyError::InvalidJumpTarget(*then_block));
+                        }
+
+                        if !block.succs.contains(then_block) {
+                            return Err(VerifyError::CFGMissingEdge(*bid, *then_block));
+                        }
+
+                        if !f.blocks.contains_key(else_block) {
+                            return Err(VerifyError::InvalidJumpTarget(*else_block));
+                        }
+
+                        if !block.succs.contains(else_block) {
+                            return Err(VerifyError::CFGMissingEdge(*bid, *else_block));
                         }
                     }
 

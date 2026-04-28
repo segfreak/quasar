@@ -1,45 +1,94 @@
 use crate::ir::{FunctionDef, Module};
 
-pub mod cfg_simplify;
 pub mod constant_folding;
 pub mod copy_propogation;
 pub mod cse;
 pub mod dce;
 pub mod dse;
 pub mod strength_reduction;
+pub mod uce;
 
-/// performs optimizations for function
-pub fn perform_for(f: &mut FunctionDef) {
-    loop {
-        let before = f.insts.len();
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PassKind {
+    ConstantFolding,
+    CopyPropagation,
+    DeadCodeElimination,
+    StrengthReduction,
+    CommonSubexpressionElimination,
+    DeadStoreElimination,
+    UnreachableElimination,
+}
 
-        constant_folding::constant_folding(f);
-        copy_propogation::copy_propogation(f);
-        dce::dce(f);
-        strength_reduction::strength_reduction(f);
-        cse::cse(f);
-        dse::dse(f);
-        cfg_simplify::cfg_simplify(f);
+#[derive(Debug, Default)]
+pub struct PassResult {
+    pub changed: bool,
+    pub passes: Vec<PassKind>,
+}
 
-        f.reconstruct();
+pub struct PassManager;
 
-        if f.insts.len() == before {
-            break;
+impl PassManager {
+    pub fn run_function(f: &mut FunctionDef) -> PassResult {
+        let mut result = PassResult::default();
+
+        loop {
+            let mut changed = false;
+            let mut run = Vec::new();
+
+            macro_rules! run_pass {
+                ($pass:expr, $kind:expr) => {
+                    if $pass(f) {
+                        changed = true;
+                        run.push($kind);
+                    }
+                };
+            }
+
+            run_pass!(
+                constant_folding::constant_folding,
+                PassKind::ConstantFolding
+            );
+            run_pass!(
+                copy_propogation::copy_propogation,
+                PassKind::CopyPropagation
+            );
+            run_pass!(dce::dce, PassKind::DeadCodeElimination);
+            run_pass!(
+                strength_reduction::strength_reduction,
+                PassKind::StrengthReduction
+            );
+            run_pass!(cse::cse, PassKind::CommonSubexpressionElimination);
+            run_pass!(dse::dse, PassKind::DeadStoreElimination);
+            run_pass!(uce::uce, PassKind::UnreachableElimination);
+
+            result.passes.extend(run);
+
+            if !changed {
+                break;
+            }
+
+            result.changed = true;
         }
+
+        if result.changed {
+            f.reconstruct();
+        }
+
+        result
     }
 }
 
 pub fn perform(module: &mut Module) {
     for (_, func) in module.iter_functions_mut() {
         if let Some(f) = func.get_definition_mut() {
-            perform_for(f);
+            let PassResult { passes, .. } = PassManager::run_function(f);
+            log::debug!(
+                "optimiser has performed {} passes for the function {}: {:?}",
+                passes.len(),
+                func.name,
+                passes
+            );
         }
-    }
-}
-
-impl FunctionDef {
-    pub fn optimize(&mut self) {
-        perform_for(self);
     }
 }
 

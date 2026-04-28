@@ -1,4 +1,6 @@
-use std::collections::HashMap;
+use enum_display::EnumDisplay;
+
+use crate::prelude::HashMap;
 
 use crate::target::{self, CallingConvention};
 
@@ -62,13 +64,19 @@ pub struct Inst {
     pub result: Option<ValueId>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, EnumDisplay, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CmpKind {
+    #[display("eq")]
     Eq,
+    #[display("ne")]
     Ne,
+    #[display("lt")]
     Lt,
+    #[display("le")]
     Le,
+    #[display("gt")]
     Gt,
+    #[display("ge")]
     Ge,
 }
 
@@ -100,13 +108,17 @@ pub enum InstKind {
     /// cmp {kind} {lhs}, {rhs}
     Cmp(CmpKind),
     /// alloca {type}
-    TAlloca(Type),
+    Alloca(Type),
     /// alloca {size}
     NAlloca,
     /// load {ptr}
-    Load,
+    Load {
+        volatile: bool,
+    },
     /// store {ptr}, {value}
-    Store,
+    Store {
+        volatile: bool,
+    },
     /// elementptr {ptr}, {offset}
     ElementPtr,
     /// call {func} ({args..})
@@ -115,6 +127,11 @@ pub enum InstKind {
     Cast(CastKind),
     /// j {block}
     Jump(BlockId),
+    /// jc {cond} {then}(then_params..) {else}(else_params..)
+    JumpIf {
+        then_block: BlockId,
+        else_block: BlockId,
+    },
     /// ret {value}
     Ret,
 }
@@ -131,16 +148,16 @@ impl InstKind {
             Cmp(_) => 2,
 
             // type is not a operand
-            TAlloca(_) => 0,
-            Load | NAlloca => 1,
-            Store => 2,
+            Alloca(_) => 0,
+            Load { .. } | NAlloca => 1,
+            Store { .. } => 2,
             ElementPtr => 2,
 
             Cast(_) => 1,
             Ret => 1,
 
             // context depended
-            Call(_) | Jump(_) => usize::MAX,
+            Call(_) | Jump(_) | JumpIf { .. } => usize::MAX,
         }
     }
 
@@ -165,11 +182,11 @@ impl InstKind {
             Self::Cmp(_) => 2,
 
             // memory ops (expensive due to potential cache/memory)
-            Self::Load => 5,
-            Self::Store => 5,
+            Self::Load { .. } => 5,
+            Self::Store { .. } => 5,
 
             // address computation (usually cheap ALU-like)
-            Self::NAlloca | Self::TAlloca(_) => 3,
+            Self::NAlloca | Self::Alloca(_) => 3,
             Self::ElementPtr => 2,
 
             // function calls (very expensive, unknown cost)
@@ -180,15 +197,17 @@ impl InstKind {
 
             // control flow (terminators)
             Self::Jump(_) => 0,
+            Self::JumpIf { .. } => 0,
             Self::Ret => 0,
         }
     }
 
+    pub fn is_alloca(&self) -> bool {
+        matches!(self, Self::NAlloca | Self::Alloca(_))
+    }
+
     pub fn is_memory(&self) -> bool {
-        matches!(
-            self,
-            Self::Load | Self::Store | Self::NAlloca | Self::TAlloca(_)
-        )
+        matches!(self, Self::Load { .. } | Self::Store { .. })
     }
 
     pub fn is_call(&self) -> bool {
@@ -200,7 +219,7 @@ impl InstKind {
     }
 
     pub fn is_terminator(&self) -> bool {
-        matches!(self, Self::Jump(_) | Self::Ret)
+        matches!(self, Self::Ret | Self::Jump(_) | Self::JumpIf { .. })
     }
 }
 
@@ -325,7 +344,15 @@ impl FunctionDef {
             match &kind {
                 InstKind::Jump(bb) => {
                     b.succs.push(*bb);
-                    b.preds.push(block);
+                    // b.preds.push(block);
+                }
+                InstKind::JumpIf {
+                    then_block,
+                    else_block,
+                } => {
+                    b.succs.push(*then_block);
+                    b.succs.push(*else_block);
+                    // b.preds.push(block);
                 }
                 InstKind::Ret => {}
                 _ => unreachable!(),
@@ -371,7 +398,39 @@ impl FunctionDef {
         }
     }
 
-    /// Safe version that doesn't panic if value was deleted
+    pub fn lookup_block(&self, b: BlockId) -> Option<&Block> {
+        self.blocks.get(&b)
+    }
+
+    pub(crate) fn get_jumpif_params<'a>(
+        &'a self,
+        inst: &'a Inst,
+    ) -> Option<(ValueId, &'a [ValueId], &'a [ValueId])> {
+        if let InstKind::JumpIf {
+            then_block,
+            else_block,
+        } = inst.kind
+        {
+            let cond = inst.operands[0];
+
+            let t = self.lookup_block(then_block).unwrap().params.len();
+            let e = self.lookup_block(else_block).unwrap().params.len();
+
+            let then_start = 1;
+            let then_end = then_start + t;
+
+            let else_start = then_end;
+            let else_end = else_start + e;
+
+            let then_params = &inst.operands[then_start..then_end];
+            let else_params = &inst.operands[else_start..else_end];
+
+            Some((cond, then_params, else_params))
+        } else {
+            None
+        }
+    }
+
     pub fn try_get_iconst(&self, v: ValueId) -> Option<i64> {
         let val = self.values.get(&v)?;
         if val.def == InstId::MAX {
@@ -385,7 +444,6 @@ impl FunctionDef {
         }
     }
 
-    /// Check if a value exists and is valid
     pub fn is_value_valid(&self, v: ValueId) -> bool {
         self.values.contains_key(&v)
     }
@@ -395,67 +453,186 @@ impl FunctionDef {
         v
     }
 
+    fn make_binary(
+        &mut self,
+        block: BlockId,
+        kind: InstKind,
+        ty: Type,
+        lhs: ValueId,
+        rhs: ValueId,
+    ) -> (InstId, ValueId) {
+        self.append_inst(block, kind, ty, vec![lhs, rhs])
+    }
+
+    pub fn make_cmp(
+        &mut self,
+        block: BlockId,
+        kind: CmpKind,
+        lhs: ValueId,
+        rhs: ValueId,
+    ) -> (InstId, ValueId) {
+        self.make_binary(block, InstKind::Cmp(kind), Type::I1, lhs, rhs)
+    }
+
     pub fn make_add(
         &mut self,
         block: BlockId,
         ty: Type,
-        operands: Vec<ValueId>,
+        lhs: ValueId,
+        rhs: ValueId,
     ) -> (InstId, ValueId) {
-        self.append_inst(block, InstKind::Add, ty, operands)
+        self.make_binary(block, InstKind::Add, ty, lhs, rhs)
     }
 
     pub fn make_sub(
         &mut self,
         block: BlockId,
         ty: Type,
-        operands: Vec<ValueId>,
+        lhs: ValueId,
+        rhs: ValueId,
     ) -> (InstId, ValueId) {
-        self.append_inst(block, InstKind::Sub, ty, operands)
+        self.make_binary(block, InstKind::Sub, ty, lhs, rhs)
     }
 
     pub fn make_mul(
         &mut self,
         block: BlockId,
         ty: Type,
-        operands: Vec<ValueId>,
+        lhs: ValueId,
+        rhs: ValueId,
     ) -> (InstId, ValueId) {
-        self.append_inst(block, InstKind::Mul, ty, operands)
+        self.make_binary(block, InstKind::Mul, ty, lhs, rhs)
     }
 
     pub fn make_div(
         &mut self,
         block: BlockId,
         ty: Type,
-        operands: Vec<ValueId>,
+        lhs: ValueId,
+        rhs: ValueId,
     ) -> (InstId, ValueId) {
-        self.append_inst(block, InstKind::Div, ty, operands)
+        self.make_binary(block, InstKind::Div, ty, lhs, rhs)
     }
 
     pub fn make_lshl(
         &mut self,
         block: BlockId,
         ty: Type,
-        operands: Vec<ValueId>,
+        lhs: ValueId,
+        rhs: ValueId,
     ) -> (InstId, ValueId) {
-        self.append_inst(block, InstKind::LShl, ty, operands)
+        self.make_binary(block, InstKind::LShl, ty, lhs, rhs)
     }
 
     pub fn make_lshr(
         &mut self,
         block: BlockId,
         ty: Type,
-        operands: Vec<ValueId>,
+        lhs: ValueId,
+        rhs: ValueId,
     ) -> (InstId, ValueId) {
-        self.append_inst(block, InstKind::LShr, ty, operands)
+        self.make_binary(block, InstKind::LShr, ty, lhs, rhs)
     }
 
     pub fn make_ashr(
         &mut self,
         block: BlockId,
         ty: Type,
+        lhs: ValueId,
+        rhs: ValueId,
+    ) -> (InstId, ValueId) {
+        self.make_binary(block, InstKind::AShr, ty, lhs, rhs)
+    }
+
+    pub fn make_alloca(&mut self, block: BlockId, ty: Type) -> (InstId, ValueId) {
+        self.append_inst(block, InstKind::Alloca(ty), Type::Ptr, vec![])
+    }
+
+    pub fn make_store(
+        &mut self,
+        block: BlockId,
+        volatile: bool,
+        ptr: ValueId,
+        value: ValueId,
+    ) -> (InstId, ValueId) {
+        self.append_inst(
+            block,
+            InstKind::Store { volatile },
+            Type::Void,
+            vec![ptr, value],
+        )
+    }
+
+    pub fn make_load(
+        &mut self,
+        block: BlockId,
+        volatile: bool,
+        ty: Type,
+        ptr: ValueId,
+    ) -> (InstId, ValueId) {
+        self.append_inst(block, InstKind::Load { volatile }, ty, vec![ptr])
+    }
+
+    pub fn make_nalloca(
+        &mut self,
+        block: BlockId,
+        ty: Type,
         operands: Vec<ValueId>,
     ) -> (InstId, ValueId) {
-        self.append_inst(block, InstKind::AShr, ty, operands)
+        self.append_inst(block, InstKind::NAlloca, ty, operands)
+    }
+
+    pub fn make_call(
+        &mut self,
+        block: BlockId,
+        ty: Type,
+        func: FuncId,
+        operands: Vec<ValueId>,
+    ) -> (InstId, ValueId) {
+        self.append_inst(block, InstKind::Call(func), ty, operands)
+    }
+
+    pub fn make_ret(&mut self, block: BlockId, value: Option<ValueId>) -> (InstId, ValueId) {
+        let mut operands = vec![];
+        if let Some(v) = value {
+            operands.push(v);
+        }
+        self.append_inst(block, InstKind::Ret, Type::Void, operands)
+    }
+
+    pub fn make_jump(
+        &mut self,
+        block: BlockId,
+        target: BlockId,
+        params: Vec<ValueId>,
+    ) -> (InstId, ValueId) {
+        self.append_inst(block, InstKind::Jump(target), Type::Void, params)
+    }
+
+    pub fn make_jumpif(
+        &mut self,
+        block: BlockId,
+        cond: ValueId,
+        then_block: BlockId,
+        then_params: Vec<ValueId>,
+        else_block: BlockId,
+        else_params: Vec<ValueId>,
+    ) -> (InstId, ValueId) {
+        let mut operands = Vec::with_capacity(1 + then_params.len() + else_params.len());
+
+        operands.push(cond);
+        operands.extend(then_params);
+        operands.extend(else_params);
+
+        self.append_inst(
+            block,
+            InstKind::JumpIf {
+                then_block,
+                else_block,
+            },
+            Type::Void,
+            operands,
+        )
     }
 
     pub fn reconstruct(&mut self) {
@@ -653,7 +830,7 @@ impl FunctionDef {
 }
 
 impl FunctionDef {
-    pub fn dump_dot(&self) -> String {
+    pub fn dump_dot(&self, module: &Module) -> String {
         let mut s = String::new();
 
         s.push_str("digraph SSA {\n");
@@ -679,7 +856,7 @@ impl FunctionDef {
                     label.push_str("  ");
                 }
 
-                label.push_str(&self.fmt_inst(inst));
+                label.push_str(&self.fmt_inst(module, inst));
                 label.push_str("\\l");
             }
 
@@ -696,7 +873,14 @@ impl FunctionDef {
         s
     }
 
-    fn fmt_inst(&self, inst: &Inst) -> String {
+    fn fmt_args(args: &[ValueId]) -> String {
+        args.iter()
+            .map(|v| format!("v{}", v))
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
+    fn fmt_inst(&self, module: &Module, inst: &Inst) -> String {
         match &inst.kind {
             InstKind::IConst(x) => format!("iconst {}", x),
             InstKind::FConst(x) => format!("fconst {}", x),
@@ -715,38 +899,59 @@ impl FunctionDef {
 
             InstKind::Cmp(k) => format!("cmp.{:?} v{} v{}", k, inst.operands[0], inst.operands[1]),
 
-            InstKind::Load => format!("load v{}", inst.operands[0]),
-
-            InstKind::Store => format!("store v{} v{}", inst.operands[0], inst.operands[1]),
+            InstKind::Load { volatile } => format!(
+                "{}load v{}",
+                if *volatile { "volatile " } else { "" },
+                inst.operands[0]
+            ),
+            InstKind::Store { volatile } => format!(
+                "{}store v{} v{}",
+                if *volatile { "volatile " } else { "" },
+                inst.operands[0],
+                inst.operands[1]
+            ),
 
             InstKind::NAlloca => format!("alloca {}", inst.operands[0]),
-            InstKind::TAlloca(ty) => format!("alloca {:?}", ty),
+            InstKind::Alloca(ty) => format!("alloca {:?}", ty),
 
             InstKind::ElementPtr => {
                 format!("elementptr v{} v{}", inst.operands[0], inst.operands[1])
             }
 
             InstKind::Call(fid) => {
-                let mut s = format!("call f{}(", fid);
-                for op in &inst.operands {
-                    s.push_str(&format!("v{},", op));
-                }
-                s.push(')');
-                s
+                let name = &module.get_function(*fid).unwrap().name;
+                format!("call {}({})", name, Self::fmt_args(&inst.operands))
             }
 
             InstKind::Cast(k) => format!("cast.{:?} v{}", k, inst.operands[0]),
 
             InstKind::Jump(bb) => {
-                let mut s = format!("jump B{}(", bb);
-                for a in &inst.operands {
-                    s.push_str(&format!("v{},", a));
-                }
-                s.push(')');
-                s
+                let args = Self::fmt_args(&inst.operands);
+                format!("jmp B{}({})", bb, args)
             }
 
-            InstKind::Ret => format!("ret v{}", inst.operands[0]),
+            InstKind::JumpIf {
+                then_block,
+                else_block,
+            } => {
+                let (cond, then_params, else_params) = self.get_jumpif_params(inst).unwrap();
+                format!(
+                    "jmpif v{} -> B{}({}), B{}({})",
+                    cond,
+                    then_block,
+                    Self::fmt_args(then_params),
+                    else_block,
+                    Self::fmt_args(else_params),
+                )
+            }
+
+            InstKind::Ret => {
+                if inst.operands.is_empty() {
+                    "ret".to_string()
+                } else {
+                    format!("ret v{}", inst.operands[0])
+                }
+            }
         }
     }
 }
@@ -763,17 +968,20 @@ impl FunctionSignature {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, EnumDisplay, Default, Clone, PartialEq, Eq, Hash)]
 pub enum Linkage {
     /// Function Definition:  Visible outside module, single strong definition
     /// Function Declaration: External Symbol declaration
+    #[display("external")]
     External,
 
     /// Function Definition:  Invisible outside module
     #[default]
+    #[display("internal")]
     Internal,
 
     /// Multiple identical definitions allowed
+    #[display("weak")]
     Weak,
 }
 
@@ -914,7 +1122,10 @@ impl Module {
 
             // subgraph per function
             s.push_str(&format!("  subgraph cluster_f{} {{\n", fid));
-            s.push_str(&format!("    label=\"fn {}\";\n", func.name));
+            s.push_str(&format!(
+                "    label=\"fn abi({}) {}\";\n",
+                func.calling_convention, func.name
+            ));
             s.push_str("    style=rounded;\n\n");
 
             // blocks
@@ -938,7 +1149,7 @@ impl Module {
                         label.push_str("  ");
                     }
 
-                    label.push_str(&def.fmt_inst(inst));
+                    label.push_str(&def.fmt_inst(self, inst));
                     label.push_str("\\l");
                 }
 

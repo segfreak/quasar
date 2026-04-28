@@ -1,6 +1,12 @@
 use crate::ir::*;
 
-pub fn dce(func: &mut FunctionDef) {
+fn can_elminate(inst: &Inst) -> bool {
+    !inst.kind.has_side_effects() || matches!(inst.kind, InstKind::Load { volatile: false })
+}
+
+pub fn dce(func: &mut FunctionDef) -> bool {
+    let mut changed = false;
+
     let mut worklist: Vec<ValueId> = func
         .values
         .iter()
@@ -9,25 +15,39 @@ pub fn dce(func: &mut FunctionDef) {
         .collect();
 
     while let Some(v) = worklist.pop() {
-        if let Some(val) = func.values.get(&v) {
-            let inst_id = val.def;
-            if inst_id == InstId::MAX {
-                continue;
-            }
+        let val = match func.values.get(&v) {
+            Some(v) => v,
+            None => continue,
+        };
 
-            let inst = &func.insts[&inst_id];
-            if inst.kind.has_side_effects() {
-                continue;
-            }
+        let inst_id = val.def;
+        if inst_id == InstId::MAX {
+            continue;
+        }
 
-            let ops = inst.operands.clone();
-            func.remove_inst(inst_id);
+        let inst = match func.insts.get(&inst_id) {
+            Some(i) => i.clone(),
+            None => continue,
+        };
 
-            for op in ops {
-                if func.values[&op].uses.is_empty() {
+        if !can_elminate(&inst) {
+            continue;
+        }
+
+        let ops = inst.operands.clone();
+
+        func.remove_inst(inst_id);
+        changed = true;
+
+        for op in ops {
+            #[allow(clippy::collapsible_if)]
+            if let Some(v) = func.values.get(&op) {
+                if v.uses.is_empty() {
                     worklist.push(op);
                 }
             }
         }
     }
+
+    changed
 }

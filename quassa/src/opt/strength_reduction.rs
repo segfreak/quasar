@@ -61,7 +61,9 @@ fn try_reduce_inst(func: &mut FunctionDef, id: InstId) -> bool {
     false
 }
 
-pub fn strength_reduction(func: &mut FunctionDef) {
+pub fn strength_reduction(func: &mut FunctionDef) -> bool {
+    let mut changed = false;
+
     let inst_ids: Vec<InstId> = func.insts.keys().copied().collect();
 
     for id in inst_ids {
@@ -69,6 +71,10 @@ pub fn strength_reduction(func: &mut FunctionDef) {
             continue;
         }
 
-        try_reduce_inst(func, id);
+        if try_reduce_inst(func, id) {
+            changed = true;
+        }
     }
+
+    changed
 }

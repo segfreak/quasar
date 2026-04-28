@@ -1,1 +1,5 @@
 /target
+/*.svg
+/perf.*
+/*.dot
+/*.png

@@ -1,6 +1,8 @@
 use crate::ir::*;
 
-pub fn constant_folding(func: &mut FunctionDef) {
+pub fn constant_folding(func: &mut FunctionDef) -> bool {
+    let mut changed = false;
+
     let insts: Vec<InstId> = func.insts.keys().cloned().collect();
 
     for id in insts {
@@ -130,6 +132,10 @@ pub fn constant_folding(func: &mut FunctionDef) {
             // 2. mutate instruction
             inst.kind = InstKind::IConst(val);
             inst.operands.clear();
+
+            changed = true;
         }
     }
+
+    changed
 }

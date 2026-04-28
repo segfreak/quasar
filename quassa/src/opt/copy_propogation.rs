@@ -4,10 +4,12 @@ fn is_copy(inst: &Inst) -> bool {
     matches!(inst.kind, InstKind::Cast(CastKind::Bitcast))
 }
 
-pub fn copy_propogation(func: &mut FunctionDef) {
-    let inst_ids: Vec<InstId> = func.insts.keys().copied().collect();
+pub fn copy_propogation(func: &mut FunctionDef) -> bool {
+    let mut changed = false;
 
-    for id in inst_ids {
+    let insts: Vec<InstId> = func.insts.keys().copied().collect();
+
+    for id in insts {
         let inst = match func.insts.get(&id).cloned() {
             Some(i) => i,
             None => continue,
@@ -29,6 +31,7 @@ pub fn copy_propogation(func: &mut FunctionDef) {
 
         if src == dst {
             func.remove_inst(id);
+            changed = true;
             continue;
         }
 
@@ -36,6 +39,12 @@ pub fn copy_propogation(func: &mut FunctionDef) {
             Some(v) => v.uses.clone(),
             None => continue,
         };
+
+        if uses.is_empty() {
+            func.remove_inst(id);
+            changed = true;
+            continue;
+        }
 
         for u in uses {
             if let Some(user_inst) = func.insts.get_mut(&u.inst) {
@@ -50,5 +59,8 @@ pub fn copy_propogation(func: &mut FunctionDef) {
         }
 
         func.remove_inst(id);
+        changed = true;
     }
+
+    changed
 }

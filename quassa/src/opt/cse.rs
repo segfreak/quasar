@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use crate::prelude::HashMap;
 
 use crate::ir::*;
 
@@ -8,9 +8,10 @@ struct InstKey {
     ops: Vec<ValueId>,
 }
 
-pub fn cse(func: &mut FunctionDef) {
-    let mut table: HashMap<InstKey, ValueId> = HashMap::new();
+pub fn cse(func: &mut FunctionDef) -> bool {
+    let mut changed = false;
 
+    let mut table: HashMap<InstKey, ValueId> = HashMap::new();
     let insts: Vec<InstId> = func.insts.keys().cloned().collect();
 
     for id in insts {
@@ -19,12 +20,13 @@ pub fn cse(func: &mut FunctionDef) {
         }
 
         let inst = &func.insts[&id];
+
         let result = match inst.result {
             Some(v) => v,
             None => continue,
         };
 
-        if inst.kind.has_side_effects() {
+        if inst.kind.has_side_effects() || inst.kind.is_alloca() {
             continue;
         }
 
@@ -34,10 +36,15 @@ pub fn cse(func: &mut FunctionDef) {
         };
 
         if let Some(&existing) = table.get(&key) {
-            func.replace_value(result, existing);
-            func.remove_inst(id);
+            if existing != result {
+                func.replace_value(result, existing);
+                func.remove_inst(id);
+                changed = true;
+            }
         } else {
             table.insert(key, result);
         }
     }
+
+    changed
 }
