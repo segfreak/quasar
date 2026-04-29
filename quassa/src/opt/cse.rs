@@ -8,7 +8,9 @@ struct InstKey {
     ops: Vec<ValueId>,
 }
 
-pub fn cse(func: &mut FunctionDef) -> bool {
+pub fn cse(m: &mut Module, f: FuncId) -> bool {
+    let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
+
     let mut changed = false;
 
     let mut table: HashMap<InstKey, ValueId> = HashMap::new();

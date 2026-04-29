@@ -1,4 +1,5 @@
-use crate::ir::{FunctionDef, Module};
+use crate::ir::{FuncId, Module};
+use crate::prelude::*;
 
 pub mod constant_folding;
 pub mod copy_propogation;
@@ -28,7 +29,7 @@ pub struct PassResult {
 pub struct PassManager;
 
 impl PassManager {
-    pub fn run_function(f: &mut FunctionDef) -> PassResult {
+    pub fn run_function(m: &mut Module, f: FuncId) -> PassResult {
         let mut result = PassResult::default();
 
         loop {
@@ -37,7 +38,7 @@ impl PassManager {
 
             macro_rules! run_pass {
                 ($pass:expr, $kind:expr) => {
-                    if $pass(f) {
+                    if $pass(m, f) {
                         changed = true;
                         run.push($kind);
                     }
@@ -71,29 +72,48 @@ impl PassManager {
         }
 
         if result.changed {
-            f.reconstruct();
+            let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
+            func.reconstruct();
         }
 
         result
     }
-}
 
-pub fn perform(module: &mut Module) {
-    for (_, func) in module.iter_functions_mut() {
-        if let Some(f) = func.get_definition_mut() {
-            let PassResult { passes, .. } = PassManager::run_function(f);
+    pub fn run_module(m: &mut Module) -> HashMap<FuncId, PassResult> {
+        let mut tmp = HashMap::new();
+
+        let func_ids: Vec<FuncId> = m
+            .iter_functions()
+            .filter_map(|(id, f)| {
+                if f.get_definition().is_some() {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for func_id in func_ids {
+            let pass_result = PassManager::run_function(m, func_id);
+
+            let func_name = &m.functions[&func_id].name;
+
             log::debug!(
                 "optimiser has performed {} passes for the function {}: {:?}",
-                passes.len(),
-                func.name,
-                passes
+                pass_result.passes.len(),
+                func_name,
+                pass_result.passes
             );
+
+            tmp.insert(func_id, pass_result);
         }
+
+        tmp
     }
 }
 
 impl Module {
     pub fn optimize(&mut self) {
-        perform(self);
+        PassManager::run_module(self);
     }
 }

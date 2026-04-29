@@ -4,7 +4,9 @@ fn can_elminate(inst: &Inst) -> bool {
     !inst.kind.has_side_effects() || matches!(inst.kind, InstKind::Load { volatile: false })
 }
 
-pub fn dce(func: &mut FunctionDef) -> bool {
+pub fn dce(m: &mut Module, f: FuncId) -> bool {
+    let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
+
     let mut changed = false;
 
     let mut worklist: Vec<ValueId> = func

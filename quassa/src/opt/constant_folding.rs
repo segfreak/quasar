@@ -1,6 +1,8 @@
 use crate::ir::*;
 
-pub fn constant_folding(func: &mut FunctionDef) -> bool {
+pub fn constant_folding(m: &mut Module, f: FuncId) -> bool {
+    let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
+
     let mut changed = false;
 
     let insts: Vec<InstId> = func.insts.keys().cloned().collect();

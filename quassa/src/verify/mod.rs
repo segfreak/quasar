@@ -304,6 +304,22 @@ impl Module {
                     }
                 }
 
+                InstKind::ElementPtr => {
+                    if inst.operands.len() != nops {
+                        return Err(VerifyError::OperandCountMismatch(*id, nops));
+                    }
+
+                    let vbase = inst.operands[0];
+
+                    let basety = f.get_type(vbase);
+                    if basety != Type::Ptr {
+                        return Err(VerifyError::TypeMismatch {
+                            expected: Type::Ptr,
+                            got: basety,
+                        });
+                    }
+                }
+
                 _ => {
                     if inst.operands.len() != nops {
                         return Err(VerifyError::OperandCountMismatch(*id, nops));

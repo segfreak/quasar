@@ -29,8 +29,8 @@ fn bar_def(mfoo: FuncId) -> FunctionDef {
     fun.make_jump(b0, b1, vec![v3]);
     let v4 = fun.add_block_param(b1, Type::I32);
     let v5 = fun.make_iconst(b1, Type::I32, 2);
-    let _v6 = fun.make_call(b1, Type::I32, mfoo, vec![v4, v5]).1;
-    let v7 = fun.make_mul(b1, Type::I32, v4, v5).1;
+    let v6 = fun.make_call(b1, Type::I32, mfoo, vec![v4, v5]).1;
+    let v7 = fun.make_mul(b1, Type::I32, v5, v6).1;
     fun.make_ret(b1, Some(v7));
     fun
 }
@@ -92,25 +92,25 @@ fn main() {
     pretty_env_logger::init();
     let mut m = Module::new("quasar");
     let mfoo = m.declare_function(
-        "mfoo",
+        "foo",
         FunctionSignature::new(vec![Type::I32, Type::I32], Type::I32),
         Linkage::default(),
         CallingConvention::default(),
     );
     let mbar = m.declare_function(
-        "mbar",
+        "bar",
         FunctionSignature::new(vec![Type::I32], Type::I32),
         Linkage::default(),
         CallingConvention::default(),
     );
     let mbaz = m.declare_function(
-        "mbaz",
+        "baz",
         FunctionSignature::new(vec![], Type::Void),
         Linkage::default(),
         CallingConvention::default(),
     );
     let mopt = m.declare_function(
-        "mopt",
+        "opt",
         FunctionSignature::new(vec![Type::I32], Type::I32),
         Linkage::default(),
         CallingConvention::default(),
@@ -123,8 +123,8 @@ fn main() {
         .expect("define_function error");
     m.define_function(mopt, opt_def())
         .expect("define_function error");
-    fs::write("quasar.dot", m.dump_dot()).expect("fs::write error");
     m.verify().expect("pre-opt verify error");
     m.optimize();
     m.verify().expect("post-opt verify error");
+    fs::write("quasar.dot", m.dump_dot()).expect("fs::write error");
 }

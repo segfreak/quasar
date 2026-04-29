@@ -2,7 +2,9 @@ use crate::ir::*;
 
 use crate::prelude::HashSet;
 
-pub fn uce(func: &mut FunctionDef) -> bool {
+pub fn uce(m: &mut Module, f: FuncId) -> bool {
+    let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
+
     let mut changed = false;
 
     let mut reachable = HashSet::new();

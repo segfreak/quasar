@@ -9,21 +9,34 @@ pub type InstId = u32;
 pub type BlockId = u32;
 pub type FuncId = u32;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, EnumDisplay, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Type {
     #[default]
+    #[display("void")]
     Void,
+    #[display("i1")]
     I1,
+    #[display("i8")]
     I8,
+    #[display("i16")]
     I16,
+    #[display("i32")]
     I32,
+    #[display("i64")]
     I64,
+    #[display("f32")]
     F32,
+    #[display("f64")]
     F64,
+    #[display("*opaque")]
     Ptr,
 }
 
 impl Type {
+    pub fn is_integer(&self) -> bool {
+        matches!(self, Type::I8 | Type::I16 | Type::I32 | Type::I64)
+    }
+
     pub fn is_void(&self) -> bool {
         matches!(self, Type::Void)
     }
@@ -80,11 +93,15 @@ pub enum CmpKind {
     Ge,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, EnumDisplay, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CastKind {
+    #[display("zext")]
     Zext,
+    #[display("sext")]
     Sext,
+    #[display("trunc")]
     Trunc,
+    #[display("bitcast")]
     Bitcast,
 }
 
@@ -119,7 +136,7 @@ pub enum InstKind {
     Store {
         volatile: bool,
     },
-    /// elementptr {ptr}, {offset}
+    /// elementptr {base}, {offset}
     ElementPtr,
     /// call {func} ({args..})
     Call(FuncId),
@@ -223,7 +240,7 @@ impl InstKind {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Block {
     pub params: Vec<ValueId>,
     pub insts: Vec<InstId>,
@@ -232,7 +249,7 @@ pub struct Block {
     pub succs: Vec<BlockId>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct FunctionDef {
     pub blocks: HashMap<BlockId, Block>,
     pub insts: HashMap<InstId, Inst>,
@@ -453,6 +470,16 @@ impl FunctionDef {
         v
     }
 
+    fn make_unary(
+        &mut self,
+        block: BlockId,
+        kind: InstKind,
+        ty: Type,
+        value: ValueId,
+    ) -> (InstId, ValueId) {
+        self.append_inst(block, kind, ty, vec![value])
+    }
+
     fn make_binary(
         &mut self,
         block: BlockId,
@@ -472,6 +499,16 @@ impl FunctionDef {
         rhs: ValueId,
     ) -> (InstId, ValueId) {
         self.make_binary(block, InstKind::Cmp(kind), Type::I1, lhs, rhs)
+    }
+
+    pub fn make_cast(
+        &mut self,
+        block: BlockId,
+        kind: CastKind,
+        ty: Type,
+        value: ValueId,
+    ) -> (InstId, ValueId) {
+        self.make_unary(block, InstKind::Cast(kind), ty, value)
     }
 
     pub fn make_add(
@@ -571,6 +608,15 @@ impl FunctionDef {
         ptr: ValueId,
     ) -> (InstId, ValueId) {
         self.append_inst(block, InstKind::Load { volatile }, ty, vec![ptr])
+    }
+
+    pub fn make_element_ptr(
+        &mut self,
+        block: BlockId,
+        base: ValueId,
+        offset: ValueId,
+    ) -> (InstId, ValueId) {
+        self.append_inst(block, InstKind::ElementPtr, Type::Ptr, vec![base, offset])
     }
 
     pub fn make_nalloca(
@@ -842,7 +888,7 @@ impl FunctionDef {
             if !block.params.is_empty() {
                 label.push_str("  params: ");
                 for p in &block.params {
-                    label.push_str(&format!("v{}:{:?} ", p, self.values[p].ty));
+                    label.push_str(&format!("%{}:{} ", p, self.values[p].ty));
                 }
                 label.push_str("\\l");
             }
@@ -851,12 +897,12 @@ impl FunctionDef {
                 let inst = &self.insts[inst_id];
 
                 if let Some(res) = inst.result {
-                    label.push_str(&format!("  v{} = ", res));
+                    label.push_str(&format!("  %{} = ", res));
                 } else {
                     label.push_str("  ");
                 }
 
-                label.push_str(&self.fmt_inst(module, inst));
+                label.push_str(&self.fmt_inst(module, self, inst));
                 label.push_str("\\l");
             }
 
@@ -875,47 +921,85 @@ impl FunctionDef {
 
     fn fmt_args(args: &[ValueId]) -> String {
         args.iter()
-            .map(|v| format!("v{}", v))
+            .map(|v| format!("%{}", v))
             .collect::<Vec<_>>()
             .join(", ")
     }
 
-    fn fmt_inst(&self, module: &Module, inst: &Inst) -> String {
+    fn fmt_inst(&self, module: &Module, func: &FunctionDef, inst: &Inst) -> String {
+        let result_ty = inst.result.map(|v| func.get_type(v)).unwrap_or(Type::Void);
         match &inst.kind {
-            InstKind::IConst(x) => format!("iconst {}", x),
-            InstKind::FConst(x) => format!("fconst {}", x),
+            InstKind::IConst(x) => {
+                let val = inst.result.unwrap();
+                let ty = func.get_type(val);
+                format!("const.{} ${}", ty, x)
+            }
+            InstKind::FConst(x) => {
+                let val = inst.result.unwrap();
+                let ty = func.get_type(val);
+                format!("const.{} ${}", ty, x)
+            }
+            InstKind::Add => format!(
+                "add.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::Sub => format!(
+                "sub.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::Mul => format!(
+                "mul.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::Div => format!(
+                "div.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::And => format!(
+                "and.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::Or => format!(
+                "or.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::Xor => format!(
+                "xor.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::LShl => format!(
+                "lshl.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::LShr => format!(
+                "lshr.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::AShr => format!(
+                "ashr.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
 
-            InstKind::Add => format!("add v{} v{}", inst.operands[0], inst.operands[1]),
-            InstKind::Sub => format!("sub v{} v{}", inst.operands[0], inst.operands[1]),
-            InstKind::Mul => format!("mul v{} v{}", inst.operands[0], inst.operands[1]),
-            InstKind::Div => format!("div v{} v{}", inst.operands[0], inst.operands[1]),
-
-            InstKind::And => format!("and v{} v{}", inst.operands[0], inst.operands[1]),
-            InstKind::Or => format!("or v{} v{}", inst.operands[0], inst.operands[1]),
-            InstKind::Xor => format!("xor v{} v{}", inst.operands[0], inst.operands[1]),
-            InstKind::LShl => format!("lshl v{} v{}", inst.operands[0], inst.operands[1]),
-            InstKind::LShr => format!("lshr v{} v{}", inst.operands[0], inst.operands[1]),
-            InstKind::AShr => format!("ashr v{} v{}", inst.operands[0], inst.operands[1]),
-
-            InstKind::Cmp(k) => format!("cmp.{:?} v{} v{}", k, inst.operands[0], inst.operands[1]),
+            InstKind::Cmp(k) => format!("cmp.{} %{} %{}", k, inst.operands[0], inst.operands[1]),
 
             InstKind::Load { volatile } => format!(
-                "{}load v{}",
-                if *volatile { "volatile " } else { "" },
+                "{}load.{} %{}",
+                if *volatile { "v" } else { "" },
+                result_ty,
                 inst.operands[0]
             ),
             InstKind::Store { volatile } => format!(
-                "{}store v{} v{}",
-                if *volatile { "volatile " } else { "" },
+                "{}store %{} %{}",
+                if *volatile { "v" } else { "" },
                 inst.operands[0],
                 inst.operands[1]
             ),
 
             InstKind::NAlloca => format!("alloca {}", inst.operands[0]),
-            InstKind::Alloca(ty) => format!("alloca {:?}", ty),
+            InstKind::Alloca(ty) => format!("alloca {}", ty),
 
             InstKind::ElementPtr => {
-                format!("elementptr v{} v{}", inst.operands[0], inst.operands[1])
+                format!("elemptr %{} %{}", inst.operands[0], inst.operands[1])
             }
 
             InstKind::Call(fid) => {
@@ -923,7 +1007,7 @@ impl FunctionDef {
                 format!("call {}({})", name, Self::fmt_args(&inst.operands))
             }
 
-            InstKind::Cast(k) => format!("cast.{:?} v{}", k, inst.operands[0]),
+            InstKind::Cast(k) => format!("cast.{} %{}", k, inst.operands[0]),
 
             InstKind::Jump(bb) => {
                 let args = Self::fmt_args(&inst.operands);
@@ -936,7 +1020,7 @@ impl FunctionDef {
             } => {
                 let (cond, then_params, else_params) = self.get_jumpif_params(inst).unwrap();
                 format!(
-                    "jmpif v{} -> B{}({}), B{}({})",
+                    "jmpif %{} B{}({}), B{}({})",
                     cond,
                     then_block,
                     Self::fmt_args(then_params),
@@ -949,7 +1033,7 @@ impl FunctionDef {
                 if inst.operands.is_empty() {
                     "ret".to_string()
                 } else {
-                    format!("ret v{}", inst.operands[0])
+                    format!("ret %{}", inst.operands[0])
                 }
             }
         }
@@ -1135,7 +1219,7 @@ impl Module {
                 if !block.params.is_empty() {
                     label.push_str("  params: ");
                     for p in &block.params {
-                        label.push_str(&format!("v{}:{:?} ", p, def.values[p].ty));
+                        label.push_str(&format!("%{}:{} ", p, def.values[p].ty));
                     }
                     label.push_str("\\l");
                 }
@@ -1144,22 +1228,20 @@ impl Module {
                     let inst = &def.insts[inst_id];
 
                     if let Some(res) = inst.result {
-                        label.push_str(&format!("  v{} = ", res));
+                        label.push_str(&format!("  %{} = ", res));
                     } else {
                         label.push_str("  ");
                     }
 
-                    label.push_str(&def.fmt_inst(self, inst));
+                    label.push_str(&def.fmt_inst(self, def, inst));
                     label.push_str("\\l");
                 }
 
-                // unique node id: f{fid}_b{bid}
                 s.push_str(&format!("    f{}_b{} [label=\"{}\"];\n", fid, bid, label));
             }
 
             s.push('\n');
 
-            // edges (CFG)
             for (bid, block) in &def.blocks {
                 for succ in &block.succs {
                     s.push_str(&format!("    f{}_b{} -> f{}_b{};\n", fid, bid, fid, succ));

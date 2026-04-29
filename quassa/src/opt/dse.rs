@@ -1,7 +1,9 @@
 use crate::ir::*;
 use crate::prelude::*;
 
-pub fn dse(def: &mut FunctionDef) -> bool {
+pub fn dse(m: &mut Module, f: FuncId) -> bool {
+    let def = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
+
     let mut changed = false;
 
     let store_chains = build_store_chains(def);
@@ -28,7 +30,7 @@ fn build_store_chains(def: &FunctionDef) -> HashMap<ValueId, Vec<(InstId, BlockI
                 let canonical_addr = canonicalize_address(def, ptr);
                 chains
                     .entry(canonical_addr)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push((*inst_id, *bid, pos));
             }
         }
