@@ -14,10 +14,6 @@ fn is_power_of_two(func: &FunctionDef, v: ValueId) -> Option<u32> {
     Some(c.trailing_zeros())
 }
 
-fn is_const(func: &FunctionDef, v: ValueId) -> Option<i64> {
-    func.get_iconst(v).map(|x| x as i64)
-}
-
 fn normalize_commutative(a: ValueId, b: ValueId, func: &FunctionDef) -> (ValueId, ValueId) {
     let a_is_const = func.get_iconst(a).is_some();
     let b_is_const = func.get_iconst(b).is_some();

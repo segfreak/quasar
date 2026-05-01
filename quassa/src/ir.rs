@@ -694,9 +694,6 @@ impl FunctionDef {
 
         let block_ids: Vec<BlockId> = self.blocks.keys().copied().collect();
 
-        // =========================
-        // PASS 1: allocate block params
-        // =========================
         for &b in &block_ids {
             let block = &self.blocks[&b];
 
@@ -718,13 +715,11 @@ impl FunctionDef {
             }
         }
 
-        // =========================
-        // PASS 2: allocate inst results
-        // =========================
         for &b in &block_ids {
             for &inst_id in &self.blocks[&b].insts {
                 let inst = &self.insts[&inst_id];
 
+                #[allow(clippy::collapsible_if)]
                 if let Some(old_res) = inst.result {
                     if !value_map.contains_key(&old_res) {
                         value_map.insert(old_res, next_value);
@@ -735,7 +730,7 @@ impl FunctionDef {
                             next_value,
                             Value {
                                 ty: old_val.ty,
-                                def: InstId::MAX, // set later
+                                def: InstId::MAX,
                                 uses: vec![],
                             },
                         );
@@ -746,9 +741,6 @@ impl FunctionDef {
             }
         }
 
-        // =========================
-        // PASS 3: remap instructions
-        // =========================
         for &b in &block_ids {
             let mut new_block = Block {
                 params: vec![],
@@ -758,12 +750,10 @@ impl FunctionDef {
                 succs: self.blocks[&b].succs.clone(),
             };
 
-            // params
             for &p in &self.blocks[&b].params {
                 new_block.params.push(value_map[&p]);
             }
 
-            // insts
             for &old_inst_id in &self.blocks[&b].insts {
                 let inst = self.insts[&old_inst_id].clone();
 
@@ -773,20 +763,16 @@ impl FunctionDef {
 
                 let mut new_inst = inst.clone();
 
-                // remap operands
                 new_inst.operands = inst.operands.iter().map(|v| value_map[v]).collect();
 
-                // remap result
                 if let Some(res) = inst.result {
                     new_inst.result = Some(value_map[&res]);
 
-                    // fix def
                     new_values.get_mut(&value_map[&res]).unwrap().def = new_inst_id;
                 }
 
                 new_inst.parent = b;
 
-                // rebuild uses immediately
                 for (i, &op) in new_inst.operands.iter().enumerate() {
                     new_values.get_mut(&op).unwrap().uses.push(Use {
                         inst: new_inst_id,
@@ -798,7 +784,6 @@ impl FunctionDef {
                 new_insts.insert(new_inst_id, new_inst);
             }
 
-            // terminator (if exists)
             if let Some(term_id) = self.blocks[&b].term {
                 let new_term_id = inst_map[&term_id];
                 new_block.term = Some(new_term_id);
@@ -807,9 +792,6 @@ impl FunctionDef {
             new_blocks.insert(b, new_block);
         }
 
-        // =========================
-        // FINAL SWAP
-        // =========================
         self.values = new_values;
         self.insts = new_insts;
         self.blocks = new_blocks;

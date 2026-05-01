@@ -1,7 +1,6 @@
 use crate::analysis::dom::Dominance;
 use crate::ir::*;
 use crate::prelude::*;
-use std::collections::HashMap;
 
 #[derive(Hash, Clone, PartialEq, Eq)]
 struct GvnKey {
@@ -93,7 +92,7 @@ fn gvn_block(
 
         if let Some(&existing) = local_table.get(&key) {
             if existing != result {
-                log::debug!(
+                log::trace!(
                     "replacing %{} (B{}) -> %{} (B{})",
                     result,
                     func.get_def_block(result).unwrap(),
@@ -128,7 +127,6 @@ fn gvn_block(
 }
 
 pub fn gvn(module: &mut Module, f: FuncId) -> bool {
-    let func_name = module.get_function(f).unwrap().name.clone();
     let func = module
         .get_function_mut(f)
         .unwrap()

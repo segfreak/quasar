@@ -8,22 +8,13 @@ fn is_one(func: &FunctionDef, v: ValueId) -> bool {
     func.get_iconst(v) == Some(1)
 }
 
-fn is_const(func: &FunctionDef, v: ValueId) -> Option<i64> {
-    func.get_iconst(v).map(|x| x as i64)
-}
-
 fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
     let inst = match func.insts.get(&id).cloned() {
         Some(i) => i,
         None => return false,
     };
 
-    let mut changed = false;
-
     match inst.kind {
-        // =========================
-        // ADD
-        // =========================
         InstKind::Add => {
             let (a, b) = (inst.operands[0], inst.operands[1]);
 
@@ -54,9 +45,6 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
             }
         }
 
-        // =========================
-        // SUB
-        // =========================
         InstKind::Sub => {
             let (a, b) = (inst.operands[0], inst.operands[1]);
 
@@ -76,9 +64,6 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
             }
         }
 
-        // =========================
-        // MUL
-        // =========================
         InstKind::Mul => {
             let (a, b) = (inst.operands[0], inst.operands[1]);
 
@@ -104,9 +89,6 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
             }
         }
 
-        // =========================
-        // AND
-        // =========================
         InstKind::And => {
             let (a, b) = (inst.operands[0], inst.operands[1]);
 
@@ -129,7 +111,7 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
         _ => {}
     }
 
-    changed
+    false
 }
 
 pub fn algebraic_simplify(m: &mut Module, f: FuncId) -> bool {

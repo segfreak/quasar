@@ -61,19 +61,19 @@ impl PassManager {
                 PassKind::AlgebraicSimplify
             );
             run_pass!(
-                copy_propogation::copy_propogation,
-                PassKind::CopyPropagation
-            );
-            run_pass!(dce::dce, PassKind::DeadCodeElimination);
-            run_pass!(
                 strength_reduction::strength_reduction,
                 PassKind::StrengthReduction
             );
-            run_pass!(cse::cse, PassKind::CommonSubexpressionElimination);
+            run_pass!(
+                copy_propogation::copy_propogation,
+                PassKind::CopyPropagation
+            );
             run_pass!(gvn::gvn, PassKind::GlobalValueNumbering);
+            run_pass!(cse::cse, PassKind::CommonSubexpressionElimination);
             run_pass!(dse::dse, PassKind::DeadStoreElimination);
             run_pass!(uce::uce, PassKind::UnreachableElimination);
             run_pass!(tre::tre, PassKind::TailRecursionElimination);
+            run_pass!(dce::dce, PassKind::DeadCodeElimination);
 
             result.passes.extend(run);
 
@@ -87,7 +87,6 @@ impl PassManager {
         if result.changed {
             let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
             func.reconstruct();
-            func.full_rebuild();
         }
 
         result

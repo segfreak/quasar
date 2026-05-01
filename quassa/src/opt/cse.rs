@@ -1,6 +1,5 @@
-use crate::prelude::HashMap;
-
 use crate::ir::*;
+use crate::prelude::*;
 
 fn canonical_ops(kind: InstKind, mut ops: Vec<ValueId>) -> Vec<ValueId> {
     match kind {
@@ -49,7 +48,7 @@ pub fn cse(m: &mut Module, f: FuncId) -> bool {
 
         if let Some(&existing) = table.get(&(inst.parent, key.clone())) {
             if existing != result {
-                log::debug!(
+                log::trace!(
                     "replacing %{} (B{}) -> %{} (B{})",
                     result,
                     func.get_def_block(result).unwrap(),
