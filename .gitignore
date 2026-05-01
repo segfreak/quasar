@@ -3,3 +3,5 @@
 /perf.*
 /*.dot
 /*.png
+/sandbox
+/quald
