@@ -1,5 +1,3 @@
-use memmap2::Mmap;
-use std::fs::File;
 use std::io;
 use std::mem::size_of;
 use std::slice;
