@@ -36,8 +36,14 @@ pub fn constant_folding(m: &mut Module, f: FuncId) -> bool {
                 (Some(a), Some(b)) => Some(a * b),
                 _ => None,
             },
-            InstKind::Div => match (c[0], c[1]) {
-                (Some(a), Some(b)) if b != 0 => Some(a / b),
+            InstKind::Div { signed } => match (c[0], c[1]) {
+                (Some(a), Some(b)) if b != 0 => {
+                    if signed {
+                        Some(a / b)
+                    } else {
+                        Some(((a as u64) / (b as u64)) as i64)
+                    }
+                }
                 _ => None,
             },
             InstKind::And => match (c[0], c[1]) {

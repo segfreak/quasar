@@ -12,23 +12,23 @@ pub type FuncId = u32;
 #[derive(Debug, EnumDisplay, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Type {
     #[default]
-    #[display("void")]
+    #[display("()")]
     Void,
-    #[display("i1")]
+    #[display("c")]
     I1,
-    #[display("i8")]
+    #[display("b")]
     I8,
-    #[display("i16")]
+    #[display("w")]
     I16,
-    #[display("i32")]
+    #[display("l")]
     I32,
-    #[display("i64")]
+    #[display("q")]
     I64,
-    #[display("f32")]
+    #[display("f")]
     F32,
-    #[display("f64")]
+    #[display("lf")]
     F64,
-    #[display("*opaque")]
+    #[display("ptr")]
     Ptr,
 }
 
@@ -113,7 +113,9 @@ pub enum InstKind {
     Add,
     Sub,
     Mul,
-    Div,
+    Div {
+        signed: bool,
+    },
 
     And,
     Or,
@@ -161,7 +163,7 @@ impl InstKind {
             IConst(_) | FConst(_) => 0,
 
             // binary instructions
-            Add | Sub | Mul | Div | And | Or | Xor | LShl | LShr | AShr => 2,
+            Add | Sub | Mul | Div { .. } | And | Or | Xor | LShl | LShr | AShr => 2,
             Cmp(_) => 2,
 
             // type is not a operand
@@ -187,7 +189,7 @@ impl InstKind {
             Self::Add | Self::Sub => 2,
 
             // multiply/divide are expensive
-            Self::Mul | Self::Div => 4,
+            Self::Mul | Self::Div { .. } => 4,
 
             // bitwise ops (very cheap)
             Self::And | Self::Or | Self::Xor => 1,
@@ -544,11 +546,12 @@ impl FunctionDef {
     pub fn make_div(
         &mut self,
         block: BlockId,
+        signed: bool,
         ty: Type,
         lhs: ValueId,
         rhs: ValueId,
     ) -> (InstId, ValueId) {
-        self.make_binary(block, InstKind::Div, ty, lhs, rhs)
+        self.make_binary(block, InstKind::Div { signed }, ty, lhs, rhs)
     }
 
     pub fn make_lshl(
@@ -1092,9 +1095,12 @@ impl FunctionDef {
                 "mul.{} %{}, %{}",
                 result_ty, inst.operands[0], inst.operands[1]
             ),
-            InstKind::Div => format!(
-                "div.{} %{}, %{}",
-                result_ty, inst.operands[0], inst.operands[1]
+            InstKind::Div { signed } => format!(
+                "{}div.{} %{}, %{}",
+                if !*signed { "u" } else { "s" },
+                result_ty,
+                inst.operands[0],
+                inst.operands[1]
             ),
             InstKind::And => format!(
                 "and.{} %{}, %{}",
@@ -1130,7 +1136,7 @@ impl FunctionDef {
                 inst.operands[0]
             ),
             InstKind::Store { volatile } => format!(
-                "{}store %{} %{}",
+                "{}store %{}, %{}",
                 if *volatile { "v" } else { "" },
                 inst.operands[0],
                 inst.operands[1]
@@ -1140,7 +1146,7 @@ impl FunctionDef {
             InstKind::Alloca(ty) => format!("alloca {}", ty),
 
             InstKind::ElementPtr => {
-                format!("elemptr %{} %{}", inst.operands[0], inst.operands[1])
+                format!("elemptr %{}, %{}", inst.operands[0], inst.operands[1])
             }
 
             InstKind::Call(fid) => {

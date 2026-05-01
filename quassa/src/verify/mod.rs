@@ -143,7 +143,7 @@ impl Module {
                 InstKind::Add
                 | InstKind::Sub
                 | InstKind::Mul
-                | InstKind::Div
+                | InstKind::Div { .. }
                 | InstKind::And
                 | InstKind::Or
                 | InstKind::Xor

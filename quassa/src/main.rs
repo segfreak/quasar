@@ -10,7 +10,7 @@ fn foo_def() -> FunctionDef {
     let v0 = fun.make_iconst(b0, Type::I32, 42);
     let v1 = fun.make_iconst(b0, Type::I32, 2);
     let v2 = fun.make_mul(b0, fun.get_type(v0), v0, v1).1;
-    let v3 = fun.make_div(b0, fun.get_type(v2), v2, a0).1;
+    let v3 = fun.make_div(b0, true, fun.get_type(v2), v2, a0).1;
     let v4 = fun.make_sub(b0, fun.get_type(v2), v3, a0).1;
     let v5 = fun.make_sub(b0, fun.get_type(v2), v4, a1).1;
     fun.make_ret(b0, Some(v5));
@@ -24,7 +24,7 @@ fn bar_def(mfoo: FuncId) -> FunctionDef {
     let v0 = fun.make_iconst(b0, Type::I32, 42);
     let v1 = fun.make_iconst(b0, Type::I32, 2);
     let v2 = fun.make_mul(b0, fun.get_type(v0), v0, v1).1;
-    let v3 = fun.make_div(b0, fun.get_type(v2), v2, v0).1;
+    let v3 = fun.make_div(b0, true, fun.get_type(v2), v2, v0).1;
     let b1 = fun.new_block();
     fun.make_jump(b0, b1, vec![v3]);
     let v4 = fun.add_block_param(b1, Type::I32);

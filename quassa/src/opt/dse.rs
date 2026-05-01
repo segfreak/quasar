@@ -17,7 +17,6 @@ pub fn dse(m: &mut Module, f: FuncId) -> bool {
     changed
 }
 
-/// Строит цепочки stores для каждого адреса
 fn build_store_chains(def: &FunctionDef) -> HashMap<ValueId, Vec<(InstId, BlockId, usize)>> {
     let mut chains: HashMap<ValueId, Vec<(InstId, BlockId, usize)>> = HashMap::new();
 

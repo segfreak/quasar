@@ -51,7 +51,7 @@ fn try_reduce_inst(func: &mut FunctionDef, id: InstId) -> bool {
             }
         }
 
-        InstKind::Div => {
+        InstKind::Div { signed } if !signed => {
             let (a, b) = (inst.operands[0], inst.operands[1]);
 
             if let Some(k) = is_power_of_two(func, b) {
