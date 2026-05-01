@@ -61,7 +61,6 @@ impl<'a> Elf<'a> {
     pub fn phdrs(&self) -> &[Elf64Phdr] {
         let phoff = self.ehdr.e_phoff as usize;
         let count = self.ehdr.e_phnum as usize;
-        let entsz = self.ehdr.e_phentsize as usize;
 
         let ptr = unsafe { self.data.as_ptr().add(phoff) as *const Elf64Phdr };
 

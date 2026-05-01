@@ -88,6 +88,78 @@ fn opt_def() -> FunctionDef {
     fdef
 }
 
+fn fib_def(fib_id: FuncId) -> FunctionDef {
+    let mut f = FunctionDef::new();
+    let entry = f.entry;
+
+    // param n
+    let n = f.add_param(Type::I32);
+
+    // const 1
+    let one = f.make_iconst(entry, Type::I32, 1);
+
+    // n <= 1
+    let cond = f.make_cmp(entry, CmpKind::Le, n, one).1;
+
+    let then_bb = f.new_block();
+    let else_bb = f.new_block();
+
+    // if (n <= 1) goto then else else
+    f.make_jumpif(entry, cond, then_bb, vec![], else_bb, vec![]);
+
+    // THEN: return n
+    f.make_ret(then_bb, Some(n));
+
+    // ELSE:
+    // n - 1
+    let n_minus_1 = f.make_sub(else_bb, Type::I32, n, one).1;
+    let call_fib_1 = f.make_call(else_bb, Type::I32, fib_id, vec![n_minus_1]).1;
+
+    // n - 2
+    let two = f.make_iconst(else_bb, Type::I32, 2);
+    let n_minus_2 = f.make_sub(else_bb, Type::I32, n, two).1;
+    let call_fib_2 = f.make_call(else_bb, Type::I32, fib_id, vec![n_minus_2]).1;
+
+    // fib(n-1) + fib(n-2)
+    let sum = f.make_add(else_bb, Type::I32, call_fib_1, call_fib_2).1;
+
+    f.make_ret(else_bb, Some(sum));
+
+    f
+}
+
+// tail-recursive factorial
+fn fact_tr_def(fact_id: FuncId) -> FunctionDef {
+    let mut f = FunctionDef::new();
+    let entry = f.entry;
+
+    let n = f.add_param(Type::I32);
+    let acc = f.add_param(Type::I32);
+
+    let one = f.make_iconst(entry, Type::I32, 1);
+
+    let cond = f.make_cmp(entry, CmpKind::Le, n, one).1;
+
+    let then_bb = f.new_block();
+    let else_bb = f.new_block();
+
+    f.make_jumpif(entry, cond, then_bb, vec![], else_bb, vec![]);
+
+    f.make_ret(then_bb, Some(acc));
+
+    let n_minus_1 = f.make_sub(else_bb, Type::I32, n, one).1;
+
+    let acc_mul_n = f.make_mul(else_bb, Type::I32, acc, n).1;
+
+    let call_res = f
+        .make_call(else_bb, Type::I32, fact_id, vec![n_minus_1, acc_mul_n])
+        .1;
+
+    f.make_ret(else_bb, Some(call_res));
+
+    f
+}
+
 fn main() {
     pretty_env_logger::init();
     let mut m = Module::new("quasar");
@@ -115,6 +187,18 @@ fn main() {
         Linkage::default(),
         CallingConvention::default(),
     );
+    let mfib = m.declare_function(
+        "fib",
+        FunctionSignature::new(vec![Type::I32], Type::I32),
+        Linkage::default(),
+        CallingConvention::default(),
+    );
+    let mfact_tr = m.declare_function(
+        "fact_tr",
+        FunctionSignature::new(vec![Type::I32, Type::I32], Type::I32),
+        Linkage::default(),
+        CallingConvention::default(),
+    );
     m.define_function(mfoo, foo_def())
         .expect("define_function error");
     m.define_function(mbar, bar_def(mfoo))
@@ -123,8 +207,12 @@ fn main() {
         .expect("define_function error");
     m.define_function(mopt, opt_def())
         .expect("define_function error");
+    m.define_function(mfib, fib_def(mfib))
+        .expect("define_function error");
+    m.define_function(mfact_tr, fact_tr_def(mfact_tr))
+        .expect("define_function error");
     m.verify().expect("pre-opt verify error");
     m.optimize();
-    m.verify().expect("post-opt verify error");
     fs::write("quasar.dot", m.dump_dot()).expect("fs::write error");
+    m.verify().expect("post-opt verify error");
 }

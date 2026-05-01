@@ -7,6 +7,7 @@ pub mod cse;
 pub mod dce;
 pub mod dse;
 pub mod strength_reduction;
+pub mod tre;
 pub mod uce;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -18,6 +19,7 @@ pub enum PassKind {
     CommonSubexpressionElimination,
     DeadStoreElimination,
     UnreachableElimination,
+    TailRecursionElimination,
 }
 
 #[derive(Debug, Default)]
@@ -39,6 +41,7 @@ impl PassManager {
             macro_rules! run_pass {
                 ($pass:expr, $kind:expr) => {
                     if $pass(m, f) {
+                        log::trace!("performed pass: {:?}", $kind);
                         changed = true;
                         run.push($kind);
                     }
@@ -61,6 +64,7 @@ impl PassManager {
             run_pass!(cse::cse, PassKind::CommonSubexpressionElimination);
             run_pass!(dse::dse, PassKind::DeadStoreElimination);
             run_pass!(uce::uce, PassKind::UnreachableElimination);
+            run_pass!(tre::tre, PassKind::TailRecursionElimination);
 
             result.passes.extend(run);
 
