@@ -212,7 +212,8 @@ fn main() {
     m.define_function(mfact_tr, fact_tr_def(mfact_tr))
         .expect("define_function error");
     m.verify().expect("pre-opt verify error");
+    fs::write("preopt-quasar.dot", m.dump_dot()).expect("fs::write error");
     m.optimize();
-    fs::write("quasar.dot", m.dump_dot()).expect("fs::write error");
     m.verify().expect("post-opt verify error");
+    fs::write("quasar.dot", m.dump_dot()).expect("fs::write error");
 }

@@ -14,6 +14,21 @@ fn is_power_of_two(func: &FunctionDef, v: ValueId) -> Option<u32> {
     Some(c.trailing_zeros())
 }
 
+fn is_const(func: &FunctionDef, v: ValueId) -> Option<i64> {
+    func.get_iconst(v).map(|x| x as i64)
+}
+
+fn normalize_commutative(a: ValueId, b: ValueId, func: &FunctionDef) -> (ValueId, ValueId) {
+    let a_is_const = func.get_iconst(a).is_some();
+    let b_is_const = func.get_iconst(b).is_some();
+
+    if a_is_const && !b_is_const {
+        (b, a)
+    } else {
+        (a, b)
+    }
+}
+
 fn try_reduce_inst(func: &mut FunctionDef, id: InstId) -> bool {
     let inst = match func.insts.get(&id).cloned() {
         Some(i) => i,
@@ -22,7 +37,9 @@ fn try_reduce_inst(func: &mut FunctionDef, id: InstId) -> bool {
 
     match inst.kind {
         InstKind::Mul => {
-            let (a, b) = (inst.operands[0], inst.operands[1]);
+            let (mut a, mut b) = (inst.operands[0], inst.operands[1]);
+
+            (a, b) = normalize_commutative(a, b, func);
 
             if let Some(k) = is_power_of_two(func, b) {
                 let shift = func.make_iconst(inst.parent, Type::I32, k as i64);

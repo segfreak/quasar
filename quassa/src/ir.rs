@@ -681,6 +681,143 @@ impl FunctionDef {
         )
     }
 
+    pub fn full_rebuild(&mut self) {
+        let mut value_map: HashMap<ValueId, ValueId> = HashMap::new();
+        let mut inst_map: HashMap<InstId, InstId> = HashMap::new();
+
+        let mut new_values: HashMap<ValueId, Value> = HashMap::new();
+        let mut new_insts: HashMap<InstId, Inst> = HashMap::new();
+        let mut new_blocks: HashMap<BlockId, Block> = HashMap::new();
+
+        let mut next_value: ValueId = 0;
+        let mut next_inst: InstId = 0;
+
+        let block_ids: Vec<BlockId> = self.blocks.keys().copied().collect();
+
+        // =========================
+        // PASS 1: allocate block params
+        // =========================
+        for &b in &block_ids {
+            let block = &self.blocks[&b];
+
+            for &p in &block.params {
+                value_map.insert(p, next_value);
+
+                let old_val = &self.values[&p];
+
+                new_values.insert(
+                    next_value,
+                    Value {
+                        ty: old_val.ty,
+                        def: InstId::MAX,
+                        uses: vec![],
+                    },
+                );
+
+                next_value += 1;
+            }
+        }
+
+        // =========================
+        // PASS 2: allocate inst results
+        // =========================
+        for &b in &block_ids {
+            for &inst_id in &self.blocks[&b].insts {
+                let inst = &self.insts[&inst_id];
+
+                if let Some(old_res) = inst.result {
+                    if !value_map.contains_key(&old_res) {
+                        value_map.insert(old_res, next_value);
+
+                        let old_val = &self.values[&old_res];
+
+                        new_values.insert(
+                            next_value,
+                            Value {
+                                ty: old_val.ty,
+                                def: InstId::MAX, // set later
+                                uses: vec![],
+                            },
+                        );
+
+                        next_value += 1;
+                    }
+                }
+            }
+        }
+
+        // =========================
+        // PASS 3: remap instructions
+        // =========================
+        for &b in &block_ids {
+            let mut new_block = Block {
+                params: vec![],
+                insts: vec![],
+                term: None,
+                preds: vec![],
+                succs: self.blocks[&b].succs.clone(),
+            };
+
+            // params
+            for &p in &self.blocks[&b].params {
+                new_block.params.push(value_map[&p]);
+            }
+
+            // insts
+            for &old_inst_id in &self.blocks[&b].insts {
+                let inst = self.insts[&old_inst_id].clone();
+
+                let new_inst_id = next_inst;
+                inst_map.insert(old_inst_id, new_inst_id);
+                next_inst += 1;
+
+                let mut new_inst = inst.clone();
+
+                // remap operands
+                new_inst.operands = inst.operands.iter().map(|v| value_map[v]).collect();
+
+                // remap result
+                if let Some(res) = inst.result {
+                    new_inst.result = Some(value_map[&res]);
+
+                    // fix def
+                    new_values.get_mut(&value_map[&res]).unwrap().def = new_inst_id;
+                }
+
+                new_inst.parent = b;
+
+                // rebuild uses immediately
+                for (i, &op) in new_inst.operands.iter().enumerate() {
+                    new_values.get_mut(&op).unwrap().uses.push(Use {
+                        inst: new_inst_id,
+                        index: i as u32,
+                    });
+                }
+
+                new_block.insts.push(new_inst_id);
+                new_insts.insert(new_inst_id, new_inst);
+            }
+
+            // terminator (if exists)
+            if let Some(term_id) = self.blocks[&b].term {
+                let new_term_id = inst_map[&term_id];
+                new_block.term = Some(new_term_id);
+            }
+
+            new_blocks.insert(b, new_block);
+        }
+
+        // =========================
+        // FINAL SWAP
+        // =========================
+        self.values = new_values;
+        self.insts = new_insts;
+        self.blocks = new_blocks;
+
+        self.next_value = next_value;
+        self.next_inst = next_inst;
+    }
+
     pub fn reconstruct(&mut self) {
         let mut id_map: HashMap<ValueId, ValueId> = HashMap::new();
         let mut next_id: ValueId = 0;
@@ -864,14 +1001,36 @@ impl FunctionDef {
         }
     }
 
+    // pub fn replace_value(&mut self, from: ValueId, to: ValueId) {
+    //     let uses = self.values[&from].uses.clone();
+    //     for u in uses {
+    //         let inst = self.insts.get_mut(&u.inst).unwrap();
+    //         inst.operands[u.index as usize] = to;
+    //         self.values.get_mut(&to).unwrap().uses.push(u);
+    //     }
+    //     self.values.get_mut(&from).unwrap().uses.clear();
+    // }
+
     pub fn replace_value(&mut self, from: ValueId, to: ValueId) {
-        let uses = self.values[&from].uses.clone();
+        let uses = self
+            .values
+            .get(&from)
+            .map(|v| v.uses.clone())
+            .unwrap_or_default();
+
         for u in uses {
-            let inst = self.insts.get_mut(&u.inst).unwrap();
-            inst.operands[u.index as usize] = to;
-            self.values.get_mut(&to).unwrap().uses.push(u);
+            if let Some(inst) = self.insts.get_mut(&u.inst) {
+                inst.operands[u.index as usize] = to;
+            }
+
+            if let Some(v) = self.values.get_mut(&to) {
+                v.uses.push(u);
+            }
         }
-        self.values.get_mut(&from).unwrap().uses.clear();
+
+        if let Some(v) = self.values.get_mut(&from) {
+            v.uses.clear();
+        }
     }
 }
 
