@@ -4,7 +4,7 @@ use quasar::{target::CallingConvention, *};
 use ril::{
     ir::*,
     live,
-    regalloc::{PhysReg, RegAlloc},
+    regalloc::{Reg, RegAlloc, RegClass},
 };
 
 fn foo_def() -> FunctionDef {
@@ -80,9 +80,9 @@ fn foo_def() -> FunctionDef {
     let ra = RegAlloc::new(
         live_intervals,
         vec![
-            PhysReg::new(0, Type::I32),
-            PhysReg::new(1, Type::I32),
-            PhysReg::new(2, Type::I32),
+            Reg::new(0, Type::I32, RegClass::General),
+            Reg::new(1, Type::I32, RegClass::General),
+            Reg::new(2, Type::I32, RegClass::General),
         ],
     );
     let res = ra.run();

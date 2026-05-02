@@ -681,7 +681,7 @@ impl FunctionDef {
             for &inst_id in &self.blocks[&b].insts {
                 let inst = &self.insts[&inst_id];
 
-                #[allow(clippy::collapsible_if)]
+                #[allow(clippy::collapsible_if, clippy::map_entry)]
                 if let Some(old_res) = inst.result {
                     if !value_map.contains_key(&old_res) {
                         value_map.insert(old_res, next_value);
