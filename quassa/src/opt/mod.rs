@@ -1,5 +1,5 @@
 use crate::ir::{FuncId, Module};
-use crate::prelude::*;
+use quasar::*;
 
 pub mod algebraic_simplify;
 pub mod constant_folding;

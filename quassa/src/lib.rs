@@ -1,17 +1,4 @@
 pub mod analysis;
 pub mod ir;
 pub mod opt;
-pub mod target;
 pub mod verify;
-
-pub mod prelude {
-    #[cfg(not(feature = "hashbrown"))]
-    pub use std::collections::HashMap;
-    #[cfg(not(feature = "hashbrown"))]
-    pub use std::collections::HashSet;
-
-    #[cfg(feature = "hashbrown")]
-    pub use hashbrown::HashMap;
-    #[cfg(feature = "hashbrown")]
-    pub use hashbrown::HashSet;
-}

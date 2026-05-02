@@ -118,6 +118,10 @@ pub fn constant_folding(m: &mut Module, f: FuncId) -> bool {
                         CmpKind::Le => a <= b,
                         CmpKind::Gt => a > b,
                         CmpKind::Ge => a >= b,
+                        CmpKind::ULt => (a as u64) < (b as u64),
+                        CmpKind::ULe => (a as u64) <= (b as u64),
+                        CmpKind::UGt => (a as u64) > (b as u64),
+                        CmpKind::UGe => (a as u64) >= (b as u64),
                     };
                     Some(r as i64)
                 }

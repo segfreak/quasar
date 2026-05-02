@@ -1,6 +1,5 @@
 use crate::ir::*;
-
-use crate::prelude::HashSet;
+use quasar::*;
 
 pub fn uce(m: &mut Module, f: FuncId) -> bool {
     let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();

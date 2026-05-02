@@ -1,5 +1,7 @@
 use crate::ir::*;
 
+use quasar::*;
+
 fn is_zero(func: &FunctionDef, v: ValueId) -> bool {
     func.get_iconst(v) == Some(0)
 }

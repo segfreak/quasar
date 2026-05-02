@@ -1,6 +1,7 @@
 use std::fs;
 
-use quassa::{ir::*, target::CallingConvention};
+use quasar::{target::CallingConvention, *};
+use quassa::ir::*;
 
 fn foo_def() -> FunctionDef {
     let mut fun = FunctionDef::new();

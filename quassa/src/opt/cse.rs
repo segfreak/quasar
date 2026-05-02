@@ -1,5 +1,5 @@
 use crate::ir::*;
-use crate::prelude::*;
+use quasar::*;
 
 fn canonical_ops(kind: InstKind, mut ops: Vec<ValueId>) -> Vec<ValueId> {
     match kind {

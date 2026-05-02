@@ -1,5 +1,7 @@
 use crate::ir::*;
 
+use quasar::*;
+
 fn is_power_of_two(func: &FunctionDef, v: ValueId) -> Option<u32> {
     let c = func.get_iconst(v)?;
 

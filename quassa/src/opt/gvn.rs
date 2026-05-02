@@ -1,6 +1,6 @@
 use crate::analysis::dom::Dominance;
 use crate::ir::*;
-use crate::prelude::*;
+use quasar::*;
 
 #[derive(Hash, Clone, PartialEq, Eq)]
 struct GvnKey {

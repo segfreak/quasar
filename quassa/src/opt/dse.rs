@@ -1,5 +1,5 @@
 use crate::ir::*;
-use crate::prelude::*;
+use quasar::*;
 
 pub fn dse(m: &mut Module, f: FuncId) -> bool {
     let def = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();

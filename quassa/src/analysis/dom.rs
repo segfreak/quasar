@@ -1,5 +1,5 @@
 use crate::ir::*;
-use crate::prelude::*;
+use quasar::*;
 
 type DomSet = HashSet<BlockId>;
 
