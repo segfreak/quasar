@@ -80,7 +80,6 @@ pub enum Inst {
         b: Operand,
     },
     Cmp {
-        kind: CmpKind,
         a: Operand,
         b: Operand,
     },
@@ -88,7 +87,7 @@ pub enum Inst {
         target: BlockId,
     },
     JmpIf {
-        cond: Operand,
+        cond: CmpKind,
         t: BlockId,
         f: BlockId,
     },
@@ -165,10 +164,6 @@ impl Inst {
                 push(val);
             }
 
-            Inst::JmpIf { cond, .. } => {
-                push(cond);
-            }
-
             Inst::Call { args, .. } => {
                 for a in args {
                     push(a);
@@ -181,7 +176,7 @@ impl Inst {
                 }
             }
 
-            Inst::Jmp { .. } => {}
+            Inst::Jmp { .. } | Inst::JmpIf { .. } => {}
         }
 
         out
@@ -306,8 +301,8 @@ impl FunctionDef {
         self.append_inst(block, Inst::UDiv { dst, a, b })
     }
 
-    pub fn make_cmp(&mut self, block: BlockId, kind: CmpKind, a: Operand, b: Operand) -> InstId {
-        self.append_inst(block, Inst::Cmp { kind, a, b })
+    pub fn make_cmp(&mut self, block: BlockId, a: Operand, b: Operand) -> InstId {
+        self.append_inst(block, Inst::Cmp { a, b })
     }
 
     pub fn make_load(&mut self, block: BlockId, dst: VReg, ptr: Operand) -> InstId {
@@ -326,7 +321,7 @@ impl FunctionDef {
         self.append_inst(block, inst)
     }
 
-    pub fn make_jmpif(&mut self, block: BlockId, cond: Operand, t: BlockId, f: BlockId) -> InstId {
+    pub fn make_jmpif(&mut self, block: BlockId, cond: CmpKind, t: BlockId, f: BlockId) -> InstId {
         let inst = Inst::JmpIf { cond, t, f };
 
         let b = &mut self.blocks[block as usize];

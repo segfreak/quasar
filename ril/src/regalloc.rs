@@ -1,7 +1,7 @@
 use enum_display::EnumDisplay;
 use quasar::*;
 
-use crate::{ir::VReg, live::*};
+use crate::{interval::*, ir::VReg};
 
 #[derive(Debug, EnumDisplay, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RegClass {
@@ -63,7 +63,14 @@ impl RegSet {
         Self { gpr, xmm }
     }
 
+    fn sort(&mut self) {
+        self.gpr.sort_by_key(|b| std::cmp::Reverse(b.id));
+        self.xmm.sort_by_key(|b| std::cmp::Reverse(b.id));
+    }
+
     pub fn alloc(&mut self, class: RegClass) -> Option<Reg> {
+        self.sort();
+
         match class {
             RegClass::General => self.gpr.pop(),
             RegClass::Xmm => self.xmm.pop(),
@@ -71,6 +78,8 @@ impl RegSet {
     }
 
     pub fn free(&mut self, reg: Reg) {
+        self.sort();
+
         match reg.class {
             RegClass::General => self.gpr.push(reg),
             RegClass::Xmm => self.xmm.push(reg),
@@ -168,8 +177,8 @@ impl std::fmt::Display for RegAllocResult {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Active {
-    interval: Interval,
-    reg: Reg,
+    pub interval: Interval,
+    pub reg: Reg,
 }
 
 /// class of register for type
@@ -200,7 +209,7 @@ impl RegAlloc {
 
     fn expire_old(&mut self, current: u32) {
         while let Some(a) = self.active.first() {
-            if a.interval.end < current {
+            if a.interval.end <= current {
                 let a = self.active.remove(0);
                 self.free_regs.free(a.reg);
             } else {
@@ -229,39 +238,7 @@ impl RegAlloc {
         StackSlot { offset, ty, align }
     }
 
-    pub fn run(mut self) -> RegAllocResult {
-        for i in self.intervals.clone().iter() {
-            self.expire_old(i.start);
-
-            let class = class_of(i.vreg.ty);
-
-            if let Some(reg) = self.free_regs.alloc(class) {
-                log::debug!(
-                    "alloc {} {}:{} live({}..{}) => r{}:{}",
-                    class,
-                    i.vreg.id,
-                    i.vreg.ty,
-                    i.start,
-                    i.end,
-                    reg.id,
-                    reg.ty
-                );
-                self.result.0.insert(i.vreg, Slot::Register(reg));
-                self.add_active(Active { interval: *i, reg });
-            } else {
-                let spill = self.make_spill(i.vreg.ty);
-                log::info!(
-                    "spill {}:{} live({}..{}) => {} (no register left)",
-                    i.vreg.id,
-                    i.vreg.ty,
-                    i.start,
-                    i.end,
-                    spill
-                );
-                self.result.0.insert(i.vreg, Slot::Spill(spill));
-            }
-        }
-
+    fn report_spills(&self) {
         if self.spills_counter > 5 {
             log::warn!(
                 "high spill rate: spills={}, active={}, phys_regs={}, free_regs={}, next_stack={}",
@@ -272,7 +249,80 @@ impl RegAlloc {
                 self.next_stack_offset,
             );
         }
+    }
 
-        self.result
+    pub fn linear_scan(&mut self) -> RegAllocResult {
+        for i in self.intervals.clone().iter() {
+            self.expire_old(i.start);
+
+            let class = class_of(i.vreg.ty);
+
+            if let Some(reg) = self.free_regs.alloc(class) {
+                self.result.0.insert(i.vreg, Slot::Register(reg));
+                self.add_active(Active { interval: *i, reg });
+                continue;
+            }
+
+            let mut victim_idx: Option<usize> = None;
+            let mut farthest_end = 0;
+
+            for (idx, a) in self.active.iter().enumerate() {
+                if a.reg.class == class && a.interval.end > farthest_end {
+                    farthest_end = a.interval.end;
+                    victim_idx = Some(idx);
+                }
+            }
+
+            if let Some(idx) = victim_idx {
+                let victim = self.active[idx];
+
+                if victim.interval.end > i.end {
+                    let spill = self.make_spill(victim.interval.vreg.ty);
+                    self.result
+                        .0
+                        .insert(victim.interval.vreg, Slot::Spill(spill));
+
+                    let reg = victim.reg;
+                    self.active.remove(idx);
+
+                    self.result.0.insert(i.vreg, Slot::Register(reg));
+                    self.add_active(Active { interval: *i, reg });
+                    continue;
+                }
+            }
+
+            let spill = self.make_spill(i.vreg.ty);
+            self.result.0.insert(i.vreg, Slot::Spill(spill));
+        }
+
+        self.report_spills();
+        self.result.clone()
+    }
+
+    pub fn linear_scan_old(&mut self) -> RegAllocResult {
+        for i in self.intervals.clone().iter() {
+            self.expire_old(i.start);
+
+            let class = class_of(i.vreg.ty);
+
+            if let Some(reg) = self.free_regs.alloc(class) {
+                self.result.0.insert(i.vreg, Slot::Register(reg));
+                self.add_active(Active { interval: *i, reg });
+            } else {
+                let spill = self.make_spill(i.vreg.ty);
+                self.result.0.insert(i.vreg, Slot::Spill(spill));
+            }
+        }
+
+        self.report_spills();
+        self.result.clone()
+    }
+
+    pub fn get_stack_frame_size(&self) -> usize {
+        self.next_stack_offset
+    }
+
+    pub fn get_result(&self) -> RegAllocResult {
+        self.result.clone()
     }
 }
