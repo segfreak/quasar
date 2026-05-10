@@ -643,126 +643,7 @@ impl FunctionDef {
         )
     }
 
-    pub fn full_rebuild(&mut self) {
-        let mut value_map: HashMap<ValueId, ValueId> = HashMap::new();
-        let mut inst_map: HashMap<InstId, InstId> = HashMap::new();
-
-        let mut new_values: HashMap<ValueId, Value> = HashMap::new();
-        let mut new_insts: HashMap<InstId, Inst> = HashMap::new();
-        let mut new_blocks: HashMap<BlockId, Block> = HashMap::new();
-
-        let mut next_value: ValueId = 0;
-        let mut next_inst: InstId = 0;
-
-        let block_ids: Vec<BlockId> = self.blocks.keys().copied().collect();
-
-        for &b in &block_ids {
-            let block = &self.blocks[&b];
-
-            for &p in &block.params {
-                value_map.insert(p, next_value);
-
-                let old_val = &self.values[&p];
-
-                new_values.insert(
-                    next_value,
-                    Value {
-                        ty: old_val.ty,
-                        def: InstId::MAX,
-                        uses: vec![],
-                    },
-                );
-
-                next_value += 1;
-            }
-        }
-
-        for &b in &block_ids {
-            for &inst_id in &self.blocks[&b].insts {
-                let inst = &self.insts[&inst_id];
-
-                #[allow(clippy::collapsible_if, clippy::map_entry)]
-                if let Some(old_res) = inst.result {
-                    if !value_map.contains_key(&old_res) {
-                        value_map.insert(old_res, next_value);
-
-                        let old_val = &self.values[&old_res];
-
-                        new_values.insert(
-                            next_value,
-                            Value {
-                                ty: old_val.ty,
-                                def: InstId::MAX,
-                                uses: vec![],
-                            },
-                        );
-
-                        next_value += 1;
-                    }
-                }
-            }
-        }
-
-        for &b in &block_ids {
-            let mut new_block = Block {
-                params: vec![],
-                insts: vec![],
-                term: None,
-                preds: vec![],
-                succs: self.blocks[&b].succs.clone(),
-            };
-
-            for &p in &self.blocks[&b].params {
-                new_block.params.push(value_map[&p]);
-            }
-
-            for &old_inst_id in &self.blocks[&b].insts {
-                let inst = self.insts[&old_inst_id].clone();
-
-                let new_inst_id = next_inst;
-                inst_map.insert(old_inst_id, new_inst_id);
-                next_inst += 1;
-
-                let mut new_inst = inst.clone();
-
-                new_inst.operands = inst.operands.iter().map(|v| value_map[v]).collect();
-
-                if let Some(res) = inst.result {
-                    new_inst.result = Some(value_map[&res]);
-
-                    new_values.get_mut(&value_map[&res]).unwrap().def = new_inst_id;
-                }
-
-                new_inst.parent = b;
-
-                for (i, &op) in new_inst.operands.iter().enumerate() {
-                    new_values.get_mut(&op).unwrap().uses.push(Use {
-                        inst: new_inst_id,
-                        index: i as u32,
-                    });
-                }
-
-                new_block.insts.push(new_inst_id);
-                new_insts.insert(new_inst_id, new_inst);
-            }
-
-            if let Some(term_id) = self.blocks[&b].term {
-                let new_term_id = inst_map[&term_id];
-                new_block.term = Some(new_term_id);
-            }
-
-            new_blocks.insert(b, new_block);
-        }
-
-        self.values = new_values;
-        self.insts = new_insts;
-        self.blocks = new_blocks;
-
-        self.next_value = next_value;
-        self.next_inst = next_inst;
-    }
-
-    pub fn reconstruct(&mut self) {
+    pub fn reconstruct_values(&mut self) {
         let mut id_map: HashMap<ValueId, ValueId> = HashMap::new();
         let mut next_id: ValueId = 0;
 
@@ -889,6 +770,104 @@ impl FunctionDef {
         self.next_value = next_id;
     }
 
+    pub fn recompute_uses(&mut self) {
+        for v in self.values.values_mut() {
+            v.uses.clear();
+        }
+
+        for (inst_id, inst) in &self.insts {
+            for (idx, &op) in inst.operands.iter().enumerate() {
+                let Some(val) = self.values.get_mut(&op) else {
+                    continue;
+                };
+
+                val.uses.push(Use {
+                    inst: *inst_id,
+                    index: idx as u32,
+                });
+            }
+        }
+    }
+
+    pub fn recompute_cfg(&mut self) {
+        for b in self.blocks.values_mut() {
+            b.succs.clear();
+            b.preds.clear();
+        }
+
+        let block_ids: Vec<BlockId> = self.blocks.keys().copied().collect();
+
+        for bid in block_ids {
+            let term = match self.blocks[&bid].term {
+                Some(t) => t,
+                None => continue,
+            };
+
+            let inst = &self.insts[&term];
+
+            match inst.kind {
+                InstKind::Jump(target) => {
+                    self.add_edge(bid, target);
+                }
+
+                InstKind::JumpIf {
+                    then_block,
+                    else_block,
+                } => {
+                    self.add_edge(bid, then_block);
+                    self.add_edge(bid, else_block);
+                }
+
+                InstKind::Ret => {}
+                _ => {}
+            }
+        }
+    }
+
+    pub fn reconstruct(&mut self) {
+        self.reconstruct_values();
+        self.recompute_cfg();
+        self.recompute_uses();
+    }
+
+    fn add_edge(&mut self, from: BlockId, to: BlockId) {
+        self.blocks.get_mut(&from).unwrap().succs.push(to);
+        self.blocks.get_mut(&to).unwrap().preds.push(from);
+    }
+
+    pub fn remove_block(&mut self, block: BlockId) {
+        let Some(b) = self.blocks.get(&block).cloned() else {
+            return;
+        };
+
+        for inst_id in b.insts.iter().copied() {
+            self.remove_inst(inst_id);
+        }
+
+        for param in b.params.iter() {
+            if let Some(val) = self.values.remove(param) {
+                debug_assert!(
+                    val.uses.is_empty(),
+                    "removing block with live uses of parameter value"
+                );
+            }
+        }
+
+        for pred in &b.preds {
+            if let Some(pb) = self.blocks.get_mut(pred) {
+                pb.succs.retain(|&s| s != block);
+            }
+        }
+
+        for succ in &b.succs {
+            if let Some(sb) = self.blocks.get_mut(succ) {
+                sb.preds.retain(|&p| p != block);
+            }
+        }
+
+        self.blocks.remove(&block);
+    }
+
     pub fn remove_inst(&mut self, inst_id: InstId) {
         if let Some(inst) = self.insts.remove(&inst_id) {
             if let Some(res) = inst.result {
@@ -954,6 +933,14 @@ impl FunctionDef {
     //     }
     //     self.values.get_mut(&from).unwrap().uses.clear();
     // }
+
+    pub fn get_values(&self) -> &HashMap<ValueId, Value> {
+        &self.values
+    }
+
+    pub fn get_insts(&self) -> &HashMap<InstId, Inst> {
+        &self.insts
+    }
 
     pub fn replace_value(&mut self, from: ValueId, to: ValueId) {
         let uses = self
@@ -1086,7 +1073,7 @@ impl FunctionDef {
                 result_ty, inst.operands[0], inst.operands[1]
             ),
 
-            InstKind::Cmp(k) => format!("cmp.{} %{} %{}", k, inst.operands[0], inst.operands[1]),
+            InstKind::Cmp(k) => format!("cmp.{} %{}, %{}", k, inst.operands[0], inst.operands[1]),
 
             InstKind::Load { volatile } => format!(
                 "{}load.{} %{}",
@@ -1102,7 +1089,7 @@ impl FunctionDef {
             ),
 
             InstKind::NAlloca => format!("alloca {}", inst.operands[0]),
-            InstKind::Alloca(ty) => format!("alloca {}", ty),
+            InstKind::Alloca(ty) => format!("alloca.{}", ty),
 
             InstKind::ElementPtr => {
                 format!("elemptr %{}, %{}", inst.operands[0], inst.operands[1])
@@ -1116,8 +1103,12 @@ impl FunctionDef {
             InstKind::Cast(k) => format!("cast.{} %{}", k, inst.operands[0]),
 
             InstKind::Jump(bb) => {
-                let args = Self::fmt_args(&inst.operands);
-                format!("jmp B{}({})", bb, args)
+                if inst.operands.is_empty() {
+                    format!("jmp B{}", bb)
+                } else {
+                    let args = Self::fmt_args(&inst.operands);
+                    format!("jmp B{}({})", bb, args)
+                }
             }
 
             InstKind::JumpIf {
@@ -1125,14 +1116,20 @@ impl FunctionDef {
                 else_block,
             } => {
                 let (cond, then_params, else_params) = self.get_jumpif_params(inst).unwrap();
-                format!(
-                    "jmpif %{} B{}({}), B{}({})",
-                    cond,
-                    then_block,
-                    Self::fmt_args(then_params),
-                    else_block,
-                    Self::fmt_args(else_params),
-                )
+
+                let then_str = if then_params.is_empty() {
+                    format!("B{}", then_block)
+                } else {
+                    format!("B{}({})", then_block, Self::fmt_args(then_params))
+                };
+
+                let else_str = if else_params.is_empty() {
+                    format!("B{}", else_block)
+                } else {
+                    format!("B{}({})", else_block, Self::fmt_args(else_params))
+                };
+
+                format!("jmpif %{} {}, {}", cond, then_str, else_str)
             }
 
             InstKind::Ret => {
@@ -1281,7 +1278,6 @@ impl Module {
                 None => continue,
             };
 
-            // subgraph per function
             s.push_str(&format!("  subgraph cluster_f{} {{\n", fid));
             s.push_str(&format!(
                 "    label=\"[{}] {}\";\n",
@@ -1289,17 +1285,19 @@ impl Module {
             ));
             s.push_str("    style=rounded;\n\n");
 
-            // blocks
             for (bid, block) in &def.blocks {
-                let mut label = format!("B{}:\\l", bid);
+                let mut label = if block.params.is_empty() {
+                    format!("B{}:\\l", bid)
+                } else {
+                    let params = block
+                        .params
+                        .iter()
+                        .map(|p| format!("%{}:{}", p, def.values[p].ty))
+                        .collect::<Vec<_>>()
+                        .join(", ");
 
-                if !block.params.is_empty() {
-                    label.push_str("  params: ");
-                    for p in &block.params {
-                        label.push_str(&format!("%{}:{} ", p, def.values[p].ty));
-                    }
-                    label.push_str("\\l");
-                }
+                    format!("B{}({}):\\l", bid, params)
+                };
 
                 for inst_id in &block.insts {
                     let inst = &def.insts[inst_id];

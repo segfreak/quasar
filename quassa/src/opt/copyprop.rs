@@ -4,7 +4,7 @@ fn is_copy(inst: &Inst) -> bool {
     matches!(inst.kind, InstKind::Cast(CastKind::Bitcast))
 }
 
-pub fn copy_propogation(m: &mut Module, f: FuncId) -> bool {
+pub fn copyprop(m: &mut Module, f: FuncId) -> bool {
     let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
 
     let mut changed = false;

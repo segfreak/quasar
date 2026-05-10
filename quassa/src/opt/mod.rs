@@ -2,15 +2,15 @@ use crate::ir::{FuncId, Module};
 use quasar::*;
 
 pub mod algebraic_simplify;
-pub mod constant_folding;
-pub mod copy_propogation;
+pub mod cfg_simplify;
+pub mod constfold;
+pub mod copyprop;
 pub mod cse;
 pub mod dce;
 pub mod dse;
 pub mod gvn;
 pub mod strength_reduction;
 pub mod tre;
-pub mod uce;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PassKind {
@@ -20,10 +20,10 @@ pub enum PassKind {
     StrengthReduction,
     CommonSubexpressionElimination,
     DeadStoreElimination,
-    UnreachableElimination,
     TailRecursionElimination,
     AlgebraicSimplify,
     GlobalValueNumbering,
+    CFGSimplify,
 }
 
 #[derive(Debug, Default)]
@@ -52,10 +52,7 @@ impl PassManager {
                 };
             }
 
-            run_pass!(
-                constant_folding::constant_folding,
-                PassKind::ConstantFolding
-            );
+            run_pass!(constfold::constfold, PassKind::ConstantFolding);
             run_pass!(
                 algebraic_simplify::algebraic_simplify,
                 PassKind::AlgebraicSimplify
@@ -64,16 +61,13 @@ impl PassManager {
                 strength_reduction::strength_reduction,
                 PassKind::StrengthReduction
             );
-            run_pass!(
-                copy_propogation::copy_propogation,
-                PassKind::CopyPropagation
-            );
+            run_pass!(copyprop::copyprop, PassKind::CopyPropagation);
             run_pass!(gvn::gvn, PassKind::GlobalValueNumbering);
             run_pass!(cse::cse, PassKind::CommonSubexpressionElimination);
             run_pass!(dse::dse, PassKind::DeadStoreElimination);
-            run_pass!(uce::uce, PassKind::UnreachableElimination);
             run_pass!(tre::tre, PassKind::TailRecursionElimination);
             run_pass!(dce::dce, PassKind::DeadCodeElimination);
+            run_pass!(cfg_simplify::cfg_simplify, PassKind::CFGSimplify);
 
             result.passes.extend(run);
 

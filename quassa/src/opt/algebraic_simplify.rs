@@ -34,17 +34,17 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
             }
 
             // x + x => x << 1
-            if a == b {
-                let shift = func.make_iconst(inst.parent, Type::I32, 1);
-                let new_inst = Inst {
-                    kind: InstKind::LShl,
-                    operands: vec![a, shift],
-                    parent: inst.parent,
-                    result: inst.result,
-                };
-                func.replace_inst(id, new_inst);
-                return true;
-            }
+            // if a == b {
+            //     let shift = func.make_iconst(inst.parent, Type::I32, 1);
+            //     let new_inst = Inst {
+            //         kind: InstKind::LShl,
+            //         operands: vec![a, shift],
+            //         parent: inst.parent,
+            //         result: inst.result,
+            //     };
+            //     func.replace_inst(id, new_inst);
+            //     return true;
+            // }
         }
 
         InstKind::Sub => {

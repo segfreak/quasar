@@ -161,6 +161,25 @@ fn fact_tr_def(fact_id: FuncId) -> FunctionDef {
     f
 }
 
+fn example1_def() -> FunctionDef {
+    let mut f = FunctionDef::new();
+    let entry = f.entry;
+
+    let then_bb = f.new_block();
+    let else_bb = f.new_block();
+
+    let zero = f.make_iconst(entry, Type::I32, 0);
+    let one = f.make_iconst(entry, Type::I32, 1);
+
+    let cond = f.make_cmp(entry, CmpKind::Lt, zero, one).1;
+    f.make_jumpif(entry, cond, then_bb, vec![], else_bb, vec![]);
+
+    f.make_ret(then_bb, Some(one));
+    f.make_ret(else_bb, Some(zero));
+
+    f
+}
+
 fn main() {
     pretty_env_logger::init();
     let mut m = Module::new("quasar");
@@ -200,6 +219,12 @@ fn main() {
         Linkage::default(),
         CallingConvention::default(),
     );
+    let mexample1 = m.declare_function(
+        "example1",
+        FunctionSignature::new(vec![], Type::I32),
+        Linkage::default(),
+        CallingConvention::default(),
+    );
     m.define_function(mfoo, foo_def())
         .expect("define_function error");
     m.define_function(mbar, bar_def(mfoo))
@@ -211,6 +236,8 @@ fn main() {
     m.define_function(mfib, fib_def(mfib))
         .expect("define_function error");
     m.define_function(mfact_tr, fact_tr_def(mfact_tr))
+        .expect("define_function error");
+    m.define_function(mexample1, example1_def())
         .expect("define_function error");
     m.verify().expect("pre-opt verify error");
     fs::write("preopt-quasar.dot", m.dump_dot()).expect("fs::write error");

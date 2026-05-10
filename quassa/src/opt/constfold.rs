@@ -1,6 +1,6 @@
 use crate::ir::*;
 
-pub fn constant_folding(m: &mut Module, f: FuncId) -> bool {
+pub fn constfold(m: &mut Module, f: FuncId) -> bool {
     let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
 
     let mut changed = false;

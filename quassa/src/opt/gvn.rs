@@ -1,13 +1,47 @@
+use std::collections::{HashMap, HashSet};
+
 use crate::analysis::dom::Dominance;
 use crate::ir::*;
 use quasar::*;
 
+/// canonical key for GVN
 #[derive(Hash, Clone, PartialEq, Eq)]
 struct GvnKey {
     kind: InstKind,
-    args: Vec<ValueId>,
+    args: Vec<(VN, Type)>,
+    ty: Type,
 }
 
+/// value number instead of raw ValueId
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+struct VN(u32);
+
+#[derive(Default)]
+struct GvnCtx {
+    next_vn: u32,
+    value_vn: HashMap<ValueId, VN>,
+    table: HashMap<GvnKey, ValueId>,
+}
+
+impl GvnCtx {
+    fn new() -> Self {
+        Self {
+            next_vn: 1,
+            value_vn: HashMap::new(),
+            table: HashMap::new(),
+        }
+    }
+
+    fn vn_of(&mut self, v: ValueId) -> VN {
+        *self.value_vn.entry(v).or_insert_with(|| {
+            let vn = VN(self.next_vn);
+            self.next_vn += 1;
+            vn
+        })
+    }
+}
+
+/// canonicalize commutative ops
 fn canonicalize(kind: &InstKind, mut ops: Vec<ValueId>) -> Vec<ValueId> {
     match kind {
         InstKind::Add | InstKind::Mul | InstKind::And | InstKind::Or | InstKind::Xor => {
@@ -18,128 +52,152 @@ fn canonicalize(kind: &InstKind, mut ops: Vec<ValueId>) -> Vec<ValueId> {
     ops
 }
 
-/// value numbering context
-#[derive(Clone)]
-struct GvnCtx {
-    value_number: HashMap<ValueId, u32>,
-    next_vn: u32,
-    table: HashMap<GvnKey, ValueId>,
+/// build key safely
+fn make_key(ctx: &mut GvnCtx, func: &FunctionDef, inst: &Inst) -> Option<GvnKey> {
+    if inst.kind.has_side_effects() || inst.kind.is_alloca() {
+        return None;
+    }
+
+    let result_ty = inst.result.map(|v| func.get_type(v))?;
+
+    let ops = canonicalize(&inst.kind, inst.operands.clone());
+
+    let args = ops
+        .into_iter()
+        .map(|v| {
+            let ty = func.get_type(v);
+            let vn = ctx.vn_of(v);
+            (vn, ty)
+        })
+        .collect();
+
+    Some(GvnKey {
+        kind: inst.kind.clone(),
+        ty: result_ty,
+        args,
+    })
 }
 
-impl GvnCtx {
-    fn new() -> Self {
-        Self {
-            value_number: HashMap::new(),
-            next_vn: 1,
-            table: HashMap::new(),
-        }
-    }
-
-    fn get_vn(&mut self, v: ValueId) -> u32 {
-        *self.value_number.entry(v).or_insert_with(|| {
-            let id = self.next_vn;
-            self.next_vn += 1;
-            id
-        })
-    }
-
-    fn make_key(&mut self, inst: &Inst) -> Option<GvnKey> {
-        if inst.kind.has_side_effects() || inst.kind.is_alloca() {
-            return None;
-        }
-
-        let mut args = inst.operands.clone();
-
-        args = canonicalize(&inst.kind, args);
-
-        let args_vn = args.into_iter().map(|v| self.get_vn(v)).collect();
-
-        Some(GvnKey {
-            kind: inst.kind.clone(),
-            args: args_vn,
-        })
-    }
-}
-
-/// DFS over dominator tree
-fn gvn_block(
+/// collect replacements first (IMPORTANT FIX)
+fn collect_gvn(
     func: &mut FunctionDef,
     dom: &Dominance,
     block: BlockId,
     ctx: &mut GvnCtx,
-    changed: &mut bool,
+    repl: &mut HashMap<ValueId, ValueId>,
+    visited: &mut HashSet<BlockId>,
 ) {
+    if !visited.insert(block) {
+        return;
+    }
+
     let mut local_table = ctx.table.clone();
 
-    let inst_ids = func.blocks[&block].insts.clone();
+    let insts = func.blocks[&block].insts.clone();
 
-    for inst_id in inst_ids {
+    for inst_id in insts {
         if !func.insts.contains_key(&inst_id) {
             continue;
         }
 
         let inst = func.insts[&inst_id].clone();
 
-        let result = match inst.result {
-            Some(v) => v,
-            None => continue,
+        let Some(result) = inst.result else {
+            continue;
         };
 
-        let key = match ctx.make_key(&inst) {
-            Some(k) => k,
-            None => continue,
+        let Some(key) = make_key(ctx, func, &inst) else {
+            continue;
         };
 
         if let Some(&existing) = local_table.get(&key) {
             if existing != result {
                 log::trace!(
-                    "replacing %{} (B{}) -> %{} (B{})",
+                    "replacing %{}:{} (B{}) -> %{}:{} (B{})",
                     result,
+                    func.get_type(result),
                     func.get_def_block(result).unwrap(),
                     existing,
+                    func.get_type(existing),
                     func.get_def_block(existing).unwrap(),
                 );
-                func.replace_value(result, existing);
-                func.remove_inst(inst_id);
-                *changed = true;
+                repl.insert(result, existing);
             }
         } else {
             local_table.insert(key, result);
         }
 
-        ctx.get_vn(result);
+        ctx.vn_of(result);
     }
 
-    let children: Vec<BlockId> = dom
-        .idom
-        .iter()
-        .filter(|(_, p)| **p == block)
-        .map(|(&b, _)| b)
-        .collect();
+    // recurse dom tree
+    for (&child, &parent) in &dom.idom {
+        if parent == block {
+            let saved = ctx.table.clone();
+            ctx.table = local_table.clone();
 
-    for child in children {
-        let saved = ctx.table.clone();
+            collect_gvn(func, dom, child, ctx, repl, visited);
 
-        ctx.table = local_table.clone();
-        gvn_block(func, dom, child, ctx, changed);
-        ctx.table = saved;
+            ctx.table = saved;
+        }
     }
 }
 
+/// apply replacements safely
+fn apply_replacements(func: &mut FunctionDef, repl: &HashMap<ValueId, ValueId>) -> bool {
+    if repl.is_empty() {
+        return false;
+    }
+
+    let mut changed = false;
+
+    // update instructions
+    for inst in func.insts.values_mut() {
+        for op in &mut inst.operands {
+            if let Some(&to) = repl.get(op) {
+                *op = to;
+                changed = true;
+            }
+        }
+    }
+
+    // update values (uses)
+    for v in func.values.values_mut() {
+        v.uses.clear();
+    }
+
+    // rebuild uses
+    for (iid, inst) in &func.insts {
+        for (i, &op) in inst.operands.iter().enumerate() {
+            if let Some(v) = func.values.get_mut(&op) {
+                v.uses.push(Use {
+                    inst: *iid,
+                    index: i as u32,
+                });
+            }
+        }
+    }
+
+    changed
+}
+
+/// full pass
 pub fn gvn(module: &mut Module, f: FuncId) -> bool {
     let func = module
         .get_function_mut(f)
         .unwrap()
         .get_definition_mut()
         .unwrap();
+
     let dom = Dominance::build(func);
 
     let entry = func.entry;
 
     let mut ctx = GvnCtx::new();
-    let mut changed = false;
+    let mut repl = HashMap::new();
+    let mut visited = HashSet::new();
 
-    gvn_block(func, &dom, entry, &mut ctx, &mut changed);
+    collect_gvn(func, &dom, entry, &mut ctx, &mut repl, &mut visited);
 
-    changed
+    apply_replacements(func, &repl)
 }
