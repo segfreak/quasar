@@ -23,13 +23,11 @@ impl RegAlloc2 {
         let mut weights = HashMap::new();
         let mut priority = HashMap::new();
 
-        // Calculate weights: longer intervals get higher weight
         for interval in &intervals {
             let length = (interval.end - interval.start) as f32;
-            let weight = 1.0 / (length + 1.0); // Shorter intervals have higher weight
+            let weight = 1.0 / (length + 1.0);
             weights.insert(interval.vreg, weight);
 
-            // Priority: length * frequency (estimated as 1.0 for now)
             let priority_val = length;
             priority.insert(interval.vreg, priority_val);
         }
@@ -100,28 +98,24 @@ impl RegAlloc2 {
         }
     }
 
-    /// Calculate spill cost: weight * interval length
     fn spill_cost(&self, vreg: VReg, interval: &Interval) -> f32 {
         let weight = self.vreg_weights.get(&vreg).copied().unwrap_or(1.0);
         let length = (interval.end - interval.start) as f32;
         weight * length
     }
 
-    /// Improved linear scan with weight-based victim selection
     pub fn linear_scan(&mut self) -> RegAllocResult {
         for i in self.intervals.clone().iter() {
             self.expire_old(i.start);
 
             let class = class_of(i.vreg.ty);
 
-            // Try to allocate from free registers
             if let Some(reg) = self.free_regs.alloc(class) {
                 self.result.0.insert(i.vreg, Slot::Register(reg));
                 self.add_active(Active { interval: *i, reg });
                 continue;
             }
 
-            // Find victim with best spill cost
             let mut victim_idx: Option<usize> = None;
             let mut best_cost = f32::MAX;
 
@@ -139,9 +133,7 @@ impl RegAlloc2 {
                 let victim = self.active[idx];
                 let current_cost = self.spill_cost(i.vreg, i);
 
-                // Compare: spill current vs spill victim
                 if victim.interval.end > i.end && best_cost > current_cost {
-                    // Spill victim, allocate current
                     let spill = self.make_spill(victim.interval.vreg.ty);
                     self.result
                         .0
@@ -156,7 +148,6 @@ impl RegAlloc2 {
                 }
             }
 
-            // No good victim, spill current
             let spill = self.make_spill(i.vreg.ty);
             self.result.0.insert(i.vreg, Slot::Spill(spill));
         }
@@ -174,7 +165,6 @@ impl RegAlloc2 {
     }
 }
 
-/// Helper function to classify register by type
 pub fn class_of(ty: quasar::Type) -> RegClass {
     match ty {
         quasar::Type::F32 | quasar::Type::F64 => RegClass::Xmm,
