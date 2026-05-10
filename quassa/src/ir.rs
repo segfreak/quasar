@@ -1284,7 +1284,7 @@ impl Module {
             // subgraph per function
             s.push_str(&format!("  subgraph cluster_f{} {{\n", fid));
             s.push_str(&format!(
-                "    label=\"fn abi({}) {}\";\n",
+                "    label=\"[{}] {}\";\n",
                 func.calling_convention, func.name
             ));
             s.push_str("    style=rounded;\n\n");
