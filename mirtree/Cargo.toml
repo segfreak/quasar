@@ -1,17 +1,15 @@
 [package]
-name = "mirssa"
+name = "mirtree"
 version = "0.0.0"
 edition = "2024"
 
 [features]
-default = ["llvm22-1", "hashbrown"]
+default = []
 hashbrown = ["quasar/hashbrown"]
-llvm22-1 = ["dep:inkwell", "inkwell/llvm22-1"]
 
 [dependencies]
 enum-display = "0.2.1"
 log = "0.4.29"
 pretty_env_logger = "0.5.0"
 thiserror = "2.0.18"
-inkwell = { version = "0.9.0", optional = true }
 quasar = { workspace = true }

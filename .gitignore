@@ -4,4 +4,5 @@
 /*.dot
 /*.png
 /sandbox
-/quald
+/*.s
+/*.ll

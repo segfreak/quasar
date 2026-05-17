@@ -1,6 +1,7 @@
 use std::fs;
 
-use mirssa::ir::*;
+use inkwell::context::Context;
+use mirssa::{ir::*, lowering::llvm::LlvmLowerer};
 use quasar::{target::CallingConvention, *};
 
 fn foo_def() -> FunctionDef {
@@ -182,7 +183,7 @@ fn example1_def() -> FunctionDef {
 
 fn main() {
     pretty_env_logger::init();
-    let mut m = Module::new("quasar");
+    let mut m = Module::new("mirssa");
     let mfoo = m.declare_function(
         "foo",
         FunctionSignature::new(vec![Type::I32, Type::I32], Type::I32),
@@ -244,4 +245,10 @@ fn main() {
     m.optimize();
     m.verify().expect("post-opt verify error");
     fs::write("mirssa.dot", m.dump_dot()).expect("fs::write error");
+    let llvm_ctx = Context::create();
+    let mut lowerer = LlvmLowerer::new(&llvm_ctx, "mirssa");
+    lowerer.lower_module(&m);
+    let llvm_module = lowerer.get_module();
+    fs::write("mirssa.ll", llvm_module.print_to_string().to_str().unwrap())
+        .expect("fs::write error");
 }

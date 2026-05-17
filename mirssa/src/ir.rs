@@ -232,6 +232,34 @@ impl FunctionDef {
         f
     }
 
+    pub fn reverse_post_order(&self) -> Vec<BlockId> {
+        let mut visited = HashSet::new();
+        let mut post_order = Vec::new();
+
+        let mut stack: Vec<(BlockId, usize)> = vec![(self.entry, 0)];
+        visited.insert(self.entry);
+
+        while let Some((bid, succ_idx)) = stack.last_mut() {
+            let bid = *bid;
+            let succs = &self.blocks[&bid].succs;
+
+            if *succ_idx < succs.len() {
+                let next = succs[*succ_idx];
+                *succ_idx += 1;
+
+                if visited.insert(next) {
+                    stack.push((next, 0));
+                }
+            } else {
+                post_order.push(bid);
+                stack.pop();
+            }
+        }
+
+        post_order.reverse();
+        post_order
+    }
+
     pub fn new_block(&mut self) -> BlockId {
         let id = self.next_block;
         self.next_block += 1;
@@ -248,6 +276,11 @@ impl FunctionDef {
         );
 
         id
+    }
+
+    pub fn get_block_params(&self, block: BlockId) -> &Vec<ValueId> {
+        let block = self.blocks.get(&block).unwrap();
+        &block.params
     }
 
     pub fn add_param(&mut self, ty: Type) -> ValueId {
@@ -318,24 +351,31 @@ impl FunctionDef {
         }
 
         if kind.is_terminator() {
-            let b = self.blocks.get_mut(&block).unwrap();
-            match &kind {
-                InstKind::Jump(bb) => {
-                    b.succs.push(*bb);
-                    // b.preds.push(block);
-                }
-                InstKind::JumpIf {
-                    then_block,
-                    else_block,
-                } => {
-                    b.succs.push(*then_block);
-                    b.succs.push(*else_block);
-                    // b.preds.push(block);
-                }
-                InstKind::Ret => {}
-                _ => unreachable!(),
-            };
-            b.term = Some(inst_id);
+            let mut edges_to_add = Vec::new();
+            {
+                let b = self.blocks.get_mut(&block).unwrap();
+                match &kind {
+                    InstKind::Jump(bb) => {
+                        b.succs.push(*bb);
+                        edges_to_add.push(*bb);
+                    }
+                    InstKind::JumpIf {
+                        then_block,
+                        else_block,
+                    } => {
+                        b.succs.push(*then_block);
+                        b.succs.push(*else_block);
+                        edges_to_add.push(*then_block);
+                        edges_to_add.push(*else_block);
+                    }
+                    InstKind::Ret => {}
+                    _ => unreachable!(),
+                };
+                b.term = Some(inst_id);
+            }
+            for target_bb in edges_to_add {
+                self.blocks.get_mut(&target_bb).unwrap().preds.push(block);
+            }
         }
 
         let inst = Inst {
