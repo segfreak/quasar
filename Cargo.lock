@@ -136,6 +136,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 
 [[package]]
+name = "mirssa"
+version = "0.0.0"
+dependencies = [
+ "enum-display",
+ "log",
+ "pretty_env_logger",
+ "quasar",
+ "thiserror",
+]
+
+[[package]]
 name = "pretty_env_logger"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -160,17 +171,6 @@ version = "0.0.0"
 dependencies = [
  "enum-display",
  "hashbrown",
-]
-
-[[package]]
-name = "quassa"
-version = "0.0.0"
-dependencies = [
- "enum-display",
- "log",
- "pretty_env_logger",
- "quasar",
- "thiserror",
 ]
 
 [[package]]
@@ -218,9 +218,9 @@ dependencies = [
  "enum-display",
  "indexmap",
  "log",
+ "mirssa",
  "pretty_env_logger",
  "quasar",
- "quassa",
 ]
 
 [[package]]

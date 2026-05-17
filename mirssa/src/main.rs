@@ -1,7 +1,7 @@
 use std::fs;
 
+use mirssa::ir::*;
 use quasar::{target::CallingConvention, *};
-use quassa::ir::*;
 
 fn foo_def() -> FunctionDef {
     let mut fun = FunctionDef::new();
@@ -240,8 +240,8 @@ fn main() {
     m.define_function(mexample1, example1_def())
         .expect("define_function error");
     m.verify().expect("pre-opt verify error");
-    fs::write("preopt-quasar.dot", m.dump_dot()).expect("fs::write error");
+    fs::write("preopt-mirssa.dot", m.dump_dot()).expect("fs::write error");
     m.optimize();
     m.verify().expect("post-opt verify error");
-    fs::write("quasar.dot", m.dump_dot()).expect("fs::write error");
+    fs::write("mirssa.dot", m.dump_dot()).expect("fs::write error");
 }

@@ -364,6 +364,15 @@ impl FunctionDef {
         }
     }
 
+    pub fn get_def_inst(&self, v: ValueId) -> Option<InstId> {
+        let val = self.values.get(&v)?;
+        if val.def == InstId::MAX {
+            None
+        } else {
+            Some(val.def)
+        }
+    }
+
     pub fn get_iconst(&self, v: ValueId) -> Option<i64> {
         let val = &self.values[&v];
         if val.def == InstId::MAX {

@@ -1,5 +1,5 @@
+use mirssa::ir::CmpKind;
 use quasar::{target::*, *};
-use quassa::ir::CmpKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VReg {
