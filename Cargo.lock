@@ -475,17 +475,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mirtree"
-version = "0.0.0"
-dependencies = [
- "enum-display",
- "log",
- "pretty_env_logger",
- "quasar",
- "thiserror",
-]
-
-[[package]]
 name = "object"
 version = "0.39.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
