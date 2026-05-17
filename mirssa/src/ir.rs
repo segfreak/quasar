@@ -987,12 +987,18 @@ impl FunctionDef {
 
     pub fn replace_inst(&mut self, id: InstId, to: Inst) -> bool {
         let old = self.insts.get(&id).cloned();
-
         if old.is_none() {
             return false;
         }
-
         let old = old.unwrap();
+
+        let old_cost = old.kind.get_cost();
+        let to_cost = to.kind.get_cost();
+
+        if to_cost > old_cost {
+            log::warn!("replacement is more expensive");
+            log::warn!("{:?}({}) -> {:?}({})", old.kind, old_cost, to.kind, to_cost);
+        }
 
         self.insts.insert(id, to.clone());
 

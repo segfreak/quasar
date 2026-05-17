@@ -329,7 +329,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
     }
 
     fn compile_inst(&mut self, _m: &crate::ir::Module, def: &FunctionDef, inst: &Inst) {
-        log::debug!(
+        log::trace!(
             "lowering inst: {:?}, operands: {:?}",
             inst.kind,
             inst.operands
