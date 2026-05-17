@@ -31,6 +31,8 @@ struct Cli {
 }
 
 fn main() {
+    use std::fs;
+
     let cli = Cli::parse();
 
     let module = fear::binary::load_from_file::<Module>(&cli.input).unwrap();
@@ -43,7 +45,7 @@ fn main() {
                 use inkwell::context::Context;
                 let llvm_ctx = Context::create();
                 let mut lowerer = LlvmLowerer::new(&llvm_ctx, "test");
-                lowerer.lower_module(&m);
+                lowerer.lower_module(&module);
                 let llvm_module = lowerer.get_module();
                 fs::write(outname, llvm_module.print_to_string().to_str().unwrap())
                     .expect("fs::write error");
@@ -59,7 +61,6 @@ fn main() {
                 use cranelift::codegen::settings::Configurable;
                 use cranelift_module::default_libcall_names;
                 use fear::lowering::cranelift::CraneliftLowerer;
-                use std::fs;
 
                 let mut flag_builder = cranelift::codegen::settings::builder();
                 flag_builder.set("use_colocated_libcalls", "false").unwrap();
