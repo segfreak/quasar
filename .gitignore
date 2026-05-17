@@ -6,3 +6,4 @@
 /sandbox
 /*.s
 /*.ll
+/*.mir

@@ -24,7 +24,7 @@ const fn host_description() -> TargetDescription {
     TargetDescription { pointer_size: 8 }
 }
 
-#[derive(Debug, Clone, Copy, EnumDisplay, Default)]
+#[derive(Debug, Clone, Copy, EnumDisplay, Default, PartialEq, Eq)]
 pub enum CallingConvention {
     /// C ABI
     #[default]

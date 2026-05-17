@@ -40,6 +40,10 @@ impl Type {
         matches!(self, Type::I8 | Type::I16 | Type::I32 | Type::I64)
     }
 
+    pub fn is_float(&self) -> bool {
+        matches!(self, Type::F32 | Type::F64)
+    }
+
     pub fn is_void(&self) -> bool {
         matches!(self, Type::Void)
     }

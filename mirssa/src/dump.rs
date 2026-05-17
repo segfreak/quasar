@@ -16,12 +16,12 @@ impl FunctionDef {
             InstKind::IConst(x) => {
                 let val = inst.result.unwrap();
                 let ty = self.get_type(val);
-                format!("const {} ${}", ty, x)
+                format!("const {} {}", ty, x)
             }
             InstKind::FConst(x) => {
                 let val = inst.result.unwrap();
                 let ty = self.get_type(val);
-                format!("const {} ${}", ty, x)
+                format!("const {} {}", ty, f64::from_bits(*x))
             }
             InstKind::Add => format!("add %{}, %{}", inst.operands[0], inst.operands[1]),
             InstKind::Sub => format!("sub %{}, %{}", inst.operands[0], inst.operands[1]),
@@ -43,6 +43,7 @@ impl FunctionDef {
             InstKind::FMul => format!("fmul %{}, %{}", inst.operands[0], inst.operands[1]),
             InstKind::FDiv => format!("fdiv %{}, %{}", inst.operands[0], inst.operands[1]),
             InstKind::FRem => format!("frem %{}, %{}", inst.operands[0], inst.operands[1]),
+            InstKind::Not => format!("not %{}", inst.operands[0]),
             InstKind::And => format!("and %{}, %{}", inst.operands[0], inst.operands[1]),
             InstKind::Or => format!("or %{}, %{}", inst.operands[0], inst.operands[1]),
             InstKind::Xor => format!("xor %{}, %{}", inst.operands[0], inst.operands[1]),
@@ -66,7 +67,7 @@ impl FunctionDef {
             ),
 
             InstKind::NAlloca => format!("alloca {}", inst.operands[0]),
-            InstKind::Alloca(ty) => format!("alloca.{}", ty),
+            InstKind::Alloca(ty) => format!("alloca {}", ty),
 
             InstKind::ElementPtr => {
                 format!("elemptr %{}, %{}", inst.operands[0], inst.operands[1])
@@ -125,7 +126,7 @@ impl Module {
     pub fn dump(&self) -> String {
         let mut s = String::new();
 
-        s.push_str(&format!("! module \"{}\"\n\n", self.name));
+        s.push_str(&format!("# module \"{}\"\n\n", self.name));
 
         for (_fid, func) in &self.functions {
             let def = match func.get_definition() {
@@ -182,7 +183,7 @@ impl Module {
                     s.push_str(&format!("B{}({}):", bid, bparams));
                 }
                 if is_entry {
-                    s.push_str(" (__entry__)\n");
+                    s.push_str(" __entry__\n");
                 } else {
                     s.push('\n');
                 }

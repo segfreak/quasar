@@ -390,6 +390,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 });
             }
 
+            InstKind::Not => self.un_int(def, inst, |b, v| b.build_not(v, "not").unwrap()),
             InstKind::And => self.bin_int(def, inst, |b, l, r| b.build_and(l, r, "and").unwrap()),
             InstKind::Or => self.bin_int(def, inst, |b, l, r| b.build_or(l, r, "or").unwrap()),
             InstKind::Xor => self.bin_int(def, inst, |b, l, r| b.build_xor(l, r, "xor").unwrap()),
@@ -404,8 +405,8 @@ impl<'ctx> LlvmLowerer<'ctx> {
             }),
 
             InstKind::Cmp(kind) => {
-                let lhs = self.get_int_value(def, inst.operands[0]);
-                let rhs = self.get_int_value(def, inst.operands[1]);
+                let lhs = self.get_int_or_const(def, inst.operands[0]);
+                let rhs = self.get_int_or_const(def, inst.operands[1]);
                 let pred = self.map_int_pred(*kind);
                 let val = self
                     .builder
@@ -420,9 +421,11 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 self.values.insert(inst.result.unwrap(), ptr.into());
             }
 
-            InstKind::NAlloca => {
-                todo!("nalloca is not supported")
-            }
+            InstKind::NAlloca => self.unary(def, inst, |b, v| {
+                b.build_array_alloca(self.context.i8_type(), v.into_int_value(), "alloca")
+                    .unwrap()
+                    .as_basic_value_enum()
+            }),
 
             InstKind::Load { volatile } => {
                 let ptr_val = self.get(inst.operands[0]).into_pointer_value();
@@ -445,7 +448,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
 
             InstKind::ElementPtr => {
                 let base = self.get(inst.operands[0]).into_pointer_value();
-                let offset = self.get_int_value(def, inst.operands[1]);
+                let offset = self.get_int_or_const(def, inst.operands[1]);
                 let i8_ty = self.context.i8_type();
                 let ptr = unsafe {
                     self.builder
@@ -564,9 +567,18 @@ impl<'ctx> LlvmLowerer<'ctx> {
             inkwell::values::IntValue<'ctx>,
         ) -> inkwell::values::IntValue<'ctx>,
     {
-        let a = self.get_int_value(def, inst.operands[0]);
-        let b = self.get_int_value(def, inst.operands[1]);
+        let a = self.get_int_or_const(def, inst.operands[0]);
+        let b = self.get_int_or_const(def, inst.operands[1]);
         let res = f(&self.builder, a, b);
+        self.values.insert(inst.result.unwrap(), res.into());
+    }
+
+    fn un_int<F>(&mut self, def: &FunctionDef, inst: &Inst, f: F)
+    where
+        F: Fn(&Builder<'ctx>, inkwell::values::IntValue<'ctx>) -> inkwell::values::IntValue<'ctx>,
+    {
+        let a = self.get_int_or_const(def, inst.operands[0]);
+        let res = f(&self.builder, a);
         self.values.insert(inst.result.unwrap(), res.into());
     }
 
@@ -578,10 +590,36 @@ impl<'ctx> LlvmLowerer<'ctx> {
             inkwell::values::FloatValue<'ctx>,
         ) -> inkwell::values::FloatValue<'ctx>,
     {
-        let a = self.get_float_value(def, inst.operands[0]);
-        let b = self.get_float_value(def, inst.operands[1]);
+        let a = self.get_float_or_const(def, inst.operands[0]);
+        let b = self.get_float_or_const(def, inst.operands[1]);
         let res = f(&self.builder, a, b);
         self.values.insert(inst.result.unwrap(), res.into());
+    }
+
+    #[allow(unused)]
+    fn unary<F>(&mut self, def: &FunctionDef, inst: &Inst, f: F)
+    where
+        F: Fn(
+            &Builder<'ctx>,
+            inkwell::values::BasicValueEnum<'ctx>,
+        ) -> inkwell::values::BasicValueEnum<'ctx>,
+    {
+        let a = self.get_or_const(def, inst.operands[0]);
+        let res = f(&self.builder, a);
+        self.values.insert(inst.result.unwrap(), res);
+    }
+
+    #[allow(unused)]
+    fn binary<F>(&mut self, def: &FunctionDef, inst: &Inst, f: F)
+    where
+        F: Fn(
+            &Builder<'ctx>,
+            inkwell::values::BasicValueEnum<'ctx>,
+        ) -> inkwell::values::BasicValueEnum<'ctx>,
+    {
+        let a = self.get_or_const(def, inst.operands[0]);
+        let res = f(&self.builder, a);
+        self.values.insert(inst.result.unwrap(), res);
     }
 
     fn get_or_const(&self, def: &FunctionDef, v: ValueId) -> BasicValueEnum<'ctx> {
@@ -593,7 +631,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
         }
     }
 
-    fn get_int_value(&self, def: &FunctionDef, v: ValueId) -> IntValue<'ctx> {
+    fn get_int_or_const(&self, def: &FunctionDef, v: ValueId) -> IntValue<'ctx> {
         if let Some(c) = def.get_iconst(v) {
             let ty = self.map_int_type(def.get_type(v));
             ty.const_int(c as u64, true)
@@ -602,7 +640,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
         }
     }
 
-    fn get_float_value(&self, def: &FunctionDef, v: ValueId) -> FloatValue<'ctx> {
+    fn get_float_or_const(&self, def: &FunctionDef, v: ValueId) -> FloatValue<'ctx> {
         if let Some(c) = def.get_fconst(v) {
             let ty = self.map_float_type(def.get_type(v));
             ty.const_float(c)

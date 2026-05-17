@@ -1,7 +1,8 @@
 use std::fs;
 
 use inkwell::context::Context;
-use mirssa::{ir::*, lowering::llvm::LlvmLowerer};
+use mirssa::{ir::*, lowering::llvm::LlvmLowerer, parser::MirParser};
+use pest::Parser;
 use quasar::{target::CallingConvention, *};
 
 fn foo_def() -> FunctionDef {
@@ -243,7 +244,6 @@ fn main() {
     m.verify().expect("pre-opt verify error");
     fs::write("preopt-mirssa.dot", m.dump_dot()).expect("fs::write error");
     fs::write("preopt-mirssa.mir", m.dump()).expect("fs::write error");
-
     m.optimize();
     m.verify().expect("post-opt verify error");
     fs::write("mirssa.dot", m.dump_dot()).expect("fs::write error");

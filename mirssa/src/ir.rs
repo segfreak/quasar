@@ -87,6 +87,7 @@ pub enum InstKind {
     FDiv,
     FRem,
 
+    Not,
     And,
     Or,
     Xor,
@@ -108,7 +109,10 @@ pub enum InstKind {
     Store {
         volatile: bool,
     },
+
     /// elementptr {base}, {offset}
+    /// byte addressed
+    ///   (uint8_t*)base + offset
     ElementPtr,
     /// call {func} ({args..})
     Call(FuncId),
@@ -143,6 +147,7 @@ impl InstKind {
             | FMul
             | FDiv
             | FRem
+            | Not
             | And
             | Or
             | Xor
@@ -178,7 +183,7 @@ impl InstKind {
             Self::FMul | Self::FDiv | Self::FRem => 5,
 
             // bitwise ops (very cheap)
-            Self::And | Self::Or | Self::Xor => 1,
+            Self::Not | Self::And | Self::Or | Self::Xor => 1,
 
             // shifts (cheap but not free)
             Self::LShl | Self::LShr | Self::AShr => 1,
@@ -190,8 +195,8 @@ impl InstKind {
             Self::Load { .. } => 5,
             Self::Store { .. } => 5,
 
-            // address computation (usually cheap ALU-like)
             Self::NAlloca | Self::Alloca(_) => 3,
+            // address computation (usually cheap ALU-like)
             Self::ElementPtr => 2,
 
             // function calls (very expensive, unknown cost)
