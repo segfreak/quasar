@@ -1,6 +1,7 @@
 use std::fs;
 
-use mirssa::ir::*;
+use mirssa::{ir::*, parser};
+use pest::Parser;
 use quasar::{target::CallingConvention, *};
 
 fn foo_def() -> FunctionDef {
