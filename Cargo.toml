@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["quasar", "mirssa"]
+members = ["fearcore", "fear"]
 
 [workspace.dependencies]
-mirssa = { path = "mirssa" }
-quasar = { path = "quasar" }
+fear = { path = "fear" }
+fearcore = { path = "fearcore" }

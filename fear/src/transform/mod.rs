@@ -1,5 +1,6 @@
+use std::collections::HashMap;
+
 use crate::ir::{FuncId, Module};
-use quasar::*;
 
 pub mod algebraic_simplify;
 pub mod cfg_simplify;

@@ -7,9 +7,8 @@ use inkwell::{
     AddressSpace, FloatPredicate, IntPredicate,
 };
 
-use quasar::HashMap;
-
-use quasar::{FunctionSignature, Linkage, Type};
+use fearcore::{FunctionSignature, Linkage, Type};
+use std::collections::HashMap;
 
 use crate::ir::*;
 

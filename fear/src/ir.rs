@@ -1,6 +1,8 @@
+use std::collections::{HashMap, HashSet};
+
 use enum_display::EnumDisplay;
-use quasar::target::CallingConvention;
-use quasar::*;
+use fearcore::target::CallingConvention;
+use fearcore::*;
 
 pub type ValueId = u32;
 pub type InstId = u32;
@@ -8,6 +10,7 @@ pub type BlockId = u32;
 pub type FuncId = u32;
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Value {
     pub ty: Type,
     pub def: InstId,
@@ -15,12 +18,14 @@ pub struct Value {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Use {
     pub inst: InstId,
     pub index: u32,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Inst {
     pub kind: InstKind,
     pub operands: Vec<ValueId>,
@@ -29,6 +34,7 @@ pub struct Inst {
 }
 
 #[derive(Debug, EnumDisplay, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum IntCmp {
     #[display("eq")]
     Eq,
@@ -53,6 +59,7 @@ pub enum IntCmp {
 }
 
 #[derive(Debug, EnumDisplay, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum FloatCmp {
     #[display("ord")]
     Ord,
@@ -85,6 +92,7 @@ pub enum FloatCmp {
 }
 
 #[derive(Debug, EnumDisplay, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CastKind {
     #[display("zext")]
     Zext,
@@ -97,6 +105,7 @@ pub enum CastKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum InstKind {
     IConst(i64),
     // float64 raw bits
@@ -267,6 +276,7 @@ impl InstKind {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Block {
     pub params: Vec<ValueId>,
     pub insts: Vec<InstId>,
@@ -276,6 +286,7 @@ pub struct Block {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FunctionDef {
     pub blocks: HashMap<BlockId, Block>,
     pub insts: HashMap<InstId, Inst>,
@@ -384,7 +395,7 @@ impl FunctionDef {
             .push(Use { inst, index });
     }
 
-    pub fn append_inst(
+    fn append_inst_detail(
         &mut self,
         block: BlockId,
         kind: InstKind,
@@ -393,6 +404,17 @@ impl FunctionDef {
     ) -> (InstId, ValueId) {
         let (inst, val) = self.try_append_inst(block, kind, result_ty, operands);
         (inst, val.unwrap_or(ValueId::MAX))
+    }
+
+    pub fn append_inst(
+        &mut self,
+        block: BlockId,
+        kind: InstKind,
+        result_ty: Type,
+        operands: Vec<ValueId>,
+    ) -> ValueId {
+        let (_, val) = self.try_append_inst(block, kind, result_ty, operands);
+        val.unwrap_or(ValueId::MAX)
     }
 
     pub fn try_append_inst(
@@ -540,17 +562,10 @@ impl FunctionDef {
     }
 
     pub fn make_iconst(&mut self, block: BlockId, ty: Type, x: i64) -> ValueId {
-        let (_, v) = self.append_inst(block, InstKind::IConst(x), ty, vec![]);
-        v
+        self.append_inst(block, InstKind::IConst(x), ty, vec![])
     }
 
-    fn make_unary(
-        &mut self,
-        block: BlockId,
-        kind: InstKind,
-        ty: Type,
-        value: ValueId,
-    ) -> (InstId, ValueId) {
+    fn make_unary(&mut self, block: BlockId, kind: InstKind, ty: Type, value: ValueId) -> ValueId {
         self.append_inst(block, kind, ty, vec![value])
     }
 
@@ -561,7 +576,7 @@ impl FunctionDef {
         ty: Type,
         lhs: ValueId,
         rhs: ValueId,
-    ) -> (InstId, ValueId) {
+    ) -> ValueId {
         self.append_inst(block, kind, ty, vec![lhs, rhs])
     }
 
@@ -571,7 +586,7 @@ impl FunctionDef {
         kind: IntCmp,
         lhs: ValueId,
         rhs: ValueId,
-    ) -> (InstId, ValueId) {
+    ) -> ValueId {
         self.make_binary(block, InstKind::Cmp(kind), Type::I1, lhs, rhs)
     }
 
@@ -581,7 +596,7 @@ impl FunctionDef {
         kind: FloatCmp,
         lhs: ValueId,
         rhs: ValueId,
-    ) -> (InstId, ValueId) {
+    ) -> ValueId {
         self.make_binary(block, InstKind::FCmp(kind), Type::I1, lhs, rhs)
     }
 
@@ -591,37 +606,19 @@ impl FunctionDef {
         kind: CastKind,
         ty: Type,
         value: ValueId,
-    ) -> (InstId, ValueId) {
+    ) -> ValueId {
         self.make_unary(block, InstKind::Cast(kind), ty, value)
     }
 
-    pub fn make_add(
-        &mut self,
-        block: BlockId,
-        ty: Type,
-        lhs: ValueId,
-        rhs: ValueId,
-    ) -> (InstId, ValueId) {
+    pub fn make_add(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
         self.make_binary(block, InstKind::Add, ty, lhs, rhs)
     }
 
-    pub fn make_sub(
-        &mut self,
-        block: BlockId,
-        ty: Type,
-        lhs: ValueId,
-        rhs: ValueId,
-    ) -> (InstId, ValueId) {
+    pub fn make_sub(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
         self.make_binary(block, InstKind::Sub, ty, lhs, rhs)
     }
 
-    pub fn make_mul(
-        &mut self,
-        block: BlockId,
-        ty: Type,
-        lhs: ValueId,
-        rhs: ValueId,
-    ) -> (InstId, ValueId) {
+    pub fn make_mul(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
         self.make_binary(block, InstKind::Mul, ty, lhs, rhs)
     }
 
@@ -632,41 +629,54 @@ impl FunctionDef {
         ty: Type,
         lhs: ValueId,
         rhs: ValueId,
-    ) -> (InstId, ValueId) {
+    ) -> ValueId {
         self.make_binary(block, InstKind::Div { signed }, ty, lhs, rhs)
     }
 
-    pub fn make_lshl(
+    pub fn make_rem(
         &mut self,
         block: BlockId,
+        signed: bool,
         ty: Type,
         lhs: ValueId,
         rhs: ValueId,
-    ) -> (InstId, ValueId) {
+    ) -> ValueId {
+        self.make_binary(block, InstKind::Rem { signed }, ty, lhs, rhs)
+    }
+
+    pub fn make_fadd(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
+        self.make_binary(block, InstKind::FAdd, ty, lhs, rhs)
+    }
+
+    pub fn make_fsub(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
+        self.make_binary(block, InstKind::FSub, ty, lhs, rhs)
+    }
+
+    pub fn make_fmul(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
+        self.make_binary(block, InstKind::FMul, ty, lhs, rhs)
+    }
+
+    pub fn make_fdiv(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
+        self.make_binary(block, InstKind::FDiv, ty, lhs, rhs)
+    }
+
+    pub fn make_frem(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
+        self.make_binary(block, InstKind::FRem, ty, lhs, rhs)
+    }
+
+    pub fn make_lshl(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
         self.make_binary(block, InstKind::LShl, ty, lhs, rhs)
     }
 
-    pub fn make_lshr(
-        &mut self,
-        block: BlockId,
-        ty: Type,
-        lhs: ValueId,
-        rhs: ValueId,
-    ) -> (InstId, ValueId) {
+    pub fn make_lshr(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
         self.make_binary(block, InstKind::LShr, ty, lhs, rhs)
     }
 
-    pub fn make_ashr(
-        &mut self,
-        block: BlockId,
-        ty: Type,
-        lhs: ValueId,
-        rhs: ValueId,
-    ) -> (InstId, ValueId) {
+    pub fn make_ashr(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
         self.make_binary(block, InstKind::AShr, ty, lhs, rhs)
     }
 
-    pub fn make_alloca(&mut self, block: BlockId, ty: Type) -> (InstId, ValueId) {
+    pub fn make_alloca(&mut self, block: BlockId, ty: Type) -> ValueId {
         self.append_inst(block, InstKind::Alloca(ty), Type::Ptr, vec![])
     }
 
@@ -676,7 +686,7 @@ impl FunctionDef {
         volatile: bool,
         ptr: ValueId,
         value: ValueId,
-    ) -> (InstId, ValueId) {
+    ) -> ValueId {
         self.append_inst(
             block,
             InstKind::Store { volatile },
@@ -685,31 +695,15 @@ impl FunctionDef {
         )
     }
 
-    pub fn make_load(
-        &mut self,
-        block: BlockId,
-        volatile: bool,
-        ty: Type,
-        ptr: ValueId,
-    ) -> (InstId, ValueId) {
+    pub fn make_load(&mut self, block: BlockId, volatile: bool, ty: Type, ptr: ValueId) -> ValueId {
         self.append_inst(block, InstKind::Load { volatile }, ty, vec![ptr])
     }
 
-    pub fn make_element_ptr(
-        &mut self,
-        block: BlockId,
-        base: ValueId,
-        offset: ValueId,
-    ) -> (InstId, ValueId) {
+    pub fn make_element_ptr(&mut self, block: BlockId, base: ValueId, offset: ValueId) -> ValueId {
         self.append_inst(block, InstKind::ElementPtr, Type::Ptr, vec![base, offset])
     }
 
-    pub fn make_nalloca(
-        &mut self,
-        block: BlockId,
-        ty: Type,
-        operands: Vec<ValueId>,
-    ) -> (InstId, ValueId) {
+    pub fn make_nalloca(&mut self, block: BlockId, ty: Type, operands: Vec<ValueId>) -> ValueId {
         self.append_inst(block, InstKind::NAlloca, ty, operands)
     }
 
@@ -719,18 +713,17 @@ impl FunctionDef {
         ty: Type,
         func: FuncId,
         operands: Vec<ValueId>,
-    ) -> (InstId, ValueId) {
+    ) -> ValueId {
         self.append_inst(block, InstKind::Call(func), ty, operands)
     }
 
-    pub fn make_ret(&mut self, block: BlockId, value: Option<ValueId>) -> (InstId, ValueId) {
+    pub fn make_ret(&mut self, block: BlockId, value: Option<ValueId>) {
         let mut operands = vec![];
         if let Some(v) = value {
             operands.push(v);
         }
-        let (i, v) = self.append_inst(block, InstKind::Ret, Type::Void, operands);
+        let (i, _) = self.append_inst_detail(block, InstKind::Ret, Type::Void, operands);
         self.set_terminator(block, i);
-        (i, v)
     }
 
     fn set_terminator(&mut self, block: BlockId, inst: InstId) {
@@ -738,15 +731,9 @@ impl FunctionDef {
         blk.term = Some(inst);
     }
 
-    pub fn make_jump(
-        &mut self,
-        block: BlockId,
-        target: BlockId,
-        params: Vec<ValueId>,
-    ) -> (InstId, ValueId) {
-        let (i, v) = self.append_inst(block, InstKind::Jump(target), Type::Void, params);
+    pub fn make_jump(&mut self, block: BlockId, target: BlockId, params: Vec<ValueId>) {
+        let (i, _) = self.append_inst_detail(block, InstKind::Jump(target), Type::Void, params);
         self.set_terminator(block, i);
-        (i, v)
     }
 
     pub fn make_jumpif(
@@ -757,14 +744,14 @@ impl FunctionDef {
         then_params: Vec<ValueId>,
         else_block: BlockId,
         else_params: Vec<ValueId>,
-    ) -> (InstId, ValueId) {
+    ) {
         let mut operands = Vec::with_capacity(1 + then_params.len() + else_params.len());
 
         operands.push(cond);
         operands.extend(then_params);
         operands.extend(else_params);
 
-        let (i, v) = self.append_inst(
+        let (i, _) = self.append_inst_detail(
             block,
             InstKind::JumpIf {
                 then_block,
@@ -774,7 +761,6 @@ impl FunctionDef {
             operands,
         );
         self.set_terminator(block, i);
-        (i, v)
     }
 
     fn reassign_values(&mut self) {
@@ -1106,6 +1092,7 @@ impl FunctionDef {
 }
 
 #[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Function {
     pub name: String,
     pub signature: FunctionSignature,
@@ -1153,6 +1140,7 @@ impl Function {
 }
 
 #[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Module {
     pub name: String,
     pub functions: HashMap<FuncId, Function>,

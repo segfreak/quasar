@@ -1,5 +1,6 @@
+use std::collections::{HashMap, HashSet};
+
 use crate::ir::*;
-use quasar::*;
 
 pub fn dse(m: &mut Module, f: FuncId) -> bool {
     let def = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();

@@ -6,8 +6,8 @@ use cranelift::prelude::*;
 use cranelift_module::{Linkage as CLinkage, Module};
 use cranelift_object::{ObjectBuilder, ObjectModule};
 
-use quasar::HashMap;
-use quasar::{FunctionSignature, Linkage, Type};
+use fearcore::{FunctionSignature, Linkage, Type};
+use std::collections::HashMap;
 
 use crate::ir::*;
 
@@ -140,7 +140,7 @@ impl CraneliftLowerer {
 
         let mut func_refs: HashMap<cranelift_module::FuncId, cranelift::codegen::ir::FuncRef> =
             HashMap::new();
-        for (_, &cl_callee_fid) in &self.functions {
+        for &cl_callee_fid in self.functions.values() {
             let fref = self
                 .module
                 .declare_func_in_func(cl_callee_fid, &mut cl_func);
@@ -154,7 +154,7 @@ impl CraneliftLowerer {
         let mut blocks: HashMap<BlockId, cranelift::prelude::Block> = HashMap::new();
 
         let entry = def.entry;
-        for (&bid, _) in &def.blocks {
+        for &bid in def.blocks.keys() {
             let cl_block = fx.create_block();
             blocks.insert(bid, cl_block);
         }
@@ -206,7 +206,7 @@ impl CraneliftLowerer {
             }
         }
 
-        for (&bid, _) in &def.blocks {
+        for &bid in def.blocks.keys() {
             if bid != entry {
                 fx.seal_block(blocks[&bid]);
             }

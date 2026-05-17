@@ -1,5 +1,6 @@
+use std::collections::{HashMap, HashSet};
+
 use crate::ir::*;
-use quasar::*;
 
 type DomSet = HashSet<BlockId>;
 

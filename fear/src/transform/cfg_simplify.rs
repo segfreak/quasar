@@ -1,7 +1,6 @@
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 
 use crate::ir::*;
-use quasar::*;
 
 pub fn cfg_simplify(m: &mut Module, fid: FuncId) -> bool {
     let func = match m.get_function_mut(fid).and_then(|f| f.get_definition_mut()) {

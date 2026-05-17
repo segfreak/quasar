@@ -1,11 +1,15 @@
 [package]
-name = "mirssa"
+name = "fear"
 version = "0.0.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
 [features]
-default = ["cranelift", "hashbrown"]
-hashbrown = ["quasar/hashbrown"]
+default = ["cranelift", "binary-ir"]
+serde = ["dep:serde", "fearcore/serde"]
+binary-ir = ["serde", "dep:bincode", "dep:zstd"]
 llvm = ["dep:inkwell"]
 cranelift = [
   "dep:cranelift",
@@ -20,9 +24,12 @@ log = "0.4.29"
 pretty_env_logger = "0.5.0"
 thiserror = "2.0.18"
 inkwell = { version = "0.9.0", optional = true }
-quasar = { workspace = true }
+fearcore = { workspace = true }
 target-lexicon = { version = "0.13.5" }
 cranelift = { version = "0.131.1", optional = true }
 cranelift-module = { version = "0.131.1", optional = true }
 cranelift-frontend = { version = "0.131.1", optional = true }
 cranelift-object = { version = "0.131.1", optional = true }
+serde = { version = "1.0.228", features = ["derive"], optional = true }
+bincode = { version = "1.3", optional = true }
+zstd = { version = "0.13", optional = true }

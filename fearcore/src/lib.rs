@@ -2,17 +2,9 @@ pub mod target;
 
 use enum_display::EnumDisplay;
 
-#[cfg(not(feature = "hashbrown"))]
-pub use std::collections::HashMap;
-#[cfg(not(feature = "hashbrown"))]
-pub use std::collections::HashSet;
-
-#[cfg(feature = "hashbrown")]
-pub use hashbrown::HashMap;
-#[cfg(feature = "hashbrown")]
-pub use hashbrown::HashSet;
-
+#[repr(C)]
 #[derive(Debug, EnumDisplay, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Type {
     #[default]
     #[display("void")]
@@ -64,6 +56,7 @@ impl Type {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FunctionSignature {
     pub params: Vec<Type>,
     pub returns: Type,
@@ -76,6 +69,7 @@ impl FunctionSignature {
 }
 
 #[derive(Debug, EnumDisplay, Default, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Linkage {
     /// Function Definition:  Visible outside module, single strong definition
     /// Function Declaration: External Symbol declaration

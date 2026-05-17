@@ -1,4 +1,4 @@
-use quasar::Type;
+use fearcore::Type;
 
 use crate::ir::*;
 
@@ -129,7 +129,7 @@ impl Module {
 
         s.push_str(&format!("# module \"{}\"\n\n", self.name));
 
-        for (_fid, func) in &self.functions {
+        for func in self.functions.values() {
             let def = match func.get_definition() {
                 Some(d) => d,
                 None => {

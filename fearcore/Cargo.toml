@@ -1,0 +1,12 @@
+[package]
+name = "fearcore"
+version = "0.0.0"
+edition = "2024"
+
+[features]
+default = []
+serde = ["dep:serde"]
+
+[dependencies]
+enum-display = "0.2.1"
+serde = { version = "1.0.228", features = ["derive"], optional = true }

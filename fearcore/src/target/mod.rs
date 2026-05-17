@@ -3,6 +3,7 @@ use enum_display::EnumDisplay;
 pub const HOST_DESC: TargetDescription = host_description();
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TargetDescription {
     pub pointer_size: usize,
 }
@@ -25,6 +26,7 @@ const fn host_description() -> TargetDescription {
 }
 
 #[derive(Debug, Clone, Copy, EnumDisplay, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CallingConvention {
     /// C ABI
     #[default]

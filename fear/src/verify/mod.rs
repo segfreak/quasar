@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use crate::ir::*;
-use quasar::*;
+use fearcore::*;
 
 use thiserror::Error;
 
