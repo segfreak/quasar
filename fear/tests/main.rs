@@ -1,6 +1,9 @@
-use std::fs;
+use std::{
+    fs::{self, File},
+    io::BufWriter,
+};
 
-use fear::ir::*;
+use fear::{binary, ir::*};
 use fearcore::{target::CallingConvention, *};
 
 fn foo_def() -> FunctionDef {
@@ -245,6 +248,9 @@ fn test() {
     m.verify().expect("post-opt verify error");
     fs::write("test.dot", m.dump_dot()).expect("fs::write error");
     fs::write("test.mir", m.dump()).expect("fs::write error");
+    let file = File::create("test.bin").unwrap();
+    let writer = BufWriter::new(file);
+    binary::write(&m, writer).unwrap();
 
     #[cfg(feature = "llvm")]
     {
