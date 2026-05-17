@@ -73,13 +73,16 @@ pub enum VerifyError {
 
     #[error("arg type mismatch: fn{0} param {1}, expects {2:?} got {3:?}")]
     FuncArgTypeMismatch(FuncId, usize, Type, Type),
+
+    #[error("bad entry parameters in fn{0}")]
+    BadEntryParams(FuncId),
 }
 
 impl Module {
     pub fn verify(&self) -> Result<(), HashMap<FuncId, VerifyError>> {
         let mut errs = HashMap::<FuncId, VerifyError>::new();
         for (id, f) in self.iter_functions() {
-            if let Err(e) = self.verify_function(f) {
+            if let Err(e) = self.verify_function(id, f) {
                 errs.insert(id, e.clone());
                 log::error!("verify error in {}: {}", f.name, e);
             }
@@ -92,9 +95,29 @@ impl Module {
         }
     }
 
-    fn verify_function(&self, f: &Function) -> Result<(), VerifyError> {
-        let sig = f.signature.clone();
-        let f = f.get_definition().unwrap();
+    fn verify_function(&self, id: FuncId, fun: &Function) -> Result<(), VerifyError> {
+        let sig = fun.signature.clone();
+        let f = fun.get_definition().unwrap();
+
+        // entry block verify
+        let entry = &f.blocks[&f.entry];
+
+        if entry.params != f.params {
+            log::error!(
+                "{}: entry.params = {:?}, f.params = {:?}",
+                fun.name,
+                entry.params,
+                f.params
+            );
+            return Err(VerifyError::BadEntryParams(id));
+        }
+        if entry.params.len() != sig.params.len() {
+            return Err(VerifyError::FuncArgCountMismatch(
+                id,
+                sig.params.len(),
+                entry.params.len(),
+            ));
+        }
 
         // block verify
         for (bid, block) in &f.blocks {

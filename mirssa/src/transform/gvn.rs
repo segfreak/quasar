@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::analysis::dom::Dominance;
 use crate::ir::*;
 use quasar::*;

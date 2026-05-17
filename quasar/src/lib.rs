@@ -15,21 +15,21 @@ pub use hashbrown::HashSet;
 #[derive(Debug, EnumDisplay, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Type {
     #[default]
-    #[display("()")]
+    #[display("void")]
     Void,
-    #[display("c")]
+    #[display("bool")]
     I1,
-    #[display("b")]
+    #[display("i8")]
     I8,
-    #[display("w")]
+    #[display("i16")]
     I16,
-    #[display("l")]
+    #[display("i32")]
     I32,
-    #[display("q")]
+    #[display("i64")]
     I64,
-    #[display("f")]
+    #[display("f32")]
     F32,
-    #[display("lf")]
+    #[display("f64")]
     F64,
     #[display("ptr")]
     Ptr,
@@ -75,11 +75,11 @@ impl FunctionSignature {
 pub enum Linkage {
     /// Function Definition:  Visible outside module, single strong definition
     /// Function Declaration: External Symbol declaration
+    #[default]
     #[display("external")]
     External,
 
     /// Function Definition:  Invisible outside module
-    #[default]
     #[display("internal")]
     Internal,
 

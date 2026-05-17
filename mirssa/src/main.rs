@@ -242,9 +242,12 @@ fn main() {
         .expect("define_function error");
     m.verify().expect("pre-opt verify error");
     fs::write("preopt-mirssa.dot", m.dump_dot()).expect("fs::write error");
+    fs::write("preopt-mirssa.mir", m.dump()).expect("fs::write error");
+
     m.optimize();
     m.verify().expect("post-opt verify error");
     fs::write("mirssa.dot", m.dump_dot()).expect("fs::write error");
+    fs::write("mirssa.mir", m.dump()).expect("fs::write error");
     let llvm_ctx = Context::create();
     let mut lowerer = LlvmLowerer::new(&llvm_ctx, "mirssa");
     lowerer.lower_module(&m);

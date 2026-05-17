@@ -81,7 +81,7 @@ fn fold_const_branches(f: &mut FunctionDef) -> bool {
     let changed = !rewrites.is_empty();
 
     if changed {
-        f.recompute_cfg();
+        f.recompute_control_flow();
     }
 
     changed

@@ -7,7 +7,7 @@ use inkwell::{
     AddressSpace, IntPredicate,
 };
 
-use std::collections::HashMap;
+use quasar::HashMap;
 
 use quasar::{FunctionSignature, Linkage, Type};
 
@@ -39,10 +39,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
             functions: HashMap::new(),
         }
     }
-
-    // ---------------------------
-    // TYPE MAPPING
-    // ---------------------------
 
     pub fn map_type(&self, ty: Type) -> BasicTypeEnum<'ctx> {
         let ctx = self.context;
@@ -150,10 +146,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
         }
     }
 
-    // ---------------------------
-    // ENTRY
-    // ---------------------------
-
     pub fn get_module(&self) -> &inkwell::module::Module<'ctx> {
         &self.module
     }
@@ -225,10 +217,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
         self.functions.insert(fid, llvm_fn);
     }
 
-    // ---------------------------
-    // PHI LOWERING
-    // ---------------------------
-
     fn build_phi_nodes(&mut self, def: &FunctionDef) {
         for (&bid, block) in &def.blocks {
             if bid == def.entry {
@@ -248,13 +236,9 @@ impl<'ctx> LlvmLowerer<'ctx> {
         }
     }
 
-    // ---------------------------
-    // BLOCK COMPILATION
-    // ---------------------------
-
     fn fill_phi_incoming(&mut self, def: &FunctionDef, bid: BlockId) {
         if bid == def.entry {
-            return; // entry params are function args
+            return; /* entry params are function args */
         }
 
         let block = &def.blocks[&bid];
@@ -269,7 +253,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 let pred_block = &def.blocks[&pred_bid];
                 let pred_bb = self.blocks[&pred_bid];
 
-                // Find the terminator of the predecessor.
                 let term_id = match pred_block.term {
                     Some(t) => t,
                     None => continue,
@@ -305,9 +288,9 @@ impl<'ctx> LlvmLowerer<'ctx> {
                         }
                     }
 
-                    other => panic!(
+                    oth => panic!(
                         "unexpected terminator kind {:?} in predecessor B{}",
-                        other, pred_bid
+                        oth, pred_bid
                     ),
                 };
 
@@ -357,9 +340,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 self.values.insert(inst.result.unwrap(), val);
             }
 
-            // ------------------------------------------------------------------
-            // Integer arithmetic
-            // ------------------------------------------------------------------
             InstKind::Add => {
                 self.bin_int(def, inst, |b, l, r| b.build_int_add(l, r, "add").unwrap())
             }
@@ -410,9 +390,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 });
             }
 
-            // ------------------------------------------------------------------
-            // Bitwise / shifts
-            // ------------------------------------------------------------------
             InstKind::And => self.bin_int(def, inst, |b, l, r| b.build_and(l, r, "and").unwrap()),
             InstKind::Or => self.bin_int(def, inst, |b, l, r| b.build_or(l, r, "or").unwrap()),
             InstKind::Xor => self.bin_int(def, inst, |b, l, r| b.build_xor(l, r, "xor").unwrap()),
@@ -426,9 +403,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 b.build_right_shift(l, r, true, "ashr").unwrap()
             }),
 
-            // ------------------------------------------------------------------
-            // Comparison
-            // ------------------------------------------------------------------
             InstKind::Cmp(kind) => {
                 let lhs = self.get_int_value(def, inst.operands[0]);
                 let rhs = self.get_int_value(def, inst.operands[1]);
@@ -440,9 +414,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 self.values.insert(inst.result.unwrap(), val.into());
             }
 
-            // ------------------------------------------------------------------
-            // Memory
-            // ------------------------------------------------------------------
             InstKind::Alloca(ty) => {
                 let llvm_ty = self.map_type(*ty);
                 let ptr = self.builder.build_alloca(llvm_ty, "alloca").unwrap();
@@ -475,7 +446,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
             InstKind::ElementPtr => {
                 let base = self.get(inst.operands[0]).into_pointer_value();
                 let offset = self.get_int_value(def, inst.operands[1]);
-                // GEP on i8* (opaque pointer model): byte-offset arithmetic.
                 let i8_ty = self.context.i8_type();
                 let ptr = unsafe {
                     self.builder
@@ -485,9 +455,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 self.values.insert(inst.result.unwrap(), ptr.into());
             }
 
-            // ------------------------------------------------------------------
-            // Function calls
-            // ------------------------------------------------------------------
             InstKind::Call(fid) => {
                 let callee = self.functions[fid];
                 let args: Vec<BasicValueEnum> =
@@ -506,9 +473,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 }
             }
 
-            // ------------------------------------------------------------------
-            // Casts
-            // ------------------------------------------------------------------
             InstKind::Cast(kind) => {
                 let src_val = self.get(inst.operands[0]);
                 let dst_ty = def.get_type(inst.result.unwrap());
@@ -516,9 +480,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 self.values.insert(inst.result.unwrap(), result);
             }
 
-            // ------------------------------------------------------------------
-            // Control flow
-            // ------------------------------------------------------------------
             InstKind::Jump(target) => {
                 let target_bb = self.blocks[target];
                 self.builder.build_unconditional_branch(target_bb).unwrap();
@@ -548,10 +509,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
             }
         }
     }
-
-    // ---------------------------
-    // HELPERS
-    // ---------------------------
 
     fn lower_cast(
         &self,

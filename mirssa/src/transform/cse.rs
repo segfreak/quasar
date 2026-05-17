@@ -1,6 +1,5 @@
 use crate::ir::*;
 use quasar::*;
-use std::collections::HashMap;
 
 fn canonical_ops(kind: &InstKind, mut ops: Vec<(ValueId, Type)>) -> Vec<(ValueId, Type)> {
     match kind {
