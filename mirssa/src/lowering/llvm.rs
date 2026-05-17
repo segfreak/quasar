@@ -2,8 +2,8 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::Module,
-    types::{AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum, FunctionType, IntType},
-    values::{BasicValue, BasicValueEnum, FunctionValue, IntValue, PhiValue},
+    types::{AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum, FloatType, FunctionType, IntType},
+    values::{BasicValue, BasicValueEnum, FloatValue, FunctionValue, IntValue, PhiValue},
     AddressSpace, IntPredicate,
 };
 
@@ -92,6 +92,16 @@ impl<'ctx> LlvmLowerer<'ctx> {
             Type::I32 => ctx.i32_type(),
             Type::I64 => ctx.i64_type(),
             _ => panic!("not int"),
+        }
+    }
+
+    pub fn map_float_type(&self, ty: Type) -> FloatType<'ctx> {
+        let ctx = self.context;
+
+        match ty {
+            Type::F32 => ctx.f32_type(),
+            Type::F64 => ctx.f64_type(),
+            _ => panic!("not float"),
         }
     }
 
@@ -359,7 +369,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
             InstKind::Mul => {
                 self.bin_int(def, inst, |b, l, r| b.build_int_mul(l, r, "mul").unwrap())
             }
-
             InstKind::Div { signed } => {
                 let s = *signed;
                 self.bin_int(def, inst, move |b, l, r| {
@@ -370,7 +379,6 @@ impl<'ctx> LlvmLowerer<'ctx> {
                     }
                 });
             }
-
             InstKind::Rem { signed } => {
                 let s = *signed;
                 self.bin_int(def, inst, move |b, l, r| {
@@ -379,6 +387,26 @@ impl<'ctx> LlvmLowerer<'ctx> {
                     } else {
                         b.build_int_unsigned_rem(l, r, "udiv").unwrap()
                     }
+                });
+            }
+
+            InstKind::FAdd => {
+                self.bin_float(def, inst, |b, l, r| b.build_float_add(l, r, "add").unwrap())
+            }
+            InstKind::FSub => {
+                self.bin_float(def, inst, |b, l, r| b.build_float_sub(l, r, "sub").unwrap())
+            }
+            InstKind::FMul => {
+                self.bin_float(def, inst, |b, l, r| b.build_float_mul(l, r, "mul").unwrap())
+            }
+            InstKind::FDiv => {
+                self.bin_float(def, inst, move |b, l, r| {
+                    b.build_float_div(l, r, "udiv").unwrap()
+                });
+            }
+            InstKind::FRem => {
+                self.bin_float(def, inst, move |b, l, r| {
+                    b.build_float_rem(l, r, "sdiv").unwrap()
                 });
             }
 
@@ -585,6 +613,20 @@ impl<'ctx> LlvmLowerer<'ctx> {
         self.values.insert(inst.result.unwrap(), res.into());
     }
 
+    fn bin_float<F>(&mut self, def: &FunctionDef, inst: &Inst, f: F)
+    where
+        F: Fn(
+            &Builder<'ctx>,
+            inkwell::values::FloatValue<'ctx>,
+            inkwell::values::FloatValue<'ctx>,
+        ) -> inkwell::values::FloatValue<'ctx>,
+    {
+        let a = self.get_float_value(def, inst.operands[0]);
+        let b = self.get_float_value(def, inst.operands[1]);
+        let res = f(&self.builder, a, b);
+        self.values.insert(inst.result.unwrap(), res.into());
+    }
+
     fn get_or_const(&self, def: &FunctionDef, v: ValueId) -> BasicValueEnum<'ctx> {
         if let Some(c) = def.try_get_iconst(v) {
             let ty = self.map_int_type(def.get_type(v));
@@ -600,6 +642,15 @@ impl<'ctx> LlvmLowerer<'ctx> {
             ty.const_int(c as u64, true)
         } else {
             self.get(v).into_int_value()
+        }
+    }
+
+    fn get_float_value(&self, def: &FunctionDef, v: ValueId) -> FloatValue<'ctx> {
+        if let Some(c) = def.get_fconst(v) {
+            let ty = self.map_float_type(def.get_type(v));
+            ty.const_float(c)
+        } else {
+            self.get(v).into_float_value()
         }
     }
 

@@ -67,6 +67,7 @@ pub enum CastKind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InstKind {
     IConst(i64),
+    // float64 raw bits
     FConst(u64),
 
     Add,
@@ -79,6 +80,12 @@ pub enum InstKind {
     Rem {
         signed: bool,
     },
+
+    FAdd,
+    FSub,
+    FMul,
+    FDiv,
+    FRem,
 
     And,
     Or,
@@ -126,7 +133,22 @@ impl InstKind {
             IConst(_) | FConst(_) => 0,
 
             // binary instructions
-            Add | Sub | Mul | Div { .. } | Rem { .. } | And | Or | Xor | LShl | LShr | AShr => 2,
+            Add
+            | Sub
+            | Mul
+            | Div { .. }
+            | Rem { .. }
+            | FAdd
+            | FSub
+            | FMul
+            | FDiv
+            | FRem
+            | And
+            | Or
+            | Xor
+            | LShl
+            | LShr
+            | AShr => 2,
             Cmp(_) => 2,
 
             // type is not a operand
@@ -150,9 +172,10 @@ impl InstKind {
 
             // arithmetic (cheap ALU)
             Self::Add | Self::Sub => 2,
-
+            Self::FAdd | Self::FSub => 4,
             // multiply/divide are expensive
             Self::Mul | Self::Div { .. } | Self::Rem { .. } => 4,
+            Self::FMul | Self::FDiv | Self::FRem => 5,
 
             // bitwise ops (very cheap)
             Self::And | Self::Or | Self::Xor => 1,
@@ -425,6 +448,18 @@ impl FunctionDef {
 
         match self.insts[&val.def].kind {
             InstKind::IConst(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    pub fn get_fconst(&self, v: ValueId) -> Option<f64> {
+        let val = &self.values[&v];
+        if val.def == InstId::MAX {
+            return None;
+        }
+
+        match self.insts[&val.def].kind {
+            InstKind::FConst(x) => Some(f64::from_bits(x)),
             _ => None,
         }
     }
@@ -1118,6 +1153,26 @@ impl FunctionDef {
                 result_ty,
                 inst.operands[0],
                 inst.operands[1]
+            ),
+            InstKind::FAdd => format!(
+                "fadd.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::FSub => format!(
+                "fsub.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::FMul => format!(
+                "fmul.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::FDiv => format!(
+                "fdiv.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::FRem => format!(
+                "frem.{} %{}, %{}",
+                result_ty, inst.operands[0], inst.operands[1]
             ),
             InstKind::And => format!(
                 "and.{} %{}, %{}",
