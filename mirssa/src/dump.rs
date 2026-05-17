@@ -52,6 +52,7 @@ impl FunctionDef {
             InstKind::AShr => format!("ashr %{}, %{}", inst.operands[0], inst.operands[1]),
 
             InstKind::Cmp(k) => format!("cmp {} %{}, %{}", k, inst.operands[0], inst.operands[1]),
+            InstKind::FCmp(k) => format!("fcmp {} %{}, %{}", k, inst.operands[0], inst.operands[1]),
 
             InstKind::Load { volatile } => format!(
                 "{}load.{} %{}",

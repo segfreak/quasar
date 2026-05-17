@@ -1,0 +1,13 @@
+$ cargo build --features ...
+
+FEATURES
+
+llvm
+  Enables LLVM backend support for code generation.
+  Required dependencies:
+    - inkwell
+    - llvm (system or bundled version compatible with inkwell)
+
+cranelift
+  Enables Cranelift backend support for code generation.
+  No additional mandatory system dependencies (handled via Cranelift crates).

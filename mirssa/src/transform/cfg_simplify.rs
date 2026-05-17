@@ -61,7 +61,7 @@ fn fold_const_branches(f: &mut FunctionDef) -> bool {
         } = inst.kind
         {
             let (cond, then_params, else_params) = f.get_jumpif_params(inst).unwrap();
-            if let Some(v) = f.try_get_iconst(cond) {
+            if let Some(v) = f.get_iconst(cond) {
                 let target = if v != 0 {
                     (then_block, then_params.to_vec())
                 } else {

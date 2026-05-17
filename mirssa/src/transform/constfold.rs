@@ -112,16 +112,16 @@ pub fn constfold(m: &mut Module, f: FuncId) -> bool {
             InstKind::Cmp(kind) => match (c[0], c[1]) {
                 (Some(a), Some(b)) => {
                     let r = match kind {
-                        CmpKind::Eq => a == b,
-                        CmpKind::Ne => a != b,
-                        CmpKind::Lt => a < b,
-                        CmpKind::Le => a <= b,
-                        CmpKind::Gt => a > b,
-                        CmpKind::Ge => a >= b,
-                        CmpKind::ULt => (a as u64) < (b as u64),
-                        CmpKind::ULe => (a as u64) <= (b as u64),
-                        CmpKind::UGt => (a as u64) > (b as u64),
-                        CmpKind::UGe => (a as u64) >= (b as u64),
+                        IntCmp::Eq => a == b,
+                        IntCmp::Ne => a != b,
+                        IntCmp::Lt => a < b,
+                        IntCmp::Le => a <= b,
+                        IntCmp::Gt => a > b,
+                        IntCmp::Ge => a >= b,
+                        IntCmp::ULt => (a as u64) < (b as u64),
+                        IntCmp::ULe => (a as u64) <= (b as u64),
+                        IntCmp::UGt => (a as u64) > (b as u64),
+                        IntCmp::UGe => (a as u64) >= (b as u64),
                     };
                     Some(r as i64)
                 }

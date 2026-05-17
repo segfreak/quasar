@@ -29,7 +29,7 @@ pub struct Inst {
 }
 
 #[derive(Debug, EnumDisplay, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CmpKind {
+pub enum IntCmp {
     #[display("eq")]
     Eq,
     #[display("ne")]
@@ -42,6 +42,38 @@ pub enum CmpKind {
     Gt,
     #[display("ge")]
     Ge,
+    #[display("ult")]
+    ULt,
+    #[display("ule")]
+    ULe,
+    #[display("ugt")]
+    UGt,
+    #[display("uge")]
+    UGe,
+}
+
+#[derive(Debug, EnumDisplay, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FloatCmp {
+    #[display("ord")]
+    Ord,
+    #[display("oeq")]
+    OEq,
+    #[display("one")]
+    ONe,
+    #[display("olt")]
+    OLt,
+    #[display("ole")]
+    OLe,
+    #[display("ogt")]
+    OGt,
+    #[display("oge")]
+    OGe,
+    #[display("uno")]
+    Uno,
+    #[display("ueq")]
+    UEq,
+    #[display("une")]
+    UNe,
     #[display("ult")]
     ULt,
     #[display("ule")]
@@ -94,9 +126,10 @@ pub enum InstKind {
     LShl,
     LShr,
     AShr,
-
     /// cmp {kind} {lhs}, {rhs}
-    Cmp(CmpKind),
+    Cmp(IntCmp),
+    /// fcmp {kind} {lhs}, {rhs}
+    FCmp(FloatCmp),
     /// alloca {type}
     Alloca(Type),
     /// alloca {size}
@@ -154,7 +187,7 @@ impl InstKind {
             | LShl
             | LShr
             | AShr => 2,
-            Cmp(_) => 2,
+            Cmp(_) | FCmp(_) => 2,
 
             // type is not a operand
             Alloca(_) => 0,
@@ -189,7 +222,7 @@ impl InstKind {
             Self::LShl | Self::LShr | Self::AShr => 1,
 
             // comparisons (ALU + flag logic)
-            Self::Cmp(_) => 2,
+            Self::Cmp(_) | Self::FCmp(_) => 2,
 
             // memory ops (expensive due to potential cache/memory)
             Self::Load { .. } => 5,
@@ -502,19 +535,6 @@ impl FunctionDef {
         }
     }
 
-    pub fn try_get_iconst(&self, v: ValueId) -> Option<i64> {
-        let val = self.values.get(&v)?;
-        if val.def == InstId::MAX {
-            return None;
-        }
-
-        let inst = self.insts.get(&val.def)?;
-        match inst.kind {
-            InstKind::IConst(x) => Some(x),
-            _ => None,
-        }
-    }
-
     pub fn is_value_valid(&self, v: ValueId) -> bool {
         self.values.contains_key(&v)
     }
@@ -548,11 +568,21 @@ impl FunctionDef {
     pub fn make_cmp(
         &mut self,
         block: BlockId,
-        kind: CmpKind,
+        kind: IntCmp,
         lhs: ValueId,
         rhs: ValueId,
     ) -> (InstId, ValueId) {
         self.make_binary(block, InstKind::Cmp(kind), Type::I1, lhs, rhs)
+    }
+
+    pub fn make_fcmp(
+        &mut self,
+        block: BlockId,
+        kind: FloatCmp,
+        lhs: ValueId,
+        rhs: ValueId,
+    ) -> (InstId, ValueId) {
+        self.make_binary(block, InstKind::FCmp(kind), Type::I1, lhs, rhs)
     }
 
     pub fn make_cast(

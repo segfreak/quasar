@@ -1,8 +1,6 @@
 use std::fs;
 
-use inkwell::context::Context;
-use mirssa::{ir::*, lowering::llvm::LlvmLowerer, parser::MirParser};
-use pest::Parser;
+use mirssa::ir::*;
 use quasar::{target::CallingConvention, *};
 
 fn foo_def() -> FunctionDef {
@@ -70,7 +68,7 @@ fn opt_def() -> FunctionDef {
 
     // condition: (x * 2 + 0) > 10
     let ten = fdef.make_iconst(entry, Type::I32, 10);
-    let cond = fdef.make_cmp(entry, CmpKind::Gt, x2_plus0, ten);
+    let cond = fdef.make_cmp(entry, IntCmp::Gt, x2_plus0, ten);
 
     let then_bb = fdef.new_block();
     let else_bb = fdef.new_block();
@@ -102,7 +100,7 @@ fn fib_def(fib_id: FuncId) -> FunctionDef {
     let one = f.make_iconst(entry, Type::I32, 1);
 
     // n <= 1
-    let cond = f.make_cmp(entry, CmpKind::Le, n, one).1;
+    let cond = f.make_cmp(entry, IntCmp::Le, n, one).1;
 
     let then_bb = f.new_block();
     let else_bb = f.new_block();
@@ -141,7 +139,7 @@ fn fact_tr_def(fact_id: FuncId) -> FunctionDef {
 
     let one = f.make_iconst(entry, Type::I32, 1);
 
-    let cond = f.make_cmp(entry, CmpKind::Le, n, one).1;
+    let cond = f.make_cmp(entry, IntCmp::Le, n, one).1;
 
     let then_bb = f.new_block();
     let else_bb = f.new_block();
@@ -173,7 +171,7 @@ fn example1_def() -> FunctionDef {
     let zero = f.make_iconst(entry, Type::I32, 0);
     let one = f.make_iconst(entry, Type::I32, 1);
 
-    let cond = f.make_cmp(entry, CmpKind::Lt, zero, one).1;
+    let cond = f.make_cmp(entry, IntCmp::Lt, zero, one).1;
     f.make_jumpif(entry, cond, then_bb, vec![], else_bb, vec![]);
 
     f.make_ret(then_bb, Some(one));
@@ -248,10 +246,39 @@ fn main() {
     m.verify().expect("post-opt verify error");
     fs::write("mirssa.dot", m.dump_dot()).expect("fs::write error");
     fs::write("mirssa.mir", m.dump()).expect("fs::write error");
-    let llvm_ctx = Context::create();
-    let mut lowerer = LlvmLowerer::new(&llvm_ctx, "mirssa");
-    lowerer.lower_module(&m);
-    let llvm_module = lowerer.get_module();
-    fs::write("mirssa.ll", llvm_module.print_to_string().to_str().unwrap())
-        .expect("fs::write error");
+
+    #[cfg(feature = "llvm")]
+    {
+        use inkwell::context::Context;
+        use mirssa::lowering::llvm::LlvmLowerer;
+
+        let llvm_ctx = Context::create();
+        let mut lowerer = LlvmLowerer::new(&llvm_ctx, "mirssa");
+        lowerer.lower_module(&m);
+        let llvm_module = lowerer.get_module();
+        fs::write("mirssa.ll", llvm_module.print_to_string().to_str().unwrap())
+            .expect("fs::write error");
+    }
+
+    #[cfg(feature = "cranelift")]
+    {
+        use cranelift::codegen::settings::Configurable;
+        use cranelift_module::default_libcall_names;
+        use mirssa::lowering::cranelift::CraneliftLowerer;
+
+        let mut flag_builder = cranelift::codegen::settings::builder();
+        flag_builder.set("use_colocated_libcalls", "false").unwrap();
+        flag_builder.set("is_pic", "false").unwrap();
+        let flags = cranelift::codegen::settings::Flags::new(flag_builder);
+
+        let isa = cranelift::codegen::isa::lookup(target_lexicon::Triple::host())
+            .unwrap()
+            .finish(flags)
+            .unwrap();
+
+        let mut lowerer = CraneliftLowerer::new(isa, default_libcall_names(), "mirssa");
+        lowerer.lower_module(&m);
+        let object_bytes = lowerer.finish();
+        fs::write("mirssa.o", object_bytes).expect("fs::write error");
+    }
 }

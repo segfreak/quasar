@@ -4,7 +4,7 @@ use inkwell::{
     module::Module,
     types::{AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum, FloatType, FunctionType, IntType},
     values::{BasicValue, BasicValueEnum, FloatValue, FunctionValue, IntValue, PhiValue},
-    AddressSpace, IntPredicate,
+    AddressSpace, FloatPredicate, IntPredicate,
 };
 
 use quasar::HashMap;
@@ -131,18 +131,39 @@ impl<'ctx> LlvmLowerer<'ctx> {
         }
     }
 
-    fn map_int_pred(&self, kind: CmpKind) -> IntPredicate {
+    fn map_int_pred(&self, kind: IntCmp) -> IntPredicate {
         match kind {
-            CmpKind::Eq => IntPredicate::EQ,
-            CmpKind::Ne => IntPredicate::NE,
-            CmpKind::Lt => IntPredicate::SLT,
-            CmpKind::Le => IntPredicate::SLE,
-            CmpKind::Gt => IntPredicate::SGT,
-            CmpKind::Ge => IntPredicate::SGE,
-            CmpKind::ULt => IntPredicate::ULT,
-            CmpKind::ULe => IntPredicate::ULE,
-            CmpKind::UGt => IntPredicate::UGT,
-            CmpKind::UGe => IntPredicate::UGE,
+            IntCmp::Eq => IntPredicate::EQ,
+            IntCmp::Ne => IntPredicate::NE,
+            IntCmp::Lt => IntPredicate::SLT,
+            IntCmp::Le => IntPredicate::SLE,
+            IntCmp::Gt => IntPredicate::SGT,
+            IntCmp::Ge => IntPredicate::SGE,
+            IntCmp::ULt => IntPredicate::ULT,
+            IntCmp::ULe => IntPredicate::ULE,
+            IntCmp::UGt => IntPredicate::UGT,
+            IntCmp::UGe => IntPredicate::UGE,
+        }
+    }
+
+    fn map_float_pred(&self, kind: FloatCmp) -> FloatPredicate {
+        match kind {
+            // ordered
+            FloatCmp::Ord => FloatPredicate::ORD,
+            FloatCmp::OEq => FloatPredicate::OEQ,
+            FloatCmp::ONe => FloatPredicate::ONE,
+            FloatCmp::OLt => FloatPredicate::OLT,
+            FloatCmp::OLe => FloatPredicate::OLE,
+            FloatCmp::OGt => FloatPredicate::OGT,
+            FloatCmp::OGe => FloatPredicate::OGE,
+            // unordered
+            FloatCmp::Uno => FloatPredicate::UNO,
+            FloatCmp::UEq => FloatPredicate::UEQ,
+            FloatCmp::UNe => FloatPredicate::UNE,
+            FloatCmp::ULt => FloatPredicate::ULT,
+            FloatCmp::ULe => FloatPredicate::ULE,
+            FloatCmp::UGt => FloatPredicate::UGT,
+            FloatCmp::UGe => FloatPredicate::UGE,
         }
     }
 
@@ -415,6 +436,17 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 self.values.insert(inst.result.unwrap(), val.into());
             }
 
+            InstKind::FCmp(kind) => {
+                let lhs = self.get_float_or_const(def, inst.operands[0]);
+                let rhs = self.get_float_or_const(def, inst.operands[1]);
+                let pred = self.map_float_pred(*kind);
+                let val = self
+                    .builder
+                    .build_float_compare(pred, lhs, rhs, "fcmp")
+                    .unwrap();
+                self.values.insert(inst.result.unwrap(), val.into());
+            }
+
             InstKind::Alloca(ty) => {
                 let llvm_ty = self.map_type(*ty);
                 let ptr = self.builder.build_alloca(llvm_ty, "alloca").unwrap();
@@ -623,7 +655,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
     }
 
     fn get_or_const(&self, def: &FunctionDef, v: ValueId) -> BasicValueEnum<'ctx> {
-        if let Some(c) = def.try_get_iconst(v) {
+        if let Some(c) = def.get_iconst(v) {
             let ty = self.map_int_type(def.get_type(v));
             ty.const_int(c as u64, true).into()
         } else {

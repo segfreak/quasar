@@ -52,7 +52,7 @@ opcode = {
   "add" | "sub" | "mul" | "div" | "sdiv" | "udiv" | "rem" | "srem" | "urem" |
   "fadd" | "fsub" | "fmul" | "fdiv" | "frem" |
   "not" | "and" | "or" | "xor" |
-  "const" | "cmp" | "ret" | "lshl" | "lshr" | "ashr" |
+  "const" | "cmp" | "fcmp" | "ret" | "lshl" | "lshr" | "ashr" |
   "load" | "store" | "cast"
 }
 
