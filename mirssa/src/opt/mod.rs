@@ -49,6 +49,10 @@ impl PassManager {
                         changed = true;
                         run.push($kind);
                     }
+                    if changed {
+                        let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
+                        func.reconstruct();
+                    }
                 };
             }
 
@@ -76,11 +80,6 @@ impl PassManager {
             }
 
             result.changed = true;
-        }
-
-        if result.changed {
-            let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
-            func.reconstruct();
         }
 
         result

@@ -614,7 +614,14 @@ impl FunctionDef {
         if let Some(v) = value {
             operands.push(v);
         }
-        self.append_inst(block, InstKind::Ret, Type::Void, operands)
+        let (i, v) = self.append_inst(block, InstKind::Ret, Type::Void, operands);
+        self.set_terminator(block, i);
+        (i, v)
+    }
+
+    fn set_terminator(&mut self, block: BlockId, inst: InstId) {
+        let blk = self.blocks.get_mut(&block).expect("block not exists");
+        blk.term = Some(inst);
     }
 
     pub fn make_jump(
@@ -623,7 +630,9 @@ impl FunctionDef {
         target: BlockId,
         params: Vec<ValueId>,
     ) -> (InstId, ValueId) {
-        self.append_inst(block, InstKind::Jump(target), Type::Void, params)
+        let (i, v) = self.append_inst(block, InstKind::Jump(target), Type::Void, params);
+        self.set_terminator(block, i);
+        (i, v)
     }
 
     pub fn make_jumpif(
@@ -641,7 +650,7 @@ impl FunctionDef {
         operands.extend(then_params);
         operands.extend(else_params);
 
-        self.append_inst(
+        let (i, v) = self.append_inst(
             block,
             InstKind::JumpIf {
                 then_block,
@@ -649,7 +658,9 @@ impl FunctionDef {
             },
             Type::Void,
             operands,
-        )
+        );
+        self.set_terminator(block, i);
+        (i, v)
     }
 
     pub fn reconstruct_values(&mut self) {
