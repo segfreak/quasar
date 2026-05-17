@@ -75,6 +75,10 @@ pub enum InstKind {
     Div {
         signed: bool,
     },
+    // remainder
+    Rem {
+        signed: bool,
+    },
 
     And,
     Or,
@@ -122,7 +126,7 @@ impl InstKind {
             IConst(_) | FConst(_) => 0,
 
             // binary instructions
-            Add | Sub | Mul | Div { .. } | And | Or | Xor | LShl | LShr | AShr => 2,
+            Add | Sub | Mul | Div { .. } | Rem { .. } | And | Or | Xor | LShl | LShr | AShr => 2,
             Cmp(_) => 2,
 
             // type is not a operand
@@ -148,7 +152,7 @@ impl InstKind {
             Self::Add | Self::Sub => 2,
 
             // multiply/divide are expensive
-            Self::Mul | Self::Div { .. } => 4,
+            Self::Mul | Self::Div { .. } | Self::Rem { .. } => 4,
 
             // bitwise ops (very cheap)
             Self::And | Self::Or | Self::Xor => 1,
@@ -1103,6 +1107,13 @@ impl FunctionDef {
             ),
             InstKind::Div { signed } => format!(
                 "{}div.{} %{}, %{}",
+                if !*signed { "u" } else { "s" },
+                result_ty,
+                inst.operands[0],
+                inst.operands[1]
+            ),
+            InstKind::Rem { signed } => format!(
+                "{}rem.{} %{}, %{}",
                 if !*signed { "u" } else { "s" },
                 result_ty,
                 inst.operands[0],

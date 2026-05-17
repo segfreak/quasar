@@ -320,7 +320,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
 
     fn compile_inst(&mut self, _m: &crate::ir::Module, def: &FunctionDef, inst: &Inst) {
         log::debug!(
-            "Compiling inst: {:?}, operands: {:?}",
+            "lowering inst: {:?}, operands: {:?}",
             inst.kind,
             inst.operands
         );
@@ -367,6 +367,17 @@ impl<'ctx> LlvmLowerer<'ctx> {
                         b.build_int_signed_div(l, r, "sdiv").unwrap()
                     } else {
                         b.build_int_unsigned_div(l, r, "udiv").unwrap()
+                    }
+                });
+            }
+
+            InstKind::Rem { signed } => {
+                let s = *signed;
+                self.bin_int(def, inst, move |b, l, r| {
+                    if s {
+                        b.build_int_signed_rem(l, r, "sdiv").unwrap()
+                    } else {
+                        b.build_int_unsigned_rem(l, r, "udiv").unwrap()
                     }
                 });
             }
@@ -594,9 +605,9 @@ impl<'ctx> LlvmLowerer<'ctx> {
 
     fn get(&self, v: ValueId) -> BasicValueEnum<'ctx> {
         self.values.get(&v).copied().unwrap_or_else(|| {
-            log::error!("Missing value: {}", v);
+            log::error!("missing value: {}", v);
             log::error!(
-                "Available values: {:?}",
+                "available values: {:?}",
                 self.values.keys().collect::<Vec<_>>()
             );
             panic!("missing value: {}", v)
