@@ -1,0 +1,12 @@
+[package]
+name = "quasar"
+version = "0.0.0"
+edition = "2024"
+
+[features]
+default = []
+hashbrown = ["dep:hashbrown"]
+
+[dependencies]
+enum-display = "0.2.1"
+hashbrown = { version = "0.17.0", optional = true }
