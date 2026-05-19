@@ -3,7 +3,6 @@
 /perf.*
 /*.dot
 /*.png
-/sandbox
 /*.s
 /*.ll
 /*.mir

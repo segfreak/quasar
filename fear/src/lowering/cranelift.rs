@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
 use cranelift::codegen::ir::{BlockArg, Function, LibCall, UserFuncName};
-use cranelift::codegen::isa::TargetIsa;
+use cranelift::codegen::isa::{CallConv, TargetIsa};
 use cranelift::prelude::*;
 use cranelift_module::{Linkage as CLinkage, Module};
 use cranelift_object::{ObjectBuilder, ObjectModule};
 
+use fearcore::target::CallingConvention;
 use fearcore::{FunctionSignature, Linkage, Type};
 use std::collections::HashMap;
 
@@ -72,18 +73,17 @@ fn map_float_cond(kind: FloatCmp) -> FloatCC {
     }
 }
 
-// ─── lowerer ─────────────────────────────────────────────────────────────────
-
 pub struct CraneliftLowerer {
     pub module: ObjectModule,
+
     functions: HashMap<FuncId, cranelift_module::FuncId>,
 }
 
 impl CraneliftLowerer {
     pub fn new(
+        name: &str,
         isa: Arc<dyn TargetIsa>,
         libcall_names: Box<dyn Fn(LibCall) -> String + Send + Sync>,
-        name: &str,
     ) -> Self {
         let builder = ObjectBuilder::new(isa, name, libcall_names).unwrap();
         let module = ObjectModule::new(builder);
@@ -93,8 +93,26 @@ impl CraneliftLowerer {
         }
     }
 
-    fn make_signature(&self, sig: &FunctionSignature) -> Signature {
-        let call_conv = self.module.target_config().default_call_conv;
+    fn map_callconv(
+        &self,
+        target_conf: &isa::TargetFrontendConfig,
+        callconv: CallingConvention,
+    ) -> CallConv {
+        use CallingConvention::*;
+
+        match callconv {
+            C =>
+            /* C abi is a default abi on your machine */
+            {
+                target_conf.default_call_conv
+            }
+            SystemV => CallConv::SystemV,
+            MicrosoftAbi => CallConv::WindowsFastcall,
+        }
+    }
+
+    fn make_signature(&self, callconv: CallingConvention, sig: &FunctionSignature) -> Signature {
+        let call_conv = self.map_callconv(&self.module.target_config(), callconv);
         let mut s = Signature::new(call_conv);
         for &p in &sig.params {
             s.params.push(AbiParam::new(map_type(p)));
@@ -121,7 +139,7 @@ impl CraneliftLowerer {
 
     pub fn declare_function(&mut self, m: &crate::ir::Module, fid: FuncId) {
         let func = m.get_function(fid).unwrap();
-        let sig = self.make_signature(&func.signature);
+        let sig = self.make_signature(func.calling_convention, &func.signature);
         let cl_fid = self
             .module
             .declare_function(&func.name, map_linkage(&func.linkage), &sig)
@@ -134,7 +152,7 @@ impl CraneliftLowerer {
         let def = ir_func.get_definition().unwrap();
         let cl_fid = self.functions[&fid];
 
-        let sig = self.make_signature(&ir_func.signature);
+        let sig = self.make_signature(ir_func.calling_convention, &ir_func.signature);
         let mut cl_func =
             Function::with_name_signature(UserFuncName::user(0, cl_fid.as_u32()), sig);
 

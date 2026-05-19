@@ -2,17 +2,23 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::Module,
+    targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple},
     types::{AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum, FloatType, FunctionType, IntType},
     values::{BasicValue, BasicValueEnum, FloatValue, FunctionValue, IntValue, PhiValue},
-    AddressSpace, FloatPredicate, IntPredicate,
+    AddressSpace, FloatPredicate, IntPredicate, OptimizationLevel,
 };
 
-use fearcore::{FunctionSignature, Linkage, Type};
+use fearcore::{target::CallingConvention, FunctionSignature, Linkage, Type};
 use std::collections::HashMap;
+use target_lexicon::Triple;
 
 use crate::ir::*;
 
 pub struct LlvmLowerer<'ctx> {
+    // target triple
+    pub triple: Triple,
+    pub target_machine: TargetMachine,
+
     pub context: &'ctx Context,
     pub module: Module<'ctx>,
     pub builder: Builder<'ctx>,
@@ -24,11 +30,33 @@ pub struct LlvmLowerer<'ctx> {
 }
 
 impl<'ctx> LlvmLowerer<'ctx> {
-    pub fn new(ctx: &'ctx Context, name: &str) -> Self {
+    pub fn new(name: &str, triple: Triple, ctx: &'ctx Context) -> Self {
+        Target::initialize_all(&InitializationConfig::default());
+
         let module = ctx.create_module(name);
         let builder = ctx.create_builder();
 
+        let target_triple = TargetTriple::create(&triple.to_string());
+        module.set_triple(&target_triple);
+        let llvm_target =
+            Target::from_triple(&target_triple).expect("invalid target triple for LLVM");
+        let target_machine = llvm_target
+            .create_target_machine(
+                &target_triple,
+                "generic",
+                "",
+                OptimizationLevel::Default,
+                RelocMode::PIC,
+                CodeModel::Default,
+            )
+            .expect("failed to create TargetMachine");
+
+        let data_layout = target_machine.get_target_data().get_data_layout();
+        module.set_data_layout(&data_layout);
+
         Self {
+            triple,
+            target_machine,
             context: ctx,
             module,
             builder,
@@ -170,6 +198,10 @@ impl<'ctx> LlvmLowerer<'ctx> {
         &self.module
     }
 
+    pub fn get_target_machine(&self) -> &TargetMachine {
+        &self.target_machine
+    }
+
     pub fn lower_module(&mut self, m: &crate::ir::Module) {
         for (fid, func) in m.iter_functions() {
             log::debug!("declaring function '{}' (fid={})", func.name, fid);
@@ -199,7 +231,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
             .append_basic_block(llvm_fn, &format!("b{}", entry));
         self.blocks.insert(entry, bb_entry);
 
-        for (&bid, _) in &def.blocks {
+        for &bid in def.blocks.keys() {
             if bid != entry {
                 let bb = self
                     .context
@@ -228,12 +260,24 @@ impl<'ctx> LlvmLowerer<'ctx> {
         }
     }
 
+    fn map_callconv(&self, callconv: CallingConvention) -> u32 {
+        use CallingConvention::*;
+        match callconv {
+            C => 0,
+
+            // see https://llvm.org/docs/doxygen/llvm-c_2Core_8h_source.html
+            SystemV => 78,
+            MicrosoftAbi => 79,
+        }
+    }
+
     pub fn declare_function(&mut self, m: &crate::ir::Module, fid: FuncId) {
         let func = m.get_function(fid).unwrap();
         let fn_ty = self.map_signature_type(&func.signature);
         let llvm_fn =
             self.module
                 .add_function(&func.name, fn_ty, Some(self.map_linkage(&func.linkage)));
+        llvm_fn.set_call_conventions(self.map_callconv(func.calling_convention));
         self.functions.insert(fid, llvm_fn);
     }
 

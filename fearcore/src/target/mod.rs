@@ -25,6 +25,7 @@ const fn host_description() -> TargetDescription {
     TargetDescription { pointer_size: 8 }
 }
 
+#[repr(C)]
 #[derive(Debug, Clone, Copy, EnumDisplay, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CallingConvention {

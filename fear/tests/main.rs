@@ -256,9 +256,10 @@ fn test() {
     {
         use fear::lowering::llvm::LlvmLowerer;
         use inkwell::context::Context;
+        use target_lexicon::Triple;
 
         let llvm_ctx = Context::create();
-        let mut lowerer = LlvmLowerer::new(&llvm_ctx, "test");
+        let mut lowerer = LlvmLowerer::new(&m.name, Triple::host(), &llvm_ctx);
         lowerer.lower_module(&m);
         let llvm_module = lowerer.get_module();
         fs::write("test.ll", llvm_module.print_to_string().to_str().unwrap())
@@ -270,18 +271,19 @@ fn test() {
         use cranelift::codegen::settings::Configurable;
         use cranelift_module::default_libcall_names;
         use fear::lowering::cranelift::CraneliftLowerer;
+        use target_lexicon::Triple;
 
         let mut flag_builder = cranelift::codegen::settings::builder();
         flag_builder.set("use_colocated_libcalls", "false").unwrap();
-        flag_builder.set("is_pic", "false").unwrap();
+        flag_builder.set("is_pic", "true").unwrap();
         let flags = cranelift::codegen::settings::Flags::new(flag_builder);
 
-        let isa = cranelift::codegen::isa::lookup(target_lexicon::Triple::host())
+        let isa = cranelift::codegen::isa::lookup(Triple::host())
             .unwrap()
             .finish(flags)
             .unwrap();
 
-        let mut lowerer = CraneliftLowerer::new(isa, default_libcall_names(), "test");
+        let mut lowerer = CraneliftLowerer::new("test", isa, default_libcall_names());
         lowerer.lower_module(&m);
         let object_bytes = lowerer.finish();
         fs::write("test.o", object_bytes).expect("fs::write error");

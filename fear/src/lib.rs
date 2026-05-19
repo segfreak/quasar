@@ -1,9 +1,10 @@
 pub mod analysis;
 #[cfg(feature = "binary-ir")]
 pub mod binary;
-pub mod capi;
+pub mod compiler;
 pub mod dump;
 pub mod ir;
 pub mod lowering;
 pub mod transform;
+pub mod types;
 pub mod verify;

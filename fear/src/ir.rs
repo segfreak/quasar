@@ -664,6 +664,22 @@ impl FunctionDef {
         self.make_binary(block, InstKind::FRem, ty, lhs, rhs)
     }
 
+    pub fn make_not(&mut self, block: BlockId, ty: Type, value: ValueId) -> ValueId {
+        self.make_unary(block, InstKind::Not, ty, value)
+    }
+
+    pub fn make_and(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
+        self.make_binary(block, InstKind::And, ty, lhs, rhs)
+    }
+
+    pub fn make_or(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
+        self.make_binary(block, InstKind::Or, ty, lhs, rhs)
+    }
+
+    pub fn make_xor(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
+        self.make_binary(block, InstKind::Xor, ty, lhs, rhs)
+    }
+
     pub fn make_lshl(&mut self, block: BlockId, ty: Type, lhs: ValueId, rhs: ValueId) -> ValueId {
         self.make_binary(block, InstKind::LShl, ty, lhs, rhs)
     }

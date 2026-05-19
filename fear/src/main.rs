@@ -1,85 +1,50 @@
+use std::{fs::File, path::PathBuf};
+use std::str::FromStr;
+
 use clap::*;
-use fear::ir::Module;
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-pub enum OutputType {
-    LlvmIr,
-    Object,
-}
-
-impl OutputType {
-    pub fn extenstion(&self) -> &'static str {
-        match self {
-            Self::LlvmIr => "ll",
-            Self::Object => "o",
-        }
-    }
-}
-
-pub fn name(modname: &str, out_ty: OutputType) -> String {
-    format!("{}.{}", modname, out_ty.extenstion())
-}
+use fear::{compiler::*, ir::Module, types::OptLevel};
+use target_lexicon::Triple;
 
 #[derive(Parser)]
 struct Cli {
     #[arg()]
     input: String,
-    #[arg(short = 't', long = "type", value_enum)]
-    ty: OutputType,
+    #[arg(short = 'b', long = "backend", value_enum)]
+    backend: Option<Backend>,
+    #[arg(long = "type", value_enum)]
+    output_type: Option<OutputType>,
     #[arg(short = 'o')]
-    out: Option<String>,
+    output_path: Option<PathBuf>,
+    #[arg(
+        short = 't', 
+        long = "triple", 
+        value_parser = |s: &str| target_lexicon::Triple::from_str(s).map_err(|e| e.to_string())
+    )]
+    triple: Option<Triple>,
+    #[arg(long = "opt")]
+    opt_level: Option<OptLevel>,
+
 }
 
-fn main() {
-    use std::fs;
-
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
-    let module = fear::binary::load_from_file::<Module>(&cli.input).unwrap();
-    let outname = cli.out.unwrap_or(name(&module.name, cli.ty));
-    match cli.ty {
-        OutputType::LlvmIr => {
-            #[cfg(feature = "llvm")]
-            {
-                use fear::lowering::llvm::LlvmLowerer;
-                use inkwell::context::Context;
-                let llvm_ctx = Context::create();
-                let mut lowerer = LlvmLowerer::new(&llvm_ctx, "test");
-                lowerer.lower_module(&module);
-                let llvm_module = lowerer.get_module();
-                fs::write(outname, llvm_module.print_to_string().to_str().unwrap())
-                    .expect("fs::write error");
-            }
-            #[cfg(not(feature = "llvm"))]
-            {
-                todo!("llvm is not supported in this build")
-            }
-        }
-        OutputType::Object => {
-            #[cfg(feature = "cranelift")]
-            {
-                use cranelift::codegen::settings::Configurable;
-                use cranelift_module::default_libcall_names;
-                use fear::lowering::cranelift::CraneliftLowerer;
+    let config = CompilerConfig {
+        backend: cli.backend.unwrap_or(Backend::Cranelift),
+        output_type: cli.output_type.unwrap_or(OutputType::Object),
+        triple: cli.triple.unwrap_or_else(Triple::host),
+        opt_level: cli.opt_level.unwrap_or(OptLevel::Default),
+    };
 
-                let mut flag_builder = cranelift::codegen::settings::builder();
-                flag_builder.set("use_colocated_libcalls", "false").unwrap();
-                flag_builder.set("is_pic", "true").unwrap();
-                let flags = cranelift::codegen::settings::Flags::new(flag_builder);
-                let isa = cranelift::codegen::isa::lookup(target_lexicon::Triple::host())
-                    .unwrap()
-                    .finish(flags)
-                    .unwrap();
+    let module = fear::binary::load_from_file::<Module>(&cli.input)
+        .map_err(|e| format!("failed to load module file: {}", e))?;
 
-                let mut lowerer = CraneliftLowerer::new(isa, default_libcall_names(), "test");
-                lowerer.lower_module(&module);
-                let object_bytes = lowerer.finish();
-                fs::write(outname, object_bytes).expect("fs::write error");
-            }
-            #[cfg(not(feature = "cranelift"))]
-            {
-                todo!("cranelift is not supported in this build")
-            }
-        }
-    }
+    let output_path = cli.output_path.unwrap_or_else(|| {
+        PathBuf::from(&module.name).with_extension(config.output_type.extenstion())
+    });
+
+    let file = File::open(&output_path).map_err(|_e| format!("failed to open file: {}", output_path.to_string_lossy()))?;
+
+    compile_module(&module, &config, file)?;
+    Ok(())
 }
