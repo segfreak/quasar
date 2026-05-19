@@ -3,8 +3,7 @@ use std::{
     io::BufWriter,
 };
 
-use fear::{binary, ir::*};
-use fearcore::{target::CallingConvention, *};
+use fear::{binary, ir::*, types::*};
 
 fn foo_def() -> FunctionDef {
     let mut fun = FunctionDef::new();
@@ -184,7 +183,7 @@ fn example1_def() -> FunctionDef {
 #[test]
 fn test() {
     pretty_env_logger::init();
-    let mut m = Module::new("test");
+    let mut m = Module::new("fear");
     let mfoo = m.declare_function(
         "foo",
         FunctionSignature::new(vec![Type::I32, Type::I32], Type::I32),
@@ -242,13 +241,13 @@ fn test() {
     m.define_function(mexample1, example1_def())
         .expect("define_function error");
     m.verify().expect("pre-opt verify error");
-    fs::write("preopt-test.dot", m.dump_dot()).expect("fs::write error");
-    fs::write("preopt-test.mir", m.dump()).expect("fs::write error");
+    fs::write("preopt-fear.dot", m.dump_dot()).expect("fs::write error");
+    fs::write("preopt-fear.ssa", m.dump()).expect("fs::write error");
     m.optimize();
     m.verify().expect("post-opt verify error");
-    fs::write("test.dot", m.dump_dot()).expect("fs::write error");
-    fs::write("test.mir", m.dump()).expect("fs::write error");
-    let file = File::create("test.bin").unwrap();
+    fs::write("fear.dot", m.dump_dot()).expect("fs::write error");
+    fs::write("fear.ssa", m.dump()).expect("fs::write error");
+    let file = File::create("fear.bin").unwrap();
     let writer = BufWriter::new(file);
     binary::write(&m, writer).unwrap();
 
@@ -262,13 +261,13 @@ fn test() {
         let mut lowerer = LlvmLowerer::new(&m.name, Triple::host(), &llvm_ctx);
         lowerer.lower_module(&m);
         let llvm_module = lowerer.get_module();
-        fs::write("test.ll", llvm_module.print_to_string().to_str().unwrap())
+        fs::write("fear.ll", llvm_module.print_to_string().to_str().unwrap())
             .expect("fs::write error");
     }
 
     #[cfg(feature = "cranelift")]
     {
-        use cranelift::codegen::settings::Configurable;
+        use cranelift::codegen::{isa, settings::Configurable};
         use cranelift_module::default_libcall_names;
         use fear::lowering::cranelift::CraneliftLowerer;
         use target_lexicon::Triple;
@@ -278,14 +277,11 @@ fn test() {
         flag_builder.set("is_pic", "true").unwrap();
         let flags = cranelift::codegen::settings::Flags::new(flag_builder);
 
-        let isa = cranelift::codegen::isa::lookup(Triple::host())
-            .unwrap()
-            .finish(flags)
-            .unwrap();
+        let isa = isa::lookup(Triple::host()).unwrap().finish(flags).unwrap();
 
-        let mut lowerer = CraneliftLowerer::new("test", isa, default_libcall_names());
+        let mut lowerer = CraneliftLowerer::new(&m.name, isa, default_libcall_names());
         lowerer.lower_module(&m);
         let object_bytes = lowerer.finish();
-        fs::write("test.o", object_bytes).expect("fs::write error");
+        fs::write("fear.o", object_bytes).expect("fs::write error");
     }
 }

@@ -1,6 +1,4 @@
-use fearcore::Type;
-
-use crate::ir::*;
+use crate::{ir::*, types::Type};
 
 impl FunctionDef {
     fn fmt_args(args: &[ValueId]) -> String {

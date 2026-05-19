@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ir::*;
-use fearcore::*;
+use crate::{ir::*, types::Type};
 
 use thiserror::Error;
 

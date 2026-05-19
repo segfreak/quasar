@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ir::*;
-use fearcore::*;
+use crate::{ir::*, types::Type};
 
 fn canonical_ops(kind: &InstKind, mut ops: Vec<(ValueId, Type)>) -> Vec<(ValueId, Type)> {
     match kind {

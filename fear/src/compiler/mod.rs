@@ -1,7 +1,4 @@
 use crate::ir::Module;
-#[cfg(feature = "cranelift")]
-use crate::types::OptLevel;
-#[cfg(feature = "llvm")]
 use crate::types::OptLevel;
 use clap::ValueEnum;
 use std::io::Write;

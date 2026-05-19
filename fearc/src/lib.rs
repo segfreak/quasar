@@ -6,22 +6,19 @@ use std::os::fd::FromRawFd;
 use std::os::raw::c_char;
 use std::{ffi::CStr, ptr};
 
-use fear::compiler::{self, Backend, CompilerConfig, OutputType};
-use fear::types::OptLevel;
-use fear::{binary, ir::*};
-use fearcore::{target::*, *};
+use fear::{
+    binary,
+    compiler::{self, Backend, CompilerConfig, OutputType},
+    ir::*,
+    types::{CallingConvention, FunctionSignature, Linkage, OptLevel, Type},
+};
 
 use target_lexicon::Triple;
 
-/* ========================= OPAQUE FFI TYPES ========================= */
-
-/// opaque
 #[repr(C)]
 pub struct FearModule {
     __: [i8; 0],
 }
-
-/// opaque
 #[repr(C)]
 pub struct FearFunctionDef {
     __: [i8; 0],
@@ -48,9 +45,25 @@ pub enum FearType {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub enum FearOptLevel {
-    FearOptNone,
-    FearOptDefault,
-    FearOptFull,
+    FearOptLevelNone,
+    FearOptLevelDefault,
+    FearOptLevelFull,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub enum FearCallConv {
+    FearCallConvC,
+    FearCallConvSysV,
+    FearCallConvMsAbi,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub enum FearLinkage {
+    FearLinkageExternal,
+    FearLinkageInternal,
+    FearLinkageWeak,
 }
 
 impl From<FearType> for Type {
@@ -72,14 +85,32 @@ impl From<FearType> for Type {
 impl From<FearOptLevel> for OptLevel {
     fn from(t: FearOptLevel) -> Self {
         match t {
-            FearOptLevel::FearOptNone => OptLevel::None,
-            FearOptLevel::FearOptDefault => OptLevel::Default,
-            FearOptLevel::FearOptFull => OptLevel::Full,
+            FearOptLevel::FearOptLevelNone => OptLevel::None,
+            FearOptLevel::FearOptLevelDefault => OptLevel::Default,
+            FearOptLevel::FearOptLevelFull => OptLevel::Full,
         }
     }
 }
 
-/* ========================= INTERNAL HELPERS ========================= */
+impl From<FearCallConv> for CallingConvention {
+    fn from(t: FearCallConv) -> Self {
+        match t {
+            FearCallConv::FearCallConvC => CallingConvention::C,
+            FearCallConv::FearCallConvSysV => CallingConvention::SystemV,
+            FearCallConv::FearCallConvMsAbi => CallingConvention::MicrosoftAbi,
+        }
+    }
+}
+
+impl From<FearLinkage> for Linkage {
+    fn from(t: FearLinkage) -> Self {
+        match t {
+            FearLinkage::FearLinkageExternal => Linkage::External,
+            FearLinkage::FearLinkageInternal => Linkage::Internal,
+            FearLinkage::FearLinkageWeak => Linkage::Weak,
+        }
+    }
+}
 
 fn cstr(s: *const c_char) -> String {
     unsafe { CStr::from_ptr(s).to_string_lossy().into_owned() }
@@ -115,7 +146,7 @@ pub unsafe extern "C" fn fearEmitCraneliftObjectToFile(
     m: *mut FearModule,
     opt: FearOptLevel,
     fd: c_int,
-) {
+) -> c_int {
     let m = as_module(m);
     let config = CompilerConfig {
         backend: Backend::Cranelift,
@@ -124,20 +155,34 @@ pub unsafe extern "C" fn fearEmitCraneliftObjectToFile(
         opt_level: OptLevel::from(opt),
     };
     let file = unsafe { std::fs::File::from_raw_fd(fd) };
-    compiler::compile_module(m, &config, file).unwrap();
+    match compiler::compile_module(m, &config, file) {
+        Ok(_) => 0,
+        Err(e) => {
+            log::error!("compile error: {}", e);
+            1
+        }
+    }
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearModuleCreate(name: *const c_char) -> *mut FearModule {
-    let m = Module::new(cstr(name));
+    let name = cstr(name);
+    log::trace!("creating module with name {}", name);
+    let m = Module::new(name);
     Box::into_raw(Box::new(m)) as *mut FearModule
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearBinaryFetchModuleFromFile(fd: c_int) -> *mut FearModule {
+pub unsafe extern "C" fn fearReadBinaryFromFile(fd: c_int) -> *mut FearModule {
     let file = unsafe { std::fs::File::from_raw_fd(fd) };
-    let m = fear::binary::read::<fear::ir::Module, _>(file).unwrap();
-    Box::into_raw(Box::new(m)) as *mut FearModule
+    match fear::binary::read::<fear::ir::Module, _>(file) {
+        Ok(m) => Box::into_raw(Box::new(m)) as *mut FearModule,
+        Err(e) => {
+            log::error!("cannot read binary module from fd({})", fd);
+            log::error!("{}", e);
+            ptr::null_mut()
+        }
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -154,20 +199,6 @@ pub unsafe extern "C" fn fearModuleOptimize(m: *mut FearModule) {
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearDumpToStringBuffer(m: *mut FearModule, buf: *mut c_char, len: u32) {
-    let m = as_module(m);
-    let s = m.dump();
-    if buf.is_null() || len == 0 {
-        return;
-    }
-    let bytes = s.as_bytes();
-    let max_copy = (len as usize).saturating_sub(1);
-    let copy_len = bytes.len().min(max_copy);
-    ptr::copy_nonoverlapping(bytes.as_ptr(), buf as *mut u8, copy_len);
-    *buf.add(copy_len) = 0;
-}
-
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearDumpToFile(m: *mut FearModule, fd: c_int) {
     let m = as_module(m);
     let s = m.dump();
@@ -180,7 +211,10 @@ pub unsafe extern "C" fn fearDumpToFile(m: *mut FearModule, fd: c_int) {
 pub unsafe extern "C" fn fearBinaryDumpToFile(m: *mut FearModule, fd: c_int) {
     let m = as_module(m);
     let file = unsafe { std::fs::File::from_raw_fd(fd) };
-    binary::write(m, file).unwrap();
+    if let Err(e) = binary::write(m, file) {
+        log::error!("cannot write binary module into fd({})", fd);
+        log::error!("{}", e);
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -190,6 +224,7 @@ pub unsafe extern "C" fn fearDeclareFunction(
     params: *const FearType,
     nparams: u32,
     returns: FearType,
+    linkage: FearLinkage,
 ) -> FearFuncId {
     let m = as_module(m);
 
@@ -202,12 +237,19 @@ pub unsafe extern "C" fn fearDeclareFunction(
                 .collect(),
             returns: returns.into(),
         },
-        Linkage::External,
+        Linkage::from(linkage),
         CallingConvention::C,
     )
 }
 
-/* ========================= FUNCTION DEF ========================= */
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearFunctionSetCC(m: *mut FearModule, id: FearFuncId, cc: FearCallConv) {
+    let m = as_module(m);
+
+    if let Some(f) = m.get_function_mut(id as FuncId) {
+        f.calling_convention = CallingConvention::from(cc);
+    }
+}
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearDefinitionCreate() -> *mut FearFunctionDef {
@@ -229,7 +271,9 @@ pub unsafe extern "C" fn fearDefineFunction(
 ) {
     let m = as_module(m);
     let def = as_def(def as *mut FearFunctionDef);
-    m.define_function(id, def.clone()).unwrap();
+    if let Err(e) = m.define_function(id, def.clone()) {
+        log::error!("{}", e);
+    }
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearGetEntryBlock(f: *mut FearFunctionDef) -> FearBlockId {
@@ -341,8 +385,6 @@ pub unsafe extern "C" fn fearCreateUnsignedRem(
 ) -> FearValueId {
     as_def(f).make_rem(parent, false, ty.into(), a, b)
 }
-
-/* ========================= FLOAT ========================= */
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearCreateFloatAdd(

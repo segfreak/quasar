@@ -8,11 +8,10 @@ use inkwell::{
     AddressSpace, FloatPredicate, IntPredicate, OptimizationLevel,
 };
 
-use fearcore::{target::CallingConvention, FunctionSignature, Linkage, Type};
 use std::collections::HashMap;
 use target_lexicon::Triple;
 
-use crate::ir::*;
+use crate::{ir::*, types::*};
 
 pub struct LlvmLowerer<'ctx> {
     // target triple

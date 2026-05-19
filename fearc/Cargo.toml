@@ -1,6 +1,6 @@
 [package]
 name = "fearc"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2024"
 
 [lib]
@@ -8,6 +8,6 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 fear = { workspace = true }
-fearcore = { workspace = true }
 libc = "0.2.186"
+log = "0.4.29"
 target-lexicon = "0.13.5"

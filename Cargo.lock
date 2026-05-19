@@ -399,7 +399,6 @@ dependencies = [
  "cranelift-module",
  "cranelift-object",
  "enum-display",
- "fearcore",
  "inkwell",
  "log",
  "pretty_env_logger",
@@ -411,20 +410,12 @@ dependencies = [
 
 [[package]]
 name = "fearc"
-version = "0.1.0"
-dependencies = [
- "fear",
- "fearcore",
- "libc",
- "target-lexicon",
-]
-
-[[package]]
-name = "fearcore"
 version = "0.0.0"
 dependencies = [
- "enum-display",
- "serde",
+ "fear",
+ "libc",
+ "log",
+ "target-lexicon",
 ]
 
 [[package]]

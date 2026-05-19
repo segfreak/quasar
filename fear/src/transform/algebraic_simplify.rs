@@ -1,6 +1,4 @@
-use crate::ir::*;
-
-use fearcore::*;
+use crate::{ir::*, types::Type};
 
 fn is_zero(func: &FunctionDef, v: ValueId) -> bool {
     func.get_iconst(v) == Some(0)

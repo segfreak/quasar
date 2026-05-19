@@ -1,8 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
+use crate::types::{CallingConvention, FunctionSignature, Linkage, Type};
 use enum_display::EnumDisplay;
-use fearcore::target::CallingConvention;
-use fearcore::*;
 
 pub type ValueId = u32;
 pub type InstId = u32;

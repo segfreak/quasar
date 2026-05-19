@@ -5,6 +5,7 @@ pub mod compiler;
 pub mod dump;
 pub mod ir;
 pub mod lowering;
+pub mod target;
 pub mod transform;
 pub mod types;
 pub mod verify;
