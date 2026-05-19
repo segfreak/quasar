@@ -1,6 +1,6 @@
 EXAMPLES
   - Building with LLVM 22.1
-    $ cargo build --release --features fear/llvm,inkwell/llvm22-1
+    $ sh build.sh --features fear/llvm,inkwell/llvm22-1
     $ sh bindings.sh                                              # generate bindings (cbindgen)
     $ sudo sh install.sh /usr/                                    # install library system-wide
     $ sudo sh install.sh                                          # install library with /usr/local prefix
