@@ -27,18 +27,21 @@ main ()
   struct FearFunctionDef *def = fearDefinitionCreate ();
   foo_def (def);
   fearDefineFunction (m, foo, def);
+  fearDefinitionDispose (def);
 
   fprintf (stderr, "preopt\n");
   fearDumpToFile (m, fileno (stderr));
 
-  fearModuleOptimize (m);
+  unsigned total_passes = fearModuleOptimize (m);
 
-  fprintf (stderr, "postopt\n");
+  fprintf (stderr, "postopt (%d passes)\n", total_passes);
   fearDumpToFile (m, fileno (stderr));
 
   FILE *exf = fopen ("ex.bin", "w");
   fearBinaryDumpToFile (m, fileno (exf));
   fclose (exf);
+
+  fearModuleDispose (m);
 
   fprintf (stderr, "-- features:\n");
   fprintf (stderr, "-- llvm: %d, cranelift: %d\n\n",
@@ -55,6 +58,8 @@ main ()
     FILE *exf_obj = fopen ("ex.o", "w");
     fearEmitCraneliftObjectToFile (m, FearOptLevelFull, fileno (exf_obj));
     fclose (exf_obj);
+
+    fearModuleDispose (exm);
   }
 
   return 0;

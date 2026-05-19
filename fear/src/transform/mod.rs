@@ -120,7 +120,7 @@ impl PassManager {
 }
 
 impl Module {
-    pub fn optimize(&mut self) {
-        PassManager::run_module(self);
+    pub fn optimize(&mut self) -> HashMap<FuncId, PassResult> {
+        PassManager::run_module(self)
     }
 }
