@@ -101,6 +101,27 @@ pub enum CastKind {
     Trunc,
     #[display("bitcast")]
     Bitcast,
+
+    /// Signed integer to float-point
+    #[display("s2f")]
+    SIToFP,
+    /// Unsigned integer to float-point
+    #[display("u2f")]
+    UIToFP,
+
+    /// Float-point to signed integer
+    #[display("f2s")]
+    FPToSI,
+    /// Float-point to unsigned integer
+    #[display("f2u")]
+    FPToUI,
+
+    /// promotes float precision, for example: Float32 -> Float64
+    #[display("fprom")]
+    FPromote,
+    /// truncates float precision, for example: Float64 -> Float32
+    #[display("ftrunc")]
+    FTrunc,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -140,8 +161,8 @@ pub enum InstKind {
     FCmp(FloatCmp),
     /// alloca {type}
     Alloca(Type),
-    /// alloca {size}
-    NAlloca,
+    /// nalloca {type} {len}
+    NAlloca(Type, usize),
     /// load {ptr}
     Load {
         volatile: bool,
@@ -151,10 +172,20 @@ pub enum InstKind {
         volatile: bool,
     },
 
-    /// elementptr {base}, {offset}
+    /// ptroffset {base}, {offset}
     /// byte addressed
     ///   (uint8_t*)base + offset
-    ElementPtr,
+    PtrOffset,
+
+    /// elementptr {ty} {base}, {offset}
+    /// element addressed
+    ///   (ty*)base + offset
+    ///
+    /// base = nalloca i64 2
+    /// first   = elementptr i32 base, 0     ! base + 0x00
+    /// second  = elementptr i32 base, 1     ! base + 0x04
+    ElementPtr(/* addressation unit */ Type),
+
     /// call {func} ({args..})
     Call(FuncId),
     /// cast {kind} {value}
@@ -197,11 +228,10 @@ impl InstKind {
             | AShr => 2,
             Cmp(_) | FCmp(_) => 2,
 
-            // type is not a operand
-            Alloca(_) => 0,
-            Load { .. } | NAlloca => 1,
+            Alloca(_) | NAlloca(_, _) => 0,
+            Load { .. } => 1,
             Store { .. } => 2,
-            ElementPtr => 2,
+            PtrOffset | ElementPtr(_) => 2,
 
             Cast(_) => 1,
             Ret => 1,
@@ -236,9 +266,9 @@ impl InstKind {
             Self::Load { .. } => 5,
             Self::Store { .. } => 5,
 
-            Self::NAlloca | Self::Alloca(_) => 3,
+            Self::Alloca(_) | Self::NAlloca(_, _) => 3,
             // address computation (usually cheap ALU-like)
-            Self::ElementPtr => 2,
+            Self::PtrOffset | Self::ElementPtr(_) => 2,
 
             // function calls (very expensive, unknown cost)
             Self::Call(_) => 10,
@@ -254,7 +284,7 @@ impl InstKind {
     }
 
     pub fn is_alloca(&self) -> bool {
-        matches!(self, Self::NAlloca | Self::Alloca(_))
+        matches!(self, Self::Alloca(_) | Self::NAlloca(_, _))
     }
 
     pub fn is_memory(&self) -> bool {
@@ -481,7 +511,7 @@ impl FunctionDef {
         self.values.get(&v).map(|v| v.ty).unwrap_or(Type::Void)
     }
 
-    pub fn get_def_block(&self, v: ValueId) -> Option<BlockId> {
+    pub fn get_value_def_in(&self, v: ValueId) -> Option<BlockId> {
         let val = &self.values[&v];
         if val.def == InstId::MAX {
             None
@@ -490,7 +520,7 @@ impl FunctionDef {
         }
     }
 
-    pub fn get_def_inst(&self, v: ValueId) -> Option<InstId> {
+    pub fn get_value_def(&self, v: ValueId) -> Option<InstId> {
         let val = self.values.get(&v)?;
         if val.def == InstId::MAX {
             None
@@ -691,10 +721,6 @@ impl FunctionDef {
         self.make_binary(block, InstKind::AShr, ty, lhs, rhs)
     }
 
-    pub fn make_alloca(&mut self, block: BlockId, ty: Type) -> ValueId {
-        self.append_inst(block, InstKind::Alloca(ty), Type::Ptr, vec![])
-    }
-
     pub fn make_store(
         &mut self,
         block: BlockId,
@@ -714,12 +740,31 @@ impl FunctionDef {
         self.append_inst(block, InstKind::Load { volatile }, ty, vec![ptr])
     }
 
-    pub fn make_element_ptr(&mut self, block: BlockId, base: ValueId, offset: ValueId) -> ValueId {
-        self.append_inst(block, InstKind::ElementPtr, Type::Ptr, vec![base, offset])
+    pub fn make_ptr_offset(&mut self, block: BlockId, base: ValueId, offset: ValueId) -> ValueId {
+        self.append_inst(block, InstKind::PtrOffset, Type::Ptr, vec![base, offset])
     }
 
-    pub fn make_nalloca(&mut self, block: BlockId, ty: Type, operands: Vec<ValueId>) -> ValueId {
-        self.append_inst(block, InstKind::NAlloca, ty, operands)
+    pub fn make_element_ptr(
+        &mut self,
+        block: BlockId,
+        ty: Type,
+        base: ValueId,
+        offset: ValueId,
+    ) -> ValueId {
+        self.append_inst(
+            block,
+            InstKind::ElementPtr(ty),
+            Type::Ptr,
+            vec![base, offset],
+        )
+    }
+
+    pub fn make_alloca(&mut self, block: BlockId, ty: Type) -> ValueId {
+        self.append_inst(block, InstKind::Alloca(ty), Type::Ptr, vec![])
+    }
+
+    pub fn make_nalloca(&mut self, block: BlockId, ty: Type, count: usize) -> ValueId {
+        self.append_inst(block, InstKind::NAlloca(ty, count), Type::Ptr, vec![])
     }
 
     pub fn make_call(
@@ -1004,6 +1049,8 @@ impl FunctionDef {
     }
 
     pub fn remove_inst(&mut self, inst_id: InstId) {
+        log::trace!("removing inst {}", inst_id);
+
         if let Some(inst) = self.insts.remove(&inst_id) {
             if let Some(res) = inst.result {
                 self.values.remove(&res);
@@ -1065,16 +1112,6 @@ impl FunctionDef {
         }
     }
 
-    // pub fn replace_value(&mut self, from: ValueId, to: ValueId) {
-    //     let uses = self.values[&from].uses.clone();
-    //     for u in uses {
-    //         let inst = self.insts.get_mut(&u.inst).unwrap();
-    //         inst.operands[u.index as usize] = to;
-    //         self.values.get_mut(&to).unwrap().uses.push(u);
-    //     }
-    //     self.values.get_mut(&from).unwrap().uses.clear();
-    // }
-
     pub fn get_values(&self) -> &HashMap<ValueId, Value> {
         &self.values
     }
@@ -1083,7 +1120,8 @@ impl FunctionDef {
         &self.insts
     }
 
-    pub fn replace_value(&mut self, from: ValueId, to: ValueId) {
+    pub fn replace_uses(&mut self, from: ValueId, to: ValueId) {
+        log::trace!("replacing %{} => %{}", from, to);
         let uses = self
             .values
             .get(&from)

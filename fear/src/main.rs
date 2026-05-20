@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         PathBuf::from(&module.name).with_extension(config.output_type.extenstion())
     });
 
-    let file = File::open(&output_path).map_err(|_e| format!("failed to open file: {}", output_path.to_string_lossy()))?;
+    let file = File::create(&output_path).map_err(|_e| format!("failed to open/create file: {}", output_path.to_string_lossy()))?;
 
     compile_module(&module, &config, file)?;
     Ok(())

@@ -495,11 +495,18 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 self.values.insert(inst.result.unwrap(), ptr.into());
             }
 
-            InstKind::NAlloca => self.unary(def, inst, |b, v| {
-                b.build_array_alloca(self.context.i8_type(), v.into_int_value(), "alloca")
-                    .unwrap()
-                    .as_basic_value_enum()
-            }),
+            InstKind::NAlloca(ty, size) => {
+                let llvm_ty = self.map_type(*ty);
+                let ptr = self
+                    .builder
+                    .build_array_alloca(
+                        llvm_ty,
+                        self.context.i64_type().const_int(*size as u64, true),
+                        "alloca",
+                    )
+                    .unwrap();
+                self.values.insert(inst.result.unwrap(), ptr.into());
+            }
 
             InstKind::Load { volatile } => {
                 let ptr_val = self.get(inst.operands[0]).into_pointer_value();
@@ -520,13 +527,25 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 store.set_volatile(*volatile).unwrap();
             }
 
-            InstKind::ElementPtr => {
+            InstKind::PtrOffset => {
                 let base = self.get(inst.operands[0]).into_pointer_value();
                 let offset = self.get_int_or_const(def, inst.operands[1]);
                 let i8_ty = self.context.i8_type();
                 let ptr = unsafe {
                     self.builder
-                        .build_gep(i8_ty, base, &[offset], "elemptr")
+                        .build_gep(i8_ty, base, &[offset], "ptroffset")
+                        .unwrap()
+                };
+                self.values.insert(inst.result.unwrap(), ptr.into());
+            }
+
+            InstKind::ElementPtr(ty) => {
+                let base = self.get(inst.operands[0]).into_pointer_value();
+                let offset = self.get_int_or_const(def, inst.operands[1]);
+                let ty = self.map_type(*ty);
+                let ptr = unsafe {
+                    self.builder
+                        .build_gep(ty, base, &[offset], "elementptr")
                         .unwrap()
                 };
                 self.values.insert(inst.result.unwrap(), ptr.into());
@@ -597,39 +616,89 @@ impl<'ctx> LlvmLowerer<'ctx> {
             CastKind::Zext => {
                 let int_ty = self.map_int_type(dst_ty);
                 self.builder
-                    .build_int_z_extend(src.into_int_value(), int_ty, "zext")
+                    .build_int_z_extend(src.into_int_value(), int_ty, &kind.to_string())
                     .unwrap()
                     .into()
             }
             CastKind::Sext => {
                 let int_ty = self.map_int_type(dst_ty);
                 self.builder
-                    .build_int_s_extend(src.into_int_value(), int_ty, "sext")
+                    .build_int_s_extend(src.into_int_value(), int_ty, &kind.to_string())
                     .unwrap()
                     .into()
             }
             CastKind::Trunc => {
                 let int_ty = self.map_int_type(dst_ty);
                 self.builder
-                    .build_int_truncate(src.into_int_value(), int_ty, "trunc")
+                    .build_int_truncate(src.into_int_value(), int_ty, &kind.to_string())
                     .unwrap()
                     .into()
             }
             CastKind::Bitcast => match (src, dst_ty) {
                 (BasicValueEnum::IntValue(i), Type::F32) => self
                     .builder
-                    .build_bit_cast(i, self.context.f32_type(), "bitcast")
+                    .build_bit_cast(i, self.context.f32_type(), &kind.to_string())
                     .unwrap(),
                 (BasicValueEnum::IntValue(i), Type::F64) => self
                     .builder
-                    .build_bit_cast(i, self.context.f64_type(), "bitcast")
+                    .build_bit_cast(i, self.context.f64_type(), &kind.to_string())
                     .unwrap(),
                 (BasicValueEnum::FloatValue(f), Type::I32 | Type::I64 | Type::I8 | Type::I16) => {
                     let int_ty = self.map_int_type(dst_ty);
-                    self.builder.build_bit_cast(f, int_ty, "bitcast").unwrap()
+                    self.builder
+                        .build_bit_cast(f, int_ty, &kind.to_string())
+                        .unwrap()
                 }
                 (v, _) => v,
             },
+            CastKind::SIToFP => {
+                let int_val = src.into_int_value();
+                let float_ty = self.map_float_type(dst_ty);
+                self.builder
+                    .build_signed_int_to_float(int_val, float_ty, &kind.to_string())
+                    .unwrap()
+                    .into()
+            }
+            CastKind::UIToFP => {
+                let int_val = src.into_int_value();
+                let float_ty = self.map_float_type(dst_ty);
+                self.builder
+                    .build_unsigned_int_to_float(int_val, float_ty, &kind.to_string())
+                    .unwrap()
+                    .into()
+            }
+            CastKind::FPToSI => {
+                let float_val = src.into_float_value();
+                let int_ty = self.map_int_type(dst_ty);
+                self.builder
+                    .build_float_to_signed_int(float_val, int_ty, &kind.to_string())
+                    .unwrap()
+                    .into()
+            }
+            CastKind::FPToUI => {
+                let float_val = src.into_float_value();
+                let int_ty = self.map_int_type(dst_ty);
+                self.builder
+                    .build_float_to_unsigned_int(float_val, int_ty, &kind.to_string())
+                    .unwrap()
+                    .into()
+            }
+            CastKind::FPromote => {
+                let float_val = src.into_float_value();
+                let ty = self.map_float_type(dst_ty);
+                self.builder
+                    .build_float_cast(float_val, ty, &kind.to_string())
+                    .unwrap()
+                    .into()
+            }
+            CastKind::FTrunc => {
+                let float_val = src.into_float_value();
+                let ty = self.map_float_type(dst_ty);
+                self.builder
+                    .build_float_cast(float_val, ty, &kind.to_string())
+                    .unwrap()
+                    .into()
+            }
         }
     }
 

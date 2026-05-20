@@ -224,13 +224,13 @@ fn apply_replacements(func: &mut FunctionDef, repl: &HashMap<ValueId, ValueId>) 
             "replacing %{}:{} ({:?}) -> %{}:{} ({:?})",
             result,
             func.get_type(result),
-            func.get_def_block(result).unwrap(),
+            func.get_value_def_in(result).unwrap(),
             canonical,
             func.get_type(canonical),
-            func.get_def_block(canonical).unwrap(),
+            func.get_value_def_in(canonical).unwrap(),
         );
-        func.replace_value(result, canonical);
-        if let Some(inst_id) = func.get_def_inst(result) {
+        func.replace_uses(result, canonical);
+        if let Some(inst_id) = func.get_value_def(result) {
             func.remove_inst(inst_id);
         }
     }

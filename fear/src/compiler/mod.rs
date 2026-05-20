@@ -18,9 +18,10 @@ pub enum OutputType {
 /// Backend kind
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Backend {
-    Llvm,
     #[default]
     Cranelift,
+    Fear,
+    Llvm,
 }
 
 impl OutputType {

@@ -4,24 +4,39 @@
 void
 foo_def (FearFunctionDef *def)
 {
-  FearValueId arg0       = fearCreateFuncParam (def, FearInt8);
-  FearValueId arg1       = fearCreateFuncParam (def, FearInt8);
+  FearValueId arg0       = fearCreateFuncParam (def, FearInt64);
   FearBlockId entryBlock = fearGetEntryBlock (def);
-  FearValueId const24 = fearCreateIntConst (def, entryBlock, FearInt8, 24);
-  FearValueId const42 = fearCreateIntConst (def, entryBlock, FearInt8, 42);
-  FearValueId tmp0
-      = fearCreateAdd (def, entryBlock, FearInt8, const24, const42);
-  FearValueId tmp1 = fearCreateAdd (def, entryBlock, FearInt8, arg0, arg1);
-  FearValueId tmp  = fearCreateMul (def, entryBlock, FearInt8, tmp0, tmp1);
-  fearCreateRet (def, entryBlock, tmp);
+
+  FearValueId slot = fearCreateArrayAlloca (def, entryBlock, FearInt64, 2);
+
+  FearValueId zero = fearCreateIntConst (def, entryBlock, FearInt32, 0);
+  FearValueId one  = fearCreateIntConst (def, entryBlock, FearInt32, 1);
+
+  FearValueId first_addr
+      = fearCreateElementPtr (def, entryBlock, FearInt32, slot, zero);
+  FearValueId second_addr
+      = fearCreateElementPtr (def, entryBlock, FearInt32, slot, one);
+
+  fearCreateStore (def, entryBlock, first_addr, zero);
+  fearCreateStore (def, entryBlock, second_addr, one);
+
+  FearValueId first
+      = fearCreateLoad (def, entryBlock, FearInt32, first_addr);
+  FearValueId second
+      = fearCreateLoad (def, entryBlock, FearInt32, second_addr);
+
+  FearValueId sum
+      = fearCreateAdd (def, entryBlock, FearInt32, first, second);
+
+  fearCreateRet (def, entryBlock, sum);
 }
 
 int
 main ()
 {
   struct FearModule *m         = fearModuleCreate ("ex");
-  FearType           params[2] = { FearInt8, FearInt8 };
-  FearFuncId foo = fearDeclareFunction (m, "foo", params, 2, FearInt8,
+  FearType           params[1] = { FearInt32 };
+  FearFuncId foo = fearDeclareFunction (m, "foo", params, 1, FearInt32,
                                         FearLinkageExternal);
 
   struct FearFunctionDef *def = fearDefinitionCreate ();
@@ -45,21 +60,22 @@ main ()
 
   fprintf (stderr, "-- features:\n");
   fprintf (stderr, "-- llvm: %d, cranelift: %d\n\n",
-           fearLoweringHasLLVM (), fearLoweringHasCranelift ());
+           fearHasBackend (FearBackendLlvm),
+           fearHasBackend (FearBackendCranelift));
 
-  if (fearLoweringHasCranelift ())
+  if (fearHasBackend (FearBackendLlvm))
   {
-    fprintf (stderr, "cranelift: ex.bin -> ex.o\n");
+    fearEmitAssembly (m, FearBackendLlvm, FearOptLevelFull, 1);
+  }
 
-    FILE       *binmodf = fopen ("ex.bin", "r");
-    FearModule *exm     = fearReadBinaryFromFile (fileno (binmodf));
-    fclose (binmodf);
+  if (fearHasBackend (FearBackendCranelift))
+  {
+    fprintf (stderr, "=> ex.o\n");
 
     FILE *exf_obj = fopen ("ex.o", "w");
-    fearEmitCraneliftObjectToFile (m, FearOptLevelFull, fileno (exf_obj));
+    fearEmitObject (m, FearBackendCranelift, FearOptLevelFull,
+                    fileno (exf_obj));
     fclose (exf_obj);
-
-    fearModuleDispose (exm);
   }
 
   return 0;

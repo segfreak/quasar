@@ -328,7 +328,7 @@ impl Module {
                     }
                 }
 
-                InstKind::ElementPtr => {
+                InstKind::PtrOffset | InstKind::ElementPtr(_) => {
                     if inst.operands.len() != nops {
                         return Err(VerifyError::OperandCountMismatch(*id, nops));
                     }

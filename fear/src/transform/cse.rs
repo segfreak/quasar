@@ -63,12 +63,12 @@ pub fn cse(m: &mut Module, f: FuncId) -> bool {
                     "replacing %{}:{} (B{}) -> %{}:{} (B{})",
                     result,
                     func.get_type(result),
-                    func.get_def_block(result).unwrap(),
+                    func.get_value_def_in(result).unwrap(),
                     existing,
                     func.get_type(existing),
-                    func.get_def_block(existing).unwrap(),
+                    func.get_value_def_in(existing).unwrap(),
                 );
-                func.replace_value(result, existing);
+                func.replace_uses(result, existing);
                 func.remove_inst(id);
                 changed = true;
             }

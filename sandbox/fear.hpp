@@ -1,7 +1,6 @@
 #pragma once
 
 #include "fearc.h"
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -125,10 +124,10 @@ using RawModule  = FearModule;
 
 inline bool
 hasLLVM ()
-{ return fearLoweringHasLLVM (); }
+{ return fearHasBackend (FearBackendLlvm); }
 inline bool
 hasCranelift ()
-{ return fearLoweringHasCranelift (); }
+{ return fearHasBackend (FearBackendCranelift); }
 
 struct FunctionDef
 {
@@ -209,14 +208,14 @@ struct FunctionDef
   createMul (BlockId parent, Type ty, ValueId a, ValueId b)
   { return fearCreateMul (raw_, parent, __unwrap (ty), a, b); }
   ValueId
-  createSignedDiv (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateSignedDiv (raw_, parent, __unwrap (ty), a, b); }
+  createDiv (BlockId parent, Type ty, ValueId a, ValueId b)
+  { return fearCreateDiv (raw_, parent, __unwrap (ty), a, b); }
   ValueId
   createUnsignedDiv (BlockId parent, Type ty, ValueId a, ValueId b)
   { return fearCreateUnsignedDiv (raw_, parent, __unwrap (ty), a, b); }
   ValueId
-  createSignedRem (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateSignedRem (raw_, parent, __unwrap (ty), a, b); }
+  createRem (BlockId parent, Type ty, ValueId a, ValueId b)
+  { return fearCreateRem (raw_, parent, __unwrap (ty), a, b); }
   ValueId
   createUnsignedRem (BlockId parent, Type ty, ValueId a, ValueId b)
   { return fearCreateUnsignedRem (raw_, parent, __unwrap (ty), a, b); }
@@ -377,8 +376,10 @@ struct Module
   { fearBinaryDumpToFile (raw_, fd); }
 
   int
-  emitCraneliftObjectToFile (OptLevel opt, int fd)
-  { return fearEmitCraneliftObjectToFile (raw_, __unwrap (opt), fd); }
+  emitObject (OptLevel opt, int fd)
+  {
+    return fearEmitObject (raw_, fearSelectBackend (), __unwrap (opt), fd);
+  }
 
 private:
   RawModule *raw_;

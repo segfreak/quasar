@@ -370,7 +370,8 @@ fn compile_inst(
         }
 
         InstKind::Alloca(ty) => {
-            let size = ty.get_size() as u32;
+            let ty = map_type(*ty);
+            let size = ty.bytes();
             let slot = fx.create_sized_stack_slot(StackSlotData::new(
                 StackSlotKind::ExplicitSlot,
                 size,
@@ -380,8 +381,14 @@ fn compile_inst(
             values.insert(inst.result.unwrap(), ptr);
         }
 
-        InstKind::NAlloca => {
-            panic!("dynamic stack alloc (NAlloca) is not supported by Cranelift stack_slot")
+        InstKind::NAlloca(ty, count) => {
+            let ty = map_type(*ty);
+            let elem_bytes = ty.bytes();
+            let size = elem_bytes * (*count as u32);
+            let slot_data = StackSlotData::new(StackSlotKind::ExplicitSlot, size, 0);
+            let slot = fx.create_sized_stack_slot(slot_data);
+            let ptr = fx.ins().stack_addr(types::I64, slot, 0);
+            values.insert(inst.result.unwrap(), ptr);
         }
 
         InstKind::Load { volatile } => {
@@ -405,10 +412,36 @@ fn compile_inst(
             fx.ins().store(flags, value, ptr, 0);
         }
 
-        InstKind::ElementPtr => {
+        InstKind::PtrOffset => {
             let base = get(inst.operands[0], values);
             let offset = get_or_const(def, inst.operands[1], values, fx);
             let ptr = fx.ins().iadd(base, offset);
+            values.insert(inst.result.unwrap(), ptr);
+        }
+
+        InstKind::ElementPtr(ty) => {
+            let base = get(inst.operands[0], values);
+            let base_ty = fx.func.dfg.value_type(base);
+
+            let raw_offset = get_or_const(def, inst.operands[1], values, fx);
+            let offset_ty = fx.func.dfg.value_type(raw_offset);
+
+            let offset_expanded = if offset_ty.bits() < 64 {
+                fx.ins().sextend(types::I64, raw_offset)
+            } else {
+                raw_offset
+            };
+
+            let type_size = fx.ins().iconst(types::I64, ty.get_size() as i64);
+            let final_offset = fx.ins().imul(offset_expanded, type_size);
+
+            let final_offset_adjusted = if base_ty != types::I64 {
+                fx.ins().ireduce(base_ty, final_offset)
+            } else {
+                final_offset
+            };
+
+            let ptr = fx.ins().iadd(base, final_offset_adjusted);
             values.insert(inst.result.unwrap(), ptr);
         }
 
@@ -513,6 +546,12 @@ fn lower_cast(
             | (Type::F64, Type::I64) => fx.ins().bitcast(cl_dst, MemFlags::new(), src),
             _ => src,
         },
+        CastKind::SIToFP => fx.ins().fcvt_from_sint(cl_dst, src),
+        CastKind::UIToFP => fx.ins().fcvt_from_uint(cl_dst, src),
+        CastKind::FPToSI => fx.ins().fcvt_to_sint(cl_dst, src),
+        CastKind::FPToUI => fx.ins().fcvt_to_uint(cl_dst, src),
+        CastKind::FPromote => fx.ins().fpromote(cl_dst, src),
+        CastKind::FTrunc => fx.ins().fdemote(cl_dst, src),
     }
 }
 

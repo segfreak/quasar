@@ -65,11 +65,17 @@ impl FunctionDef {
                 inst.operands[1]
             ),
 
-            InstKind::NAlloca => format!("alloca {}", inst.operands[0]),
+            InstKind::NAlloca(ty, size) => format!("nalloca {} {}", ty, size),
             InstKind::Alloca(ty) => format!("alloca {}", ty),
 
-            InstKind::ElementPtr => {
-                format!("elemptr %{}, %{}", inst.operands[0], inst.operands[1])
+            InstKind::PtrOffset => {
+                format!("ptroffset %{}, %{}", inst.operands[0], inst.operands[1])
+            }
+            InstKind::ElementPtr(ty) => {
+                format!(
+                    "elementptr {} %{}, %{}",
+                    ty, inst.operands[0], inst.operands[1]
+                )
             }
 
             InstKind::Call(fid) => {

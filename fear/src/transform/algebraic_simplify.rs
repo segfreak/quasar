@@ -20,13 +20,13 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
 
             // x + 0 => x
             if is_zero(func, a) {
-                func.replace_value(inst.result.unwrap(), b);
+                func.replace_uses(inst.result.unwrap(), b);
                 func.remove_inst(id);
                 return true;
             }
 
             if is_zero(func, b) {
-                func.replace_value(inst.result.unwrap(), a);
+                func.replace_uses(inst.result.unwrap(), a);
                 func.remove_inst(id);
                 return true;
             }
@@ -50,7 +50,7 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
 
             // x - 0 => x
             if is_zero(func, b) {
-                func.replace_value(inst.result.unwrap(), a);
+                func.replace_uses(inst.result.unwrap(), a);
                 func.remove_inst(id);
                 return true;
             }
@@ -58,7 +58,7 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
             // x - x => 0
             if a == b {
                 let zero = func.make_iconst(inst.parent, Type::I32, 0);
-                func.replace_value(inst.result.unwrap(), zero);
+                func.replace_uses(inst.result.unwrap(), zero);
                 func.remove_inst(id);
                 return true;
             }
@@ -70,20 +70,20 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
             // x * 0 => 0
             if is_zero(func, a) || is_zero(func, b) {
                 let zero = func.make_iconst(inst.parent, Type::I32, 0);
-                func.replace_value(inst.result.unwrap(), zero);
+                func.replace_uses(inst.result.unwrap(), zero);
                 func.remove_inst(id);
                 return true;
             }
 
             // x * 1 => x
             if is_one(func, a) {
-                func.replace_value(inst.result.unwrap(), b);
+                func.replace_uses(inst.result.unwrap(), b);
                 func.remove_inst(id);
                 return true;
             }
 
             if is_one(func, b) {
-                func.replace_value(inst.result.unwrap(), a);
+                func.replace_uses(inst.result.unwrap(), a);
                 func.remove_inst(id);
                 return true;
             }
@@ -95,14 +95,14 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
             // x & 0 => 0
             if is_zero(func, a) || is_zero(func, b) {
                 let zero = func.make_iconst(inst.parent, Type::I32, 0);
-                func.replace_value(inst.result.unwrap(), zero);
+                func.replace_uses(inst.result.unwrap(), zero);
                 func.remove_inst(id);
                 return true;
             }
 
             // x & x => x
             if a == b {
-                func.replace_value(inst.result.unwrap(), a);
+                func.replace_uses(inst.result.unwrap(), a);
                 func.remove_inst(id);
                 return true;
             }

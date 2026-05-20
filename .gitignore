@@ -11,3 +11,5 @@ perf.*
 /out/
 # bindgen
 /include/
+*.out
+*.x

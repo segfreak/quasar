@@ -89,7 +89,7 @@ pub fn tre(module: &mut Module, fid: FuncId) -> bool {
         .collect();
 
     for (&old_param, &new_param) in entry_params.iter().zip(loop_header_params.iter()) {
-        def.replace_value(old_param, new_param);
+        def.replace_uses(old_param, new_param);
     }
 
     let entry_insts: Vec<InstId> = def.blocks[&entry_block].insts.clone();
