@@ -48,12 +48,12 @@ pub fn reduce_expr(expr: Expr, changed: &mut bool) -> Expr {
                 (x, Expr::Const(y)) if !is_power_of_two(*y) && *y > 2 => {
                     if let Some(new) = try_decompose_mul(x.clone(), *y) {
                         let new_cost = new.get_cost();
-                        if new_cost <= cost {
+                        if new_cost < cost {
                             *changed = true;
                             return new;
                         }
                         log::debug!(
-                            "decompose for constant {} is not profitable (cost {} > {})",
+                            "decompose for constant {} is not profitable (cost {} >= {})",
                             y,
                             new_cost,
                             cost
