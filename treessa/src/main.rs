@@ -6,7 +6,7 @@ fn main() {
 
     let mut f = FunctionDef::new();
 
-    let b0 = f.new_block();
+    let b0 = f.get_entry();
     let x = f.add_block_param(b0, Type::I32);
     let c10 = f.append_expr(b0, Type::I32, Expr::Const(10));
     let tmp = f.append_expr(
