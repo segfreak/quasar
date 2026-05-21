@@ -9,6 +9,10 @@ impl FunctionDef {
             Expr::Add(a, b) => format!("add({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
             Expr::Sub(a, b) => format!("sub({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
             Expr::Mul(a, b) => format!("mul({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
+            Expr::Div(a, b) => format!("div({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
+            Expr::BitShl(a, b) => format!("shl({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
+            Expr::BitShr(a, b) => format!("shr({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
+            Expr::ArithShr(a, b) => format!("ashr({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
         }
     }
 

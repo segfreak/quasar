@@ -44,6 +44,17 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
             }
         }
 
+        Expr::Div(a, b) => {
+            let a = fold_expr(*a, changed);
+            let b = fold_expr(*b, changed);
+            if let (Expr::Const(x), Expr::Const(y)) = (&a, &b) {
+                *changed = true;
+                Expr::Const(x / y)
+            } else {
+                Expr::Div(Box::new(a), Box::new(b))
+            }
+        }
+
         other => other,
     }
 }

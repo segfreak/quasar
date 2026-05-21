@@ -279,6 +279,10 @@ impl FunctionDef {
         f
     }
 
+    pub fn get_entry(&self) -> BlockId {
+        self.entry
+    }
+
     pub fn reverse_post_order(&self) -> Vec<BlockId> {
         let mut visited = HashSet::new();
         let mut post_order = Vec::new();

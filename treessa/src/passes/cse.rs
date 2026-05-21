@@ -19,7 +19,13 @@ fn count_expr(expr: &Expr, cnt: &mut HashMap<Expr, usize>) {
     match expr {
         Expr::Var(_) | Expr::Const(_) => {}
 
-        Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) => {
+        Expr::Add(a, b)
+        | Expr::Sub(a, b)
+        | Expr::Mul(a, b)
+        | Expr::Div(a, b)
+        | Expr::BitShl(a, b)
+        | Expr::BitShr(a, b)
+        | Expr::ArithShr(a, b) => {
             *cnt.entry(expr.clone()).or_insert(0) += 1;
 
             count_expr(a, cnt);
@@ -84,26 +90,50 @@ fn rewrite(
         Expr::Add(a, b) => {
             let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
             let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
-
             let expr = Expr::Add(Box::new(a), Box::new(b));
-
             hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
         }
 
         Expr::Sub(a, b) => {
             let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
             let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
-
             let expr = Expr::Sub(Box::new(a), Box::new(b));
-
             hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
         }
 
         Expr::Mul(a, b) => {
             let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
             let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
-
             let expr = Expr::Mul(Box::new(a), Box::new(b));
+            hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
+        }
+
+        Expr::BitShl(a, b) => {
+            let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
+            let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
+            let expr = Expr::BitShl(Box::new(a), Box::new(b));
+            hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
+        }
+
+        Expr::BitShr(a, b) => {
+            let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
+            let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
+            let expr = Expr::BitShr(Box::new(a), Box::new(b));
+            hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
+        }
+
+        Expr::ArithShr(a, b) => {
+            let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
+            let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
+            let expr = Expr::ArithShr(Box::new(a), Box::new(b));
+            hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
+        }
+
+        Expr::Div(a, b) => {
+            let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
+            let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
+
+            let expr = Expr::Div(Box::new(a), Box::new(b));
 
             hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
         }

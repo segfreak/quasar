@@ -1,4 +1,4 @@
-use crate::{passes::dce, *};
+use crate::*;
 use std::collections::{HashMap, HashSet};
 
 fn build_use_counts(func: &FunctionDef) -> HashMap<ValueId, usize> {
@@ -19,7 +19,13 @@ fn collect_uses(expr: &Expr, uses: &mut HashMap<ValueId, usize>) {
 
         Expr::Const(_) => {}
 
-        Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) => {
+        Expr::Add(a, b)
+        | Expr::Sub(a, b)
+        | Expr::Mul(a, b)
+        | Expr::Div(a, b)
+        | Expr::BitShl(a, b)
+        | Expr::BitShr(a, b)
+        | Expr::ArithShr(a, b) => {
             collect_uses(a, uses);
             collect_uses(b, uses);
         }
@@ -55,8 +61,11 @@ pub fn expressify(func: &mut FunctionDef) -> bool {
         func.values.get_mut(&vid).unwrap().expr = expanded;
     }
 
-    if changed {
-        dce::dce(func);
+    {
+        use crate::passes::dce;
+        if changed {
+            dce::dce(func);
+        }
     }
 
     changed
@@ -119,17 +128,35 @@ fn expand_expr(
             let b = expand_expr(func, *b, cache, uses, params, changed);
             Expr::Add(Box::new(a), Box::new(b))
         }
-
         Expr::Sub(a, b) => {
             let a = expand_expr(func, *a, cache, uses, params, changed);
             let b = expand_expr(func, *b, cache, uses, params, changed);
             Expr::Sub(Box::new(a), Box::new(b))
         }
-
         Expr::Mul(a, b) => {
             let a = expand_expr(func, *a, cache, uses, params, changed);
             let b = expand_expr(func, *b, cache, uses, params, changed);
             Expr::Mul(Box::new(a), Box::new(b))
+        }
+        Expr::Div(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            Expr::Div(Box::new(a), Box::new(b))
+        }
+        Expr::BitShl(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            Expr::BitShl(Box::new(a), Box::new(b))
+        }
+        Expr::BitShr(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            Expr::BitShr(Box::new(a), Box::new(b))
+        }
+        Expr::ArithShr(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            Expr::ArithShr(Box::new(a), Box::new(b))
         }
     }
 }

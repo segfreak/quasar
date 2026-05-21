@@ -6,10 +6,51 @@ pub fn dce(func: &mut FunctionDef) -> bool {
     let mut used = HashSet::<ValueId>::new();
 
     for block in func.blocks.values() {
-        if let Some(Terminator::Ret(v)) = &block.terminator {
-            if used.insert(*v) {
-                if let Some(val) = func.values.get(v) {
-                    mark_expr(func, &val.expr.clone(), &mut used);
+        if let Some(term) = &block.terminator {
+            match term {
+                Terminator::Ret(v) => {
+                    if used.insert(*v) {
+                        if let Some(val) = func.values.get(v) {
+                            mark_expr(func, &val.expr.clone(), &mut used);
+                        }
+                    }
+                }
+                Terminator::Br { params, .. } => {
+                    for v in params {
+                        if used.insert(*v) {
+                            if let Some(val) = func.values.get(v) {
+                                mark_expr(func, &val.expr.clone(), &mut used);
+                            }
+                        }
+                    }
+                }
+
+                Terminator::BrIf {
+                    cond,
+                    then_params,
+                    else_params,
+                    ..
+                } => {
+                    if used.insert(*cond) {
+                        if let Some(val) = func.values.get(cond) {
+                            mark_expr(func, &val.expr.clone(), &mut used);
+                        }
+                    }
+
+                    for v in then_params {
+                        if used.insert(*v) {
+                            if let Some(val) = func.values.get(v) {
+                                mark_expr(func, &val.expr.clone(), &mut used);
+                            }
+                        }
+                    }
+                    for v in else_params {
+                        if used.insert(*v) {
+                            if let Some(val) = func.values.get(v) {
+                                mark_expr(func, &val.expr.clone(), &mut used);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -45,7 +86,13 @@ fn mark_expr(func: &FunctionDef, expr: &Expr, used: &mut std::collections::HashS
 
         Expr::Const(_) => {}
 
-        Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) => {
+        Expr::Add(a, b)
+        | Expr::Sub(a, b)
+        | Expr::Mul(a, b)
+        | Expr::Div(a, b)
+        | Expr::BitShl(a, b)
+        | Expr::BitShr(a, b)
+        | Expr::ArithShr(a, b) => {
             mark_expr(func, a, used);
             mark_expr(func, b, used);
         }

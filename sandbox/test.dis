@@ -1,0 +1,103 @@
+
+test.o:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000000000000 <if_else_chain>:
+   0:	55                   	push   %rbp
+   1:	48 89 e5             	mov    %rsp,%rbp
+   4:	85 ff                	test   %edi,%edi
+   6:	0f 8f 03 00 00 00    	jg     f <if_else_chain+0xf>
+   c:	48 89 d6             	mov    %rdx,%rsi
+   f:	85 f6                	test   %esi,%esi
+  11:	0f 8f 03 00 00 00    	jg     1a <if_else_chain+0x1a>
+  17:	48 89 f7             	mov    %rsi,%rdi
+  1a:	8d 47 01             	lea    0x1(%rdi),%eax
+  1d:	48 89 ec             	mov    %rbp,%rsp
+  20:	5d                   	pop    %rbp
+  21:	c3                   	ret
+
+0000000000000022 <cross_phi>:
+  22:	55                   	push   %rbp
+  23:	48 89 e5             	mov    %rsp,%rbp
+  26:	03 fe                	add    %esi,%edi
+  28:	85 ff                	test   %edi,%edi
+  2a:	0f 8f 0a 00 00 00    	jg     3a <cross_phi+0x18>
+  30:	2b f2                	sub    %edx,%esi
+  32:	48 89 f0             	mov    %rsi,%rax
+  35:	e9 03 00 00 00       	jmp    3d <cross_phi+0x1b>
+  3a:	8d 04 16             	lea    (%rsi,%rdx,1),%eax
+  3d:	48 89 ec             	mov    %rbp,%rsp
+  40:	5d                   	pop    %rbp
+  41:	c3                   	ret
+
+0000000000000042 <diamond>:
+  42:	55                   	push   %rbp
+  43:	48 89 e5             	mov    %rsp,%rbp
+  46:	85 ff                	test   %edi,%edi
+  48:	0f 8f 03 00 00 00    	jg     51 <diamond+0xf>
+  4e:	48 89 d6             	mov    %rdx,%rsi
+  51:	8d 46 01             	lea    0x1(%rsi),%eax
+  54:	48 89 ec             	mov    %rbp,%rsp
+  57:	5d                   	pop    %rbp
+  58:	c3                   	ret
+
+0000000000000059 <memory_stack_heavy>:
+  59:	55                   	push   %rbp
+  5a:	48 89 e5             	mov    %rsp,%rbp
+  5d:	48 83 ec 50          	sub    $0x50,%rsp
+  61:	48 8d 0c 24          	lea    (%rsp),%rcx
+  65:	89 3c 24             	mov    %edi,(%rsp)
+  68:	48 89 f8             	mov    %rdi,%rax
+  6b:	33 ff                	xor    %edi,%edi
+  6d:	83 ff 10             	cmp    $0x10,%edi
+  70:	0f 8c 0b 00 00 00    	jl     81 <memory_stack_heavy+0x28>
+  76:	03 01                	add    (%rcx),%eax
+  78:	48 83 c4 50          	add    $0x50,%rsp
+  7c:	48 89 ec             	mov    %rbp,%rsp
+  7f:	5d                   	pop    %rbp
+  80:	c3                   	ret
+  81:	48 8d 54 24 08       	lea    0x8(%rsp),%rdx
+  86:	4c 63 c7             	movslq %edi,%r8
+  89:	42 89 34 82          	mov    %esi,(%rdx,%r8,4)
+  8d:	81 c7 01 00 00 00    	add    $0x1,%edi
+  93:	03 c6                	add    %esi,%eax
+  95:	03 01                	add    (%rcx),%eax
+  97:	e9 d1 ff ff ff       	jmp    6d <memory_stack_heavy+0x14>
+
+000000000000009c <early_return>:
+  9c:	55                   	push   %rbp
+  9d:	48 89 e5             	mov    %rsp,%rbp
+  a0:	48 89 f0             	mov    %rsi,%rax
+  a3:	85 ff                	test   %edi,%edi
+  a5:	0f 8f 08 00 00 00    	jg     b3 <early_return+0x17>
+  ab:	48 89 d0             	mov    %rdx,%rax
+  ae:	48 89 ec             	mov    %rbp,%rsp
+  b1:	5d                   	pop    %rbp
+  b2:	c3                   	ret
+  b3:	48 89 ec             	mov    %rbp,%rsp
+  b6:	5d                   	pop    %rbp
+  b7:	c3                   	ret
+
+00000000000000b8 <big_cfg_stress>:
+  b8:	55                   	push   %rbp
+  b9:	48 89 e5             	mov    %rsp,%rbp
+  bc:	85 ff                	test   %edi,%edi
+  be:	0f 8f 03 00 00 00    	jg     c7 <big_cfg_stress+0xf>
+  c4:	48 89 d6             	mov    %rdx,%rsi
+  c7:	85 f6                	test   %esi,%esi
+  c9:	0f 8e 02 00 00 00    	jle    d1 <big_cfg_stress+0x19>
+  cf:	03 f7                	add    %edi,%esi
+  d1:	48 89 f0             	mov    %rsi,%rax
+  d4:	d1 e0                	shl    $1,%eax
+  d6:	c1 e8 1f             	shr    $0x1f,%eax
+  d9:	8d 04 70             	lea    (%rax,%rsi,2),%eax
+  dc:	d1 f8                	sar    $1,%eax
+  de:	85 c0                	test   %eax,%eax
+  e0:	0f 8e 03 00 00 00    	jle    e9 <big_cfg_stress+0x31>
+  e6:	48 89 c6             	mov    %rax,%rsi
+  e9:	8d 46 01             	lea    0x1(%rsi),%eax
+  ec:	48 89 ec             	mov    %rbp,%rsp
+  ef:	5d                   	pop    %rbp
+  f0:	c3                   	ret

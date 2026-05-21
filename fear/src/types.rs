@@ -54,7 +54,8 @@ impl Type {
     }
 }
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum OptLevel {
     None,
