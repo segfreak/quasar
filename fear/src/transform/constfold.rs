@@ -1,4 +1,4 @@
-use crate::ir::*;
+use crate::{ir::*, types::IntCmp};
 
 pub fn constfold(m: &mut Module, f: FuncId) -> bool {
     let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();

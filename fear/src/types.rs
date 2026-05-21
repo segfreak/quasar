@@ -111,3 +111,61 @@ pub enum CallingConvention {
     #[display("msabi")]
     MicrosoftAbi,
 }
+
+#[derive(Debug, EnumDisplay, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum IntCmp {
+    #[display("eq")]
+    Eq,
+    #[display("ne")]
+    Ne,
+    #[display("lt")]
+    Lt,
+    #[display("le")]
+    Le,
+    #[display("gt")]
+    Gt,
+    #[display("ge")]
+    Ge,
+    #[display("ult")]
+    ULt,
+    #[display("ule")]
+    ULe,
+    #[display("ugt")]
+    UGt,
+    #[display("uge")]
+    UGe,
+}
+
+#[derive(Debug, EnumDisplay, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum FloatCmp {
+    #[display("ord")]
+    Ord,
+    #[display("oeq")]
+    OEq,
+    #[display("one")]
+    ONe,
+    #[display("olt")]
+    OLt,
+    #[display("ole")]
+    OLe,
+    #[display("ogt")]
+    OGt,
+    #[display("oge")]
+    OGe,
+    #[display("uno")]
+    Uno,
+    #[display("ueq")]
+    UEq,
+    #[display("une")]
+    UNe,
+    #[display("ult")]
+    ULt,
+    #[display("ule")]
+    ULe,
+    #[display("ugt")]
+    UGt,
+    #[display("uge")]
+    UGe,
+}

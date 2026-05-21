@@ -1,3 +1,5 @@
+use fear::types::{FloatCmp, IntCmp};
+
 use crate::{types::*, *};
 
 /// Creates a new basic block inside the function to build branches or loops.

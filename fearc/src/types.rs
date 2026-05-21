@@ -1,4 +1,4 @@
-use fear::{compiler::Backend, ir::*, types::*};
+use fear::{compiler::Backend, types::*};
 
 /// Opaque wrapper for the internal `Module` struct
 #[repr(C)]
