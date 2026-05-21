@@ -836,6 +836,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "treessa"
+version = "0.1.0"
+dependencies = [
+ "fear",
+ "log",
+ "pretty_env_logger",
+]
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
