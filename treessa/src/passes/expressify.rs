@@ -1,4 +1,4 @@
-use crate::{passes::dead_code_elim, *};
+use crate::{passes::dce, *};
 use std::collections::{HashMap, HashSet};
 
 fn build_use_counts(func: &FunctionDef) -> HashMap<ValueId, usize> {
@@ -56,7 +56,7 @@ pub fn expressify(func: &mut FunctionDef) -> bool {
     }
 
     if changed {
-        dead_code_elim::dead_code_elim(func);
+        dce::dce(func);
     }
 
     changed

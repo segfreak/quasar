@@ -2,7 +2,7 @@
 
 use crate::*;
 
-pub fn dead_code_elim(func: &mut FunctionDef) -> bool {
+pub fn dce(func: &mut FunctionDef) -> bool {
     let mut used = HashSet::<ValueId>::new();
 
     for block in func.blocks.values() {

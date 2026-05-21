@@ -1,5 +1,5 @@
 pub mod cse;
-pub mod dead_code_elim;
+pub mod dce;
 pub mod expressify;
 pub mod fold;
 pub mod simplify;
@@ -50,10 +50,7 @@ impl PassManager {
             //     PassKind::StrengthReduction
             // );
             run_pass!(cse::cse, PassKind::CommonSubexpressionElimination);
-            run_pass!(
-                dead_code_elim::dead_code_elim,
-                PassKind::DeadCodeElimination
-            );
+            run_pass!(dce::dce, PassKind::DeadCodeElimination);
             run_pass!(expressify::expressify, PassKind::Expressify);
 
             result.passes.extend(run);
