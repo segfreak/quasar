@@ -86,13 +86,20 @@ fn mark_expr(func: &FunctionDef, expr: &Expr, used: &mut std::collections::HashS
 
         Expr::Const(_) => {}
 
+        Expr::BitNeg(a) => {
+            mark_expr(func, a, used);
+        }
+
         Expr::Add(a, b)
         | Expr::Sub(a, b)
         | Expr::Mul(a, b)
         | Expr::Div(a, b)
         | Expr::BitShl(a, b)
         | Expr::BitShr(a, b)
-        | Expr::ArithShr(a, b) => {
+        | Expr::ArithShr(a, b)
+        | Expr::BitAnd(a, b)
+        | Expr::BitOr(a, b)
+        | Expr::BitXor(a, b) => {
             mark_expr(func, a, used);
             mark_expr(func, b, used);
         }

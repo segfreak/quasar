@@ -28,17 +28,15 @@ fn main() {
     let mul2 = f.make_mul(b0, Type::I32, div.into(), Expr::Const(2));
     let mul4 = f.make_mul(b0, Type::I32, div.into(), Expr::Const(4));
     let sum = f.make_add(b0, Type::I32, mul2.into(), mul4.into());
-    let decompose = f.make_mul(
-        b0,
-        Type::I32,
-        sum.into(),
-        Expr::Const(0x3FFF_FFFF_FFFF_FFFF),
-    );
-    f.make_ret(b0, decompose);
+    let decompose = f.make_mul(b0, Type::I32, sum.into(), Expr::Const(0x3FFF_FFFF));
+    let square = f.make_mul(b0, Type::I32, x.into(), x.into());
+    let mul8 = f.make_mul(b0, Type::I32, square.into(), Expr::Const(8));
+    let y = f.make_add(b0, Type::I32, decompose.into(), mul8.into());
+    f.make_ret(b0, y);
 
     println!("{}", f.dump());
 
-    let res = PassManager::optimize(&mut f, OptLevel::Default);
+    let res = PassManager::optimize(&mut f, OptLevel::Default, 30);
     println!("passes: {:?}", res.passes);
 
     println!("{}", f.dump())

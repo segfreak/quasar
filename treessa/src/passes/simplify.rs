@@ -17,10 +17,24 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
             let b = simplify_expr(*b, changed);
 
             match (&a, &b) {
+                (_, Expr::BitNeg(y)) => {
+                    *changed = true;
+                    Expr::Sub(Box::new(a), Box::new(*y.clone()))
+                }
+
                 (Expr::Const(0), x) | (x, Expr::Const(0)) => {
                     *changed = true;
                     x.clone()
                 }
+
+                // (x * const y) + (x * const y1)  => x * const (y + y1)
+                (Expr::Mul(box x, box Expr::Const(y)), Expr::Mul(box x2, box Expr::Const(y2)))
+                    if x == x2 =>
+                {
+                    *changed = true;
+                    Expr::Mul(Box::new(x.clone()), Box::new(Expr::Const(y + y2)))
+                }
+
                 // algebraic reassociation
                 // (x + const y) + const z  =>  x + const (y + z)
                 (Expr::Add(box x, box Expr::Const(y)), Expr::Const(z)) => {
@@ -55,6 +69,7 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
                         *changed = true;
                         Expr::Add(Box::new(x.clone()), Box::new(Expr::Const(y - z)))
                     }
+
                     // algebraic reassociation
                     // (x - const y) - const z  =>  x - const (y + z)
                     (Expr::Sub(box x, box Expr::Const(y)), Expr::Const(z)) => {
@@ -71,6 +86,11 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
             let b = simplify_expr(*b, changed);
 
             match (&a, &b) {
+                (_, Expr::Const(-1)) => {
+                    *changed = true;
+                    Expr::BitNeg(Box::new(a))
+                }
+
                 // 0 * x => 0
                 // x * 0 => 0
                 (Expr::Const(0), _) | (_, Expr::Const(0)) => {

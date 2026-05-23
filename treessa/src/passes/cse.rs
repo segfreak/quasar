@@ -19,13 +19,21 @@ fn count_expr(expr: &Expr, cnt: &mut HashMap<Expr, usize>) {
     match expr {
         Expr::Var(_) | Expr::Const(_) => {}
 
+        Expr::BitNeg(a) => {
+            *cnt.entry(expr.clone()).or_insert(0) += 1;
+            count_expr(a, cnt);
+        }
+
         Expr::Add(a, b)
         | Expr::Sub(a, b)
         | Expr::Mul(a, b)
         | Expr::Div(a, b)
         | Expr::BitShl(a, b)
         | Expr::BitShr(a, b)
-        | Expr::ArithShr(a, b) => {
+        | Expr::ArithShr(a, b)
+        | Expr::BitAnd(a, b)
+        | Expr::BitOr(a, b)
+        | Expr::BitXor(a, b) => {
             *cnt.entry(expr.clone()).or_insert(0) += 1;
 
             count_expr(a, cnt);
@@ -126,6 +134,33 @@ fn rewrite(
             let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
             let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
             let expr = Expr::ArithShr(Box::new(a), Box::new(b));
+            hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
+        }
+
+        Expr::BitAnd(a, b) => {
+            let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
+            let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
+            let expr = Expr::BitAnd(Box::new(a), Box::new(b));
+            hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
+        }
+
+        Expr::BitOr(a, b) => {
+            let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
+            let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
+            let expr = Expr::BitOr(Box::new(a), Box::new(b));
+            hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
+        }
+
+        Expr::BitXor(a, b) => {
+            let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
+            let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
+            let expr = Expr::BitXor(Box::new(a), Box::new(b));
+            hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
+        }
+
+        Expr::BitNeg(a) => {
+            let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
+            let expr = Expr::BitNeg(Box::new(a));
             hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
         }
 

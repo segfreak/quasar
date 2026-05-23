@@ -9,7 +9,7 @@ pub mod passes;
 pub type ValueId = u32;
 pub type BlockId = u32;
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Value {
     pub ty: Type,
     pub expr: Expr,
@@ -28,6 +28,11 @@ pub enum Expr {
     BitShl(Box<Expr>, Box<Expr>),
     BitShr(Box<Expr>, Box<Expr>),
     ArithShr(Box<Expr>, Box<Expr>),
+
+    BitNeg(Box<Expr>),
+    BitAnd(Box<Expr>, Box<Expr>),
+    BitOr(Box<Expr>, Box<Expr>),
+    BitXor(Box<Expr>, Box<Expr>),
 }
 
 impl From<ValueId> for Expr {
@@ -42,9 +47,14 @@ impl Expr {
             Expr::Var(_) | Expr::Const(_) => 0,
 
             Expr::Add(a, b) | Expr::Sub(a, b) => 1 + a.get_cost() + b.get_cost(),
-            Expr::BitShl(a, b) | Expr::BitShr(a, b) | Expr::ArithShr(a, b) => {
-                1 + a.get_cost() + b.get_cost()
-            }
+            Expr::BitShl(a, b)
+            | Expr::BitShr(a, b)
+            | Expr::ArithShr(a, b)
+            | Expr::BitAnd(a, b)
+            | Expr::BitOr(a, b)
+            | Expr::BitXor(a, b) => 1 + a.get_cost() + b.get_cost(),
+
+            Expr::BitNeg(a) => 1 + a.get_cost(),
 
             Expr::Mul(a, b) => 3 + a.get_cost() + b.get_cost(),
             Expr::Div(a, b) => 25 + a.get_cost() + b.get_cost(),
@@ -52,7 +62,7 @@ impl Expr {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Terminator {
     Ret(ValueId),
     Br {
@@ -68,7 +78,7 @@ pub enum Terminator {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct BasicBlock {
     pub id: BlockId,
     pub params: Vec<ValueId>,
@@ -76,7 +86,7 @@ pub struct BasicBlock {
     pub terminator: Option<Terminator>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct FunctionDef {
     pub next_value: ValueId,
     pub next_block: BlockId,

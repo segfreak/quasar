@@ -13,6 +13,10 @@ impl FunctionDef {
             Expr::BitShl(a, b) => format!("shl({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
             Expr::BitShr(a, b) => format!("shr({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
             Expr::ArithShr(a, b) => format!("ashr({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
+            Expr::BitAnd(a, b) => format!("band({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
+            Expr::BitOr(a, b) => format!("bor({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
+            Expr::BitXor(a, b) => format!("bxor({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
+            Expr::BitNeg(a) => format!("bneg({})", Self::fmt_expr(a)),
         }
     }
 

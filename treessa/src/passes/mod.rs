@@ -2,6 +2,7 @@ pub mod cse;
 pub mod dce;
 pub mod expressify;
 pub mod fold;
+pub mod normalize;
 pub mod simplify;
 pub mod strength_reduction;
 
@@ -17,6 +18,7 @@ pub enum PassKind {
     ConstantFolding,
     Simplify,
     StrengthReduction,
+    Normalize,
 }
 
 #[derive(Debug, Default)]
@@ -28,11 +30,12 @@ pub struct PassResult {
 pub struct PassManager;
 
 impl PassManager {
-    pub fn optimize(f: &mut FunctionDef, level: OptLevel) -> PassResult {
+    pub fn optimize(f: &mut FunctionDef, level: OptLevel, max_passes: i32) -> PassResult {
         let mut result = PassResult::default();
 
         let before_cost = f.get_cost();
 
+        let mut counter: i32 = 0;
         loop {
             let mut changed = false;
             let mut run = Vec::new();
@@ -50,20 +53,21 @@ impl PassManager {
             run_pass!(expressify::expressify, PassKind::Expressify);
 
             if level >= OptLevel::Default {
-                run_pass!(fold::fold, PassKind::ConstantFolding);
+                run_pass!(normalize::normalize, PassKind::Normalize);
                 run_pass!(simplify::simplify, PassKind::Simplify);
+                run_pass!(fold::fold, PassKind::ConstantFolding);
                 run_pass!(
                     strength_reduction::strength_reduction,
                     PassKind::StrengthReduction
                 );
                 run_pass!(cse::cse, PassKind::CommonSubexpressionElimination);
                 run_pass!(dce::dce, PassKind::DeadCodeElimination);
-                run_pass!(expressify::expressify, PassKind::Expressify);
             }
 
             result.passes.extend(run);
+            counter += 1;
 
-            if !changed {
+            if !changed || counter >= max_passes {
                 break;
             }
 

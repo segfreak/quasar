@@ -19,13 +19,20 @@ fn collect_uses(expr: &Expr, uses: &mut HashMap<ValueId, usize>) {
 
         Expr::Const(_) => {}
 
+        Expr::BitNeg(a) => {
+            collect_uses(a, uses);
+        }
+
         Expr::Add(a, b)
         | Expr::Sub(a, b)
         | Expr::Mul(a, b)
         | Expr::Div(a, b)
         | Expr::BitShl(a, b)
         | Expr::BitShr(a, b)
-        | Expr::ArithShr(a, b) => {
+        | Expr::ArithShr(a, b)
+        | Expr::BitAnd(a, b)
+        | Expr::BitOr(a, b)
+        | Expr::BitXor(a, b) => {
             collect_uses(a, uses);
             collect_uses(b, uses);
         }
@@ -157,6 +164,25 @@ fn expand_expr(
             let a = expand_expr(func, *a, cache, uses, params, changed);
             let b = expand_expr(func, *b, cache, uses, params, changed);
             Expr::ArithShr(Box::new(a), Box::new(b))
+        }
+        Expr::BitAnd(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            Expr::BitAnd(Box::new(a), Box::new(b))
+        }
+        Expr::BitOr(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            Expr::BitOr(Box::new(a), Box::new(b))
+        }
+        Expr::BitXor(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            Expr::BitXor(Box::new(a), Box::new(b))
+        }
+        Expr::BitNeg(a) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            Expr::BitNeg(Box::new(a))
         }
     }
 }
