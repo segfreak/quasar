@@ -1,9 +1,10 @@
 use std::{
     fs::{self, File},
     io::BufWriter,
+    process::Command,
 };
 
-use fear::{binary, ssa::*, types::*};
+use fear::{binary, compiler::CompilerConfig, ssa::*, types::*};
 
 fn foo_def() -> FunctionDef {
     let mut fun = FunctionDef::new();
@@ -251,37 +252,65 @@ fn test() {
     let writer = BufWriter::new(file);
     binary::write(&m, writer).unwrap();
 
-    #[cfg(feature = "llvm")]
     {
-        use fear::ssa::lowering::llvm::LlvmLowerer;
-        use inkwell::context::Context;
-        use target_lexicon::Triple;
-
-        let llvm_ctx = Context::create();
-        let mut lowerer = LlvmLowerer::new(&m.name, Triple::host(), &llvm_ctx);
-        lowerer.lower_module(&m);
-        let llvm_module = lowerer.get_module();
-        fs::write("fear.ll", llvm_module.print_to_string().to_str().unwrap())
-            .expect("fs::write error");
+        let config = CompilerConfig {
+            backend: fear::compiler::Backend::Cranelift,
+            output_type: fear::compiler::OutputType::Object,
+            triple: target_lexicon::Triple::host(),
+            opt_level: OptLevel::Full,
+        };
+        let file = File::create("fear.o").unwrap();
+        let writer = BufWriter::new(file);
+        fear::compiler::compile_module(&m, &config, writer).expect("cannot compile module");
+        let status = Command::new("cc")
+            .arg("tests/test-ssa.c")
+            .arg("fear.o")
+            .arg("-o")
+            .arg("test-ssa.x")
+            .status()
+            .expect("cannot run cc");
+        if !status.success() {
+            panic!("unsuccessfully status");
+        }
+        let status = Command::new("./test-ssa.x")
+            .status()
+            .expect("cannot run tests");
+        if !status.success() {
+            panic!("tests failed");
+        }
     }
 
-    #[cfg(feature = "cranelift")]
-    {
-        use cranelift::codegen::{isa, settings::Configurable};
-        use cranelift_module::default_libcall_names;
-        use fear::ssa::lowering::cranelift::CraneliftLowerer;
-        use target_lexicon::Triple;
+    // #[cfg(feature = "llvm")]
+    // {
+    //     use fear::ssa::lowering::llvm::LlvmLowerer;
+    //     use inkwell::context::Context;
+    //     use target_lexicon::Triple;
 
-        let mut flag_builder = cranelift::codegen::settings::builder();
-        flag_builder.set("use_colocated_libcalls", "false").unwrap();
-        flag_builder.set("is_pic", "true").unwrap();
-        let flags = cranelift::codegen::settings::Flags::new(flag_builder);
+    //     let llvm_ctx = Context::create();
+    //     let mut lowerer = LlvmLowerer::new(&m.name, Triple::host(), &llvm_ctx);
+    //     lowerer.lower_module(&m);
+    //     let llvm_module = lowerer.get_module();
+    //     fs::write("fear.ll", llvm_module.print_to_string().to_str().unwrap())
+    //         .expect("fs::write error");
+    // }
 
-        let isa = isa::lookup(Triple::host()).unwrap().finish(flags).unwrap();
+    // #[cfg(feature = "cranelift")]
+    // {
+    //     use cranelift::codegen::{isa, settings::Configurable};
+    //     use cranelift_module::default_libcall_names;
+    //     use fear::ssa::lowering::cranelift::CraneliftLowerer;
+    //     use target_lexicon::Triple;
 
-        let mut lowerer = CraneliftLowerer::new(&m.name, isa, default_libcall_names());
-        lowerer.lower_module(&m);
-        let object_bytes = lowerer.finish();
-        fs::write("fear.o", object_bytes).expect("fs::write error");
-    }
+    //     let mut flag_builder = cranelift::codegen::settings::builder();
+    //     flag_builder.set("use_colocated_libcalls", "false").unwrap();
+    //     flag_builder.set("is_pic", "true").unwrap();
+    //     let flags = cranelift::codegen::settings::Flags::new(flag_builder);
+
+    //     let isa = isa::lookup(Triple::host()).unwrap().finish(flags).unwrap();
+
+    //     let mut lowerer = CraneliftLowerer::new(&m.name, isa, default_libcall_names());
+    //     lowerer.lower_module(&m);
+    //     let object_bytes = lowerer.finish();
+    //     fs::write("fear.o", object_bytes).expect("fs::write error");
+    // }
 }
