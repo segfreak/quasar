@@ -7,6 +7,7 @@ use std::{
 };
 
 pub mod dump;
+pub mod lowering;
 pub mod passes;
 
 pub type ValueId = u32;
@@ -96,7 +97,6 @@ pub struct FunctionDef {
 
     pub blocks: HashMap<BlockId, BasicBlock>,
     pub values: HashMap<ValueId, Value>,
-    pub params: Vec<ValueId>,
 
     entry: BlockId,
 }
@@ -106,6 +106,46 @@ impl FunctionDef {
         let mut t = Self::default();
         t.entry = t.new_block();
         t
+    }
+
+    pub fn reverse_post_order(&self) -> Vec<BlockId> {
+        fn dfs(
+            f: &FunctionDef,
+            b: BlockId,
+            visited: &mut HashSet<BlockId>,
+            out: &mut Vec<BlockId>,
+        ) {
+            if !visited.insert(b) {
+                return;
+            }
+
+            let block = f.blocks.get(&b).unwrap();
+
+            match &block.terminator {
+                Some(Terminator::Br { bb, .. }) => {
+                    dfs(f, *bb, visited, out);
+                }
+
+                Some(Terminator::BrIf {
+                    then_bb, else_bb, ..
+                }) => {
+                    dfs(f, *then_bb, visited, out);
+                    dfs(f, *else_bb, visited, out);
+                }
+
+                Some(Terminator::Ret(_)) | None => {}
+            }
+
+            out.push(b);
+        }
+
+        let mut visited = HashSet::new();
+        let mut post = Vec::new();
+
+        dfs(self, self.entry, &mut visited, &mut post);
+
+        post.reverse();
+        post
     }
 
     pub fn dirty_hash(&self) -> u64 {
@@ -130,7 +170,6 @@ impl FunctionDef {
             value.hash(&mut hasher);
         }
 
-        self.params.hash(&mut hasher);
         self.entry.hash(&mut hasher);
 
         hasher.finish()

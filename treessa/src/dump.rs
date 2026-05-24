@@ -1,23 +1,50 @@
 use crate::*;
 
 impl FunctionDef {
-    pub fn fmt_expr(expr: &Expr) -> String {
+    fn fmt_expr(&self, expr: &Expr) -> String {
         match expr {
             Expr::Var(v) => format!("%{}", v),
             Expr::Const(c) => c.to_string(),
-
-            Expr::Add(a, b) => format!("add({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
-            Expr::Sub(a, b) => format!("sub({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
-            Expr::Mul(a, b) => format!("mul({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
-            Expr::Div(a, b) => format!("div({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
-            Expr::BitShl(a, b) => format!("shl({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
-            Expr::BitShr(a, b) => format!("shr({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
-            Expr::ArithShr(a, b) => format!("ashr({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
-            Expr::BitAnd(a, b) => format!("band({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
-            Expr::BitOr(a, b) => format!("bor({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
-            Expr::BitXor(a, b) => format!("bxor({}, {})", Self::fmt_expr(a), Self::fmt_expr(b)),
-            Expr::BitNeg(a) => format!("bneg({})", Self::fmt_expr(a)),
+            Expr::Add(a, b) => format!("add({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
+            Expr::Sub(a, b) => format!("sub({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
+            Expr::Mul(a, b) => format!("mul({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
+            Expr::Div(a, b) => format!("div({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
+            Expr::BitShl(a, b) => format!("shl({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
+            Expr::BitShr(a, b) => format!("shr({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
+            Expr::ArithShr(a, b) => format!("ashr({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
+            Expr::BitAnd(a, b) => format!("band({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
+            Expr::BitOr(a, b) => format!("bor({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
+            Expr::BitXor(a, b) => format!("bxor({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
+            Expr::BitNeg(a) => format!("bneg({})", self.fmt_expr(a)),
         }
+    }
+
+    fn fmt_term(&self, term: &Terminator) -> String {
+        let mut out = String::new();
+
+        match term {
+            Terminator::Ret(v) => {
+                let val = &self.values[v];
+                out.push_str(&format!("  ret {} %{}\n", val.ty, v));
+            }
+            Terminator::Br { bb, params } => {
+                out.push_str(&format!("  br B{}({:?})\n", bb, params));
+            }
+            Terminator::BrIf {
+                cond,
+                then_bb,
+                then_params,
+                else_bb,
+                else_params,
+            } => {
+                out.push_str(&format!(
+                    "  brif %{} B{}({:?}), B{}({:?})\n",
+                    cond, then_bb, then_params, else_bb, else_params
+                ));
+            }
+        }
+
+        out
     }
 
     pub fn dump(&self) -> String {
@@ -45,12 +72,11 @@ impl FunctionDef {
 
             for v in &block.values {
                 let val = &self.values[v];
-                out.push_str(&format!("  %{} = {}\n", v, Self::fmt_expr(&val.expr)));
+                out.push_str(&format!("  %{} = {}\n", v, self.fmt_expr(&val.expr)));
             }
 
-            if let Some(Terminator::Ret(v)) = block.terminator {
-                let val = &self.values[&v];
-                out.push_str(&format!("  ret {} %{}\n", val.ty, v));
+            if let Some(term) = &block.terminator {
+                out.push_str(&self.fmt_term(term))
             }
 
             out.push('\n');
