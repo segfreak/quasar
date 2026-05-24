@@ -1,7 +1,15 @@
 /target
-/*.svg
-/perf.*
-/*.dot
-/*.png
-/sandbox
-/quald
+*.svg
+perf.*
+*.dot
+*.png
+*.s
+*.ll
+*.ssa
+*.o
+*.bin
+/out/
+# bindgen
+/include/
+*.out
+*.x

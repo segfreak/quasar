@@ -1,0 +1,18 @@
+EXAMPLES
+  - Building with LLVM 22.1
+    $ sh build.sh --features fear/llvm,inkwell/llvm22-1
+    $ sh bindings.sh                                              # generate bindings (cbindgen)
+    $ sudo sh install.sh /usr/                                    # install library system-wide
+    $ sudo sh install.sh                                          # install library with /usr/local prefix
+
+FEATURES
+
+llvm
+  Enables LLVM backend support for code generation.
+  Required dependencies:
+    - inkwell
+    - llvm (system or bundled version compatible with inkwell)
+
+cranelift
+  Enables Cranelift backend support for code generation.
+  No additional mandatory system dependencies (handled via Cranelift crates).
