@@ -16,7 +16,7 @@ use std::{ffi::CStr, ptr};
 use fear::{
     binary,
     compiler::{self, Backend, CompilerConfig, OutputType},
-    ir::*,
+    ssa::*,
     types::{CallingConvention, FunctionSignature, Linkage, OptLevel, Type},
 };
 
@@ -49,8 +49,8 @@ unsafe fn as_def(f: *mut FearFunctionDef) -> &'static mut FunctionDef {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearHasBackend(backend: FearBackend) -> bool {
     match Backend::from(backend) {
-        Backend::Llvm => fear::lowering::has_llvm(),
-        Backend::Cranelift => fear::lowering::has_cranelift(),
+        Backend::Llvm => fear::ssa::lowering::has_llvm(),
+        Backend::Cranelift => fear::ssa::lowering::has_cranelift(),
         Backend::Fear => {
             /* not yet implemented */
             false

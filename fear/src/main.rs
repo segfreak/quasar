@@ -1,8 +1,8 @@
-use std::{fs::File, path::PathBuf};
 use std::str::FromStr;
+use std::{fs::File, path::PathBuf};
 
 use clap::*;
-use fear::{compiler::*, ir::Module, types::OptLevel};
+use fear::{compiler::*, ssa::Module, types::OptLevel};
 use target_lexicon::Triple;
 
 #[derive(Parser)]
@@ -16,14 +16,13 @@ struct Cli {
     #[arg(short = 'o')]
     output_path: Option<PathBuf>,
     #[arg(
-        short = 't', 
+        short = 't',
         long = "triple", 
         value_parser = |s: &str| target_lexicon::Triple::from_str(s).map_err(|e| e.to_string())
     )]
     triple: Option<Triple>,
     #[arg(long = "opt")]
     opt_level: Option<OptLevel>,
-
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -43,7 +42,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         PathBuf::from(&module.name).with_extension(config.output_type.extenstion())
     });
 
-    let file = File::create(&output_path).map_err(|_e| format!("failed to open/create file: {}", output_path.to_string_lossy()))?;
+    let file = File::create(&output_path).map_err(|_e| {
+        format!(
+            "failed to open/create file: {}",
+            output_path.to_string_lossy()
+        )
+    })?;
 
     compile_module(&module, &config, file)?;
     Ok(())

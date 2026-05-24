@@ -13,7 +13,7 @@ pub unsafe extern "C" fn fearModuleCreate(name: *const c_char) -> *mut FearModul
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearReadBinaryFromFile(fd: c_int) -> *mut FearModule {
     let file = unsafe { std::fs::File::from_raw_fd(fd) };
-    match fear::binary::read::<fear::ir::Module, _>(file) {
+    match fear::binary::read::<fear::ssa::Module, _>(file) {
         Ok(m) => Box::into_raw(Box::new(m)) as *mut FearModule,
         Err(e) => {
             log::error!("cannot read binary module from fd({})", fd);

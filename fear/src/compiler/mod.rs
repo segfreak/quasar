@@ -1,4 +1,4 @@
-use crate::ir::Module;
+use crate::ssa::Module;
 use crate::types::OptLevel;
 use clap::ValueEnum;
 use std::io::Write;
@@ -85,7 +85,7 @@ pub fn compile_module<W: Write>(
         (Backend::Llvm, ty) => {
             #[cfg(feature = "llvm")]
             {
-                use crate::lowering::llvm::LlvmLowerer;
+                use crate::ssa::lowering::llvm::LlvmLowerer;
                 use inkwell::context::Context;
 
                 let llvm_ctx = Context::create();
@@ -140,7 +140,7 @@ pub fn compile_module<W: Write>(
         (Backend::Cranelift, OutputType::Object) => {
             #[cfg(feature = "cranelift")]
             {
-                use crate::lowering::cranelift::CraneliftLowerer;
+                use crate::ssa::lowering::cranelift::CraneliftLowerer;
                 use cranelift::codegen::settings::{self, Configurable};
                 use cranelift_module::default_libcall_names;
 

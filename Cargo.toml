@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["fear", "fearc", "treessa"]
+members = ["fear", "fearc"]
 
 [workspace.dependencies]
 fear = { path = "fear" }
