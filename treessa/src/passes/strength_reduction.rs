@@ -31,12 +31,6 @@ pub fn reduce_expr(expr: Expr, changed: &mut bool) -> Expr {
             let b = reduce_expr(*b, changed);
 
             match (&a, &b) {
-                // x * 2 => x + x
-                (x, Expr::Const(2)) | (Expr::Const(2), x) => {
-                    *changed = true;
-                    Expr::Add(Box::new(x.clone()), Box::new(x.clone()))
-                }
-
                 // mul => shifts
                 (x, Expr::Const(y)) | (Expr::Const(y), x) if is_power_of_two(*y) => {
                     *changed = true;

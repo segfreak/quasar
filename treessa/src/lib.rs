@@ -1,7 +1,10 @@
 #![feature(box_patterns)]
 
 use fear::types::Type;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::{DefaultHasher, Hash, Hasher},
+};
 
 pub mod dump;
 pub mod passes;
@@ -103,6 +106,34 @@ impl FunctionDef {
         let mut t = Self::default();
         t.entry = t.new_block();
         t
+    }
+
+    pub fn dirty_hash(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+
+        self.next_value.hash(&mut hasher);
+        self.next_block.hash(&mut hasher);
+
+        let mut blocks: Vec<_> = self.blocks.iter().collect();
+        blocks.sort_by_key(|(id, _)| *id);
+
+        for (id, block) in blocks {
+            id.hash(&mut hasher);
+            block.hash(&mut hasher);
+        }
+
+        let mut values: Vec<_> = self.values.iter().collect();
+        values.sort_by_key(|(id, _)| *id);
+
+        for (id, value) in values {
+            id.hash(&mut hasher);
+            value.hash(&mut hasher);
+        }
+
+        self.params.hash(&mut hasher);
+        self.entry.hash(&mut hasher);
+
+        hasher.finish()
     }
 
     pub fn get_entry(&self) -> BlockId {

@@ -12,6 +12,35 @@ pub fn simplify(func: &mut FunctionDef) -> bool {
 
 pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
     match expr {
+        Expr::Add(box Expr::Mul(box x1, box Expr::Const(y)), box x2)
+        | Expr::Add(box x2, box Expr::Mul(box x1, box Expr::Const(y)))
+            if x1 == x2 =>
+        {
+            let x1 = simplify_expr(x1, changed);
+
+            *changed = true;
+            Expr::Mul(Box::new(x1), Box::new(Expr::Const(y + 1)))
+        }
+
+        // (x * const y) + x => x * (const y + 1)
+        Expr::Add(box Expr::Mul(box x, box Expr::Const(y)), box z) if x == z => {
+            let x = simplify_expr(x, changed);
+
+            *changed = true;
+            Expr::Mul(Box::new(x), Box::new(Expr::Const(y + 1)))
+        }
+
+        // (x * const y) + (x * const y1)  => x * const (y + y1)
+        Expr::Add(
+            box Expr::Mul(box x, box Expr::Const(y)),
+            box Expr::Mul(box x2, box Expr::Const(y2)),
+        ) if x == x2 => {
+            let x = simplify_expr(x, changed);
+
+            *changed = true;
+            Expr::Mul(Box::new(x), Box::new(Expr::Const(y + y2)))
+        }
+
         Expr::Add(a, b) => {
             let a = simplify_expr(*a, changed);
             let b = simplify_expr(*b, changed);
@@ -26,22 +55,11 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
                     *changed = true;
                     x.clone()
                 }
-
-                // (x * const y) + (x * const y1)  => x * const (y + y1)
-                (Expr::Mul(box x, box Expr::Const(y)), Expr::Mul(box x2, box Expr::Const(y2)))
-                    if x == x2 =>
-                {
-                    *changed = true;
-                    Expr::Mul(Box::new(x.clone()), Box::new(Expr::Const(y + y2)))
-                }
-
-                // algebraic reassociation
                 // (x + const y) + const z  =>  x + const (y + z)
                 (Expr::Add(box x, box Expr::Const(y)), Expr::Const(z)) => {
                     *changed = true;
                     Expr::Add(Box::new(x.clone()), Box::new(Expr::Const(y + z)))
                 }
-                // algebraic reassociation
                 // (x - const y) + const z  =>  x - const (y - z)
                 (Expr::Sub(box x, box Expr::Const(y)), Expr::Const(z)) => {
                     *changed = true;
@@ -63,14 +81,12 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
                         *changed = true;
                         x.clone()
                     }
-                    // algebraic reassociation
                     // (x + const y) - const z  =>  x + const (y - z)
                     (Expr::Add(box x, box Expr::Const(y)), Expr::Const(z)) => {
                         *changed = true;
                         Expr::Add(Box::new(x.clone()), Box::new(Expr::Const(y - z)))
                     }
 
-                    // algebraic reassociation
                     // (x - const y) - const z  =>  x - const (y + z)
                     (Expr::Sub(box x, box Expr::Const(y)), Expr::Const(z)) => {
                         *changed = true;
@@ -103,11 +119,14 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
                     *changed = true;
                     x.clone()
                 }
-                // algebraic reassociation
                 // (x * const y) * const z => x * const (y * z)
                 (Expr::Mul(box x, box Expr::Const(y)), Expr::Const(z)) => {
                     *changed = true;
                     Expr::Mul(Box::new(x.clone()), Box::new(Expr::Const(y * z)))
+                }
+                (Expr::Div(box x, box Expr::Const(y)), Expr::Const(z)) if *y == *z => {
+                    *changed = true;
+                    x.clone()
                 }
                 _ => Expr::Mul(Box::new(a), Box::new(b)),
             }

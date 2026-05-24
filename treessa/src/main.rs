@@ -8,14 +8,14 @@ fn main() {
 
     let b0 = f.get_entry();
     let x = f.add_block_param(b0, Type::I32);
-    let c10 = f.append_expr(b0, Type::I32, Expr::Const(10));
+    let c9 = f.append_expr(b0, Type::I32, Expr::Const(9));
     let tmp = f.append_expr(
         b0,
         Type::I32,
-        Expr::Mul(Box::new(Expr::Var(x)), Box::new(Expr::Var(c10))),
+        Expr::Mul(Box::new(Expr::Var(x)), Box::new(Expr::Var(c9))),
     );
 
-    let add = f.make_add(b0, Type::I32, tmp.into(), c10.into());
+    let add = f.make_add(b0, Type::I32, tmp.into(), c9.into());
     let c2 = f.make_iconst(b0, Type::I32, 2);
     let sub = f.make_sub(b0, Type::I32, add.into(), c2.into());
     let sub2 = f.append_expr(
@@ -26,17 +26,19 @@ fn main() {
     let mul = f.make_mul(b0, Type::I32, sub.into(), sub2.into());
     let div = f.make_div(b0, Type::I32, mul.into(), Expr::Const(2));
     let mul2 = f.make_mul(b0, Type::I32, div.into(), Expr::Const(2));
-    let mul4 = f.make_mul(b0, Type::I32, div.into(), Expr::Const(4));
-    let sum = f.make_add(b0, Type::I32, mul2.into(), mul4.into());
-    let decompose = f.make_mul(b0, Type::I32, sum.into(), Expr::Const(0x3FFF_FFFF));
+    let mul64 = f.make_mul(b0, Type::I32, x.into(), Expr::Const(64));
+    let div64 = f.make_mul(b0, Type::I32, mul64.into(), Expr::Const(64));
+    let sum = f.make_add(b0, Type::I32, mul2.into(), div64.into());
+    let nonprofit = f.make_mul(b0, Type::I32, sum.into(), Expr::Const(0x1000000));
     let square = f.make_mul(b0, Type::I32, x.into(), x.into());
     let mul8 = f.make_mul(b0, Type::I32, square.into(), Expr::Const(8));
-    let y = f.make_add(b0, Type::I32, decompose.into(), mul8.into());
-    f.make_ret(b0, y);
-
+    let y = f.make_add(b0, Type::I32, nonprofit.into(), mul8.into());
+    let decompose = f.make_mul(b0, Type::I32, sum.into(), Expr::Const(9));
+    let z = f.make_sub(b0, Type::I32, y.into(), decompose.into());
+    f.make_ret(b0, z);
     println!("{}", f.dump());
 
-    let res = PassManager::optimize(&mut f, OptLevel::Default, 30);
+    let res = PassManager::optimize(&mut f, OptLevel::Default, i32::MAX);
     println!("passes: {:?}", res.passes);
 
     println!("{}", f.dump())

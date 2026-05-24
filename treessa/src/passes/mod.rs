@@ -37,14 +37,15 @@ impl PassManager {
 
         let mut counter: i32 = 0;
         loop {
-            let mut changed = false;
+            let before_cost = f.get_cost();
+            let before_hash = f.dirty_hash();
+
             let mut run = Vec::new();
 
             macro_rules! run_pass {
                 ($pass:expr, $kind:expr) => {
                     if $pass(f) {
                         log::trace!("performed pass: {:?}", $kind);
-                        changed = true;
                         run.push($kind);
                     }
                 };
@@ -67,6 +68,16 @@ impl PassManager {
             result.passes.extend(run);
             counter += 1;
 
+            let after_cost = f.get_cost();
+            if after_cost > before_cost {
+                log::warn!(
+                    "optimization regression detected: cost increased from {} to {} (+{})",
+                    before_cost,
+                    after_cost,
+                    after_cost - before_cost
+                );
+            }
+            let changed = f.dirty_hash() != before_hash;
             if !changed || counter >= max_passes {
                 break;
             }
