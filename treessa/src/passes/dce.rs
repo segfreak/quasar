@@ -5,6 +5,15 @@ use crate::*;
 pub fn dce(func: &mut FunctionDef) -> bool {
     let mut used = HashSet::<ValueId>::new();
 
+    for (vid, val) in func.values.iter() {
+        if val.expr.is_memory() {
+            // pre-use for memory operations
+            if used.insert(*vid) {
+                mark_expr(func, &val.expr.clone(), &mut used);
+            }
+        }
+    }
+
     for block in func.blocks.values() {
         if let Some(term) = &block.terminator {
             match term {

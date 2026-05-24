@@ -63,6 +63,17 @@ impl From<ValueId> for Expr {
 }
 
 impl Expr {
+    pub fn is_volatile(&self) -> bool {
+        match self {
+            Self::Load(volatile, _) | Self::Store(volatile, _, _) => *volatile,
+            _ => false,
+        }
+    }
+
+    pub fn is_memory(&self) -> bool {
+        matches!(self, Self::Load(_, _) | Self::Store(_, _, _))
+    }
+
     pub fn get_cost(&self) -> u32 {
         match self {
             Expr::Var(_) | Expr::Const(_) => 0,
@@ -281,6 +292,50 @@ impl FunctionDef {
             block,
             ty,
             Expr::Div(signed, Box::new(left), Box::new(right)),
+        )
+    }
+
+    pub fn make_alloca(&mut self, block: BlockId, ty: Type) -> ValueId {
+        self.append_expr(block, Type::Ptr, Expr::Alloca(ty))
+    }
+
+    pub fn make_load(&mut self, block: BlockId, ty: Type, volatile: bool, ptr: Expr) -> ValueId {
+        self.append_expr(block, ty, Expr::Load(volatile, Box::new(ptr)))
+    }
+
+    pub fn make_store(
+        &mut self,
+        block: BlockId,
+        volatile: bool,
+        ptr: Expr,
+        value: Expr,
+    ) -> ValueId {
+        self.append_expr(
+            block,
+            Type::Void,
+            Expr::Store(volatile, Box::new(ptr), Box::new(value)),
+        )
+    }
+
+    pub fn make_ptr_offset(&mut self, block: BlockId, base: Expr, offset: Expr) -> ValueId {
+        self.append_expr(
+            block,
+            Type::Ptr,
+            Expr::PtrOffset(Box::new(base), Box::new(offset)),
+        )
+    }
+
+    pub fn make_element_ptr(
+        &mut self,
+        block: BlockId,
+        ty: Type,
+        base: Expr,
+        offset: Expr,
+    ) -> ValueId {
+        self.append_expr(
+            block,
+            Type::Ptr,
+            Expr::ElementPtr(ty, Box::new(base), Box::new(offset)),
         )
     }
 

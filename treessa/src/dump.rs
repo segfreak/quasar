@@ -24,10 +24,10 @@ impl FunctionDef {
             Expr::BitXor(a, b) => format!("bxor({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
             Expr::BitNeg(a) => format!("bneg({})", self.fmt_expr(a)),
             Expr::Cmp(kind, a, b) => {
-                format!("icmp({}, {}, {})", kind, self.fmt_expr(a), self.fmt_expr(b))
+                format!("icmp {}({}, {})", kind, self.fmt_expr(a), self.fmt_expr(b))
             }
             Expr::FCmp(kind, a, b) => {
-                format!("fcmp({}, {}, {})", kind, self.fmt_expr(a), self.fmt_expr(b))
+                format!("fcmp {}( {}, {})", kind, self.fmt_expr(a), self.fmt_expr(b))
             }
             Expr::Alloca(ty) => format!("alloca({})", ty),
             Expr::Load(volatile, ptr) => {

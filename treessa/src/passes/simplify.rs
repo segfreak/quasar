@@ -12,17 +12,6 @@ pub fn simplify(func: &mut FunctionDef) -> bool {
 
 pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
     match expr {
-        // add(mul(x, const y), x)
-        Expr::Add(box Expr::Mul(box x1, box Expr::Const(y)), box x2)
-        | Expr::Add(box x2, box Expr::Mul(box x1, box Expr::Const(y)))
-            if x1 == x2 =>
-        {
-            let x1 = simplify_expr(x1, changed);
-
-            *changed = true;
-            Expr::Mul(Box::new(x1), Box::new(Expr::Const(y + 1)))
-        }
-
         // (x * const y) + (x * const y1)  => x * const (y + y1)
         Expr::Add(
             box Expr::Mul(box x, box Expr::Const(y)),
@@ -39,6 +28,15 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
             let b = simplify_expr(*b, changed);
 
             match (&a, &b) {
+                // add(mul(x, const y), x)
+                (Expr::Mul(box x1, box Expr::Const(y)), x2)
+                | (x2, Expr::Mul(box x1, box Expr::Const(y)))
+                    if x1 == x2 =>
+                {
+                    *changed = true;
+                    Expr::Mul(Box::new(x1.clone()), Box::new(Expr::Const(y + 1)))
+                }
+
                 (_, Expr::BitNeg(y)) => {
                     *changed = true;
                     Expr::Sub(Box::new(a), Box::new(*y.clone()))
@@ -174,6 +172,7 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
                 _ => Expr::Div(signed, Box::new(a), Box::new(b)),
             }
         }
+
         other => other,
     }
 }

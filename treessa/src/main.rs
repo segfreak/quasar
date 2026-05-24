@@ -9,8 +9,13 @@ fn main() {
     let b0 = f.get_entry();
     let x0 = f.add_block_param(b0, Type::I32);
 
+    let slot0 = f.make_alloca(b0, Type::I32);
+    let c228 = f.make_iconst(b0, Type::I32, 228);
+    f.make_store(b0, false, slot0.into(), c228.into());
+
     let b1 = f.new_block();
     let x = f.add_block_param(b1, Type::I32);
+
     f.make_br(b0, b1, vec![x0]);
 
     let c9 = f.append_expr(b1, Type::I32, Expr::Const(9));
@@ -40,7 +45,9 @@ fn main() {
     let y = f.make_add(b1, Type::I32, nonprofit.into(), mul8.into());
     let decompose = f.make_mul(b1, Type::I32, sum.into(), Expr::Const(9));
     let z = f.make_sub(b1, Type::I32, y.into(), decompose.into());
-    f.make_ret(b1, z);
+    let slot0v = f.make_load(b1, Type::I32, false, slot0.into());
+    let c = f.make_add(b1, Type::I32, z.into(), slot0v.into());
+    f.make_ret(b1, c);
     println!("{}", f.dump());
 
     let res = PassManager::optimize(&mut f, OptLevel::Default, i32::MAX);
@@ -64,5 +71,7 @@ fn main() {
         m.optimize();
         m.verify().expect("verify error");
         println!("{}", m.dump());
+
+        fear::binary::write_to_file(&m, "foo.bin").expect("cannot write fear binary module")
     }
 }

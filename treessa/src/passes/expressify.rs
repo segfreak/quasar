@@ -157,8 +157,8 @@ fn expand_expr(
         }
         Expr::Store(volatile, ptr, value) => {
             let ptr = expand_expr(func, *ptr, cache, uses, params, changed);
-            let value = expand_expr(func, *value, cache, uses, params, changed);
-            Expr::Store(volatile, Box::new(ptr), Box::new(value))
+            // let value = expand_expr(func, *value, cache, uses, params, changed);
+            Expr::Store(volatile, Box::new(ptr), value.clone())
         }
 
         Expr::Const(_) => expr,
