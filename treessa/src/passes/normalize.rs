@@ -13,6 +13,31 @@ pub fn normalize(func: &mut FunctionDef) -> bool {
 
 fn normalize_expr(expr: Expr, changed: &mut bool) -> Expr {
     match expr {
+        Expr::Var(_) | Expr::Const(_) | Expr::Alloca(_) => expr,
+
+        Expr::Load(volatile, ptr) => {
+            let ptr = normalize_expr(*ptr, changed);
+            Expr::Load(volatile, Box::new(ptr))
+        }
+
+        Expr::Store(volatile, ptr, value) => {
+            let ptr = normalize_expr(*ptr, changed);
+            let value = normalize_expr(*value, changed);
+            Expr::Store(volatile, Box::new(ptr), Box::new(value))
+        }
+
+        Expr::PtrOffset(base, offset) => {
+            let base = normalize_expr(*base, changed);
+            let offset = normalize_expr(*offset, changed);
+            Expr::PtrOffset(Box::new(base), Box::new(offset))
+        }
+
+        Expr::ElementPtr(ty, base, offset) => {
+            let base = normalize_expr(*base, changed);
+            let offset = normalize_expr(*offset, changed);
+            Expr::ElementPtr(ty, Box::new(base), Box::new(offset))
+        }
+
         Expr::Add(a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
@@ -59,11 +84,10 @@ fn normalize_expr(expr: Expr, changed: &mut bool) -> Expr {
             }
         }
 
-        Expr::Div(a, b) => {
+        Expr::Div(signed, a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
-
-            Expr::Div(Box::new(a), Box::new(b))
+            Expr::Div(signed, Box::new(a), Box::new(b))
         }
 
         Expr::BitShl(a, b) => {
@@ -87,6 +111,13 @@ fn normalize_expr(expr: Expr, changed: &mut bool) -> Expr {
             let b = normalize_expr(*b, changed);
 
             Expr::BitShr(Box::new(a), Box::new(b))
+        }
+
+        Expr::ArithShr(a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+
+            Expr::ArithShr(Box::new(a), Box::new(b))
         }
 
         Expr::BitNeg(a) => {
@@ -113,6 +144,16 @@ fn normalize_expr(expr: Expr, changed: &mut bool) -> Expr {
             Expr::BitXor(Box::new(a), Box::new(b))
         }
 
-        other => other,
+        Expr::Cmp(kind, a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            Expr::Cmp(kind, Box::new(a), Box::new(b))
+        }
+
+        Expr::FCmp(kind, a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            Expr::FCmp(kind, Box::new(a), Box::new(b))
+        }
     }
 }

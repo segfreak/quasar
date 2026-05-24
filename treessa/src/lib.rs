@@ -27,7 +27,7 @@ pub enum Expr {
     Add(Box<Expr>, Box<Expr>),
     Sub(Box<Expr>, Box<Expr>),
     Mul(Box<Expr>, Box<Expr>),
-    Div(Box<Expr>, Box<Expr>),
+    Div(bool, Box<Expr>, Box<Expr>),
 
     BitShl(Box<Expr>, Box<Expr>),
     BitShr(Box<Expr>, Box<Expr>),
@@ -37,6 +37,23 @@ pub enum Expr {
     BitAnd(Box<Expr>, Box<Expr>),
     BitOr(Box<Expr>, Box<Expr>),
     BitXor(Box<Expr>, Box<Expr>),
+
+    Cmp(fear::types::IntCmp, Box<Expr>, Box<Expr>),
+    FCmp(fear::types::FloatCmp, Box<Expr>, Box<Expr>),
+
+    Alloca(Type),
+    Load(/* volatile */ bool, /* ptr */ Box<Expr>),
+    Store(
+        /* volatile */ bool,
+        /* ptr */ Box<Expr>,
+        /* value */ Box<Expr>,
+    ),
+    PtrOffset(/* ptr */ Box<Expr>, /* offset */ Box<Expr>),
+    ElementPtr(
+        /* addressation unit */ Type,
+        /* ptr */ Box<Expr>,
+        /* offset */ Box<Expr>,
+    ),
 }
 
 impl From<ValueId> for Expr {
@@ -61,7 +78,14 @@ impl Expr {
             Expr::BitNeg(a) => 1 + a.get_cost(),
 
             Expr::Mul(a, b) => 3 + a.get_cost() + b.get_cost(),
-            Expr::Div(a, b) => 25 + a.get_cost() + b.get_cost(),
+            Expr::Div(_, a, b) => 25 + a.get_cost() + b.get_cost(),
+
+            Expr::Cmp(_, a, b) => 1 + a.get_cost() + b.get_cost(),
+            Expr::FCmp(_, a, b) => 4 + a.get_cost() + b.get_cost(),
+
+            Expr::Alloca(_) => 2,
+            Expr::PtrOffset(_, _) | Expr::ElementPtr(_, _, _) => 2,
+            Expr::Load(_, _) | Expr::Store(_, _, _) => 5,
         }
     }
 }
@@ -245,8 +269,19 @@ impl FunctionDef {
         self.append_expr(block, ty, Expr::Mul(Box::new(left), Box::new(right)))
     }
 
-    pub fn make_div(&mut self, block: BlockId, ty: Type, left: Expr, right: Expr) -> ValueId {
-        self.append_expr(block, ty, Expr::Div(Box::new(left), Box::new(right)))
+    pub fn make_div(
+        &mut self,
+        block: BlockId,
+        ty: Type,
+        signed: bool,
+        left: Expr,
+        right: Expr,
+    ) -> ValueId {
+        self.append_expr(
+            block,
+            ty,
+            Expr::Div(signed, Box::new(left), Box::new(right)),
+        )
     }
 
     pub fn make_ret(&mut self, block: BlockId, value: ValueId) {

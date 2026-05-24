@@ -60,7 +60,7 @@ pub fn reduce_expr(expr: Expr, changed: &mut bool) -> Expr {
             }
         }
 
-        Expr::Div(a, b) => {
+        Expr::Div(signed, a, b) if !signed => {
             let a = reduce_expr(*a, changed);
             let b = reduce_expr(*b, changed);
 
@@ -71,7 +71,7 @@ pub fn reduce_expr(expr: Expr, changed: &mut bool) -> Expr {
                     let shifts = y.trailing_zeros() as i64;
                     Expr::BitShr(Box::new(x.clone()), Box::new(Expr::Const(shifts)))
                 }
-                _ => Expr::Div(Box::new(a), Box::new(b)),
+                _ => Expr::Div(signed, Box::new(a), Box::new(b)),
             }
         }
 

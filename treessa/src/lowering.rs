@@ -103,6 +103,31 @@ impl FearLowerer {
 
             Expr::Const(c) => dst.make_iconst(block, ty, *c),
 
+            Expr::Alloca(ty) => dst.make_alloca(block, *ty),
+
+            Expr::PtrOffset(base, offset) => {
+                let base = self.lower_expr(base, dst, block, ty);
+                let offset = self.lower_expr(offset, dst, block, ty);
+                dst.make_ptr_offset(block, base, offset)
+            }
+
+            Expr::ElementPtr(elem_ty, base, offset) => {
+                let base = self.lower_expr(base, dst, block, ty);
+                let offset = self.lower_expr(offset, dst, block, ty);
+                dst.make_element_ptr(block, *elem_ty, base, offset)
+            }
+
+            Expr::Load(volatile, ptr) => {
+                let ptr = self.lower_expr(ptr, dst, block, ty);
+                dst.make_load(block, *volatile, ty, ptr)
+            }
+
+            Expr::Store(volatile, ptr, value) => {
+                let ptr = self.lower_expr(ptr, dst, block, ty);
+                let value = self.lower_expr(value, dst, block, ty);
+                dst.make_store(block, *volatile, ptr, value)
+            }
+
             Expr::Add(a, b) => {
                 let l = self.lower_expr(a, dst, block, ty);
                 let r = self.lower_expr(b, dst, block, ty);
@@ -121,10 +146,10 @@ impl FearLowerer {
                 dst.make_mul(block, ty, l, r)
             }
 
-            Expr::Div(a, b) => {
+            Expr::Div(signed, a, b) => {
                 let l = self.lower_expr(a, dst, block, ty);
                 let r = self.lower_expr(b, dst, block, ty);
-                dst.make_div(block, false, ty, l, r)
+                dst.make_div(block, *signed, ty, l, r)
             }
 
             Expr::BitShl(a, b) => {
@@ -166,6 +191,18 @@ impl FearLowerer {
             Expr::BitNeg(a) => {
                 let v = self.lower_expr(a, dst, block, ty);
                 dst.make_not(block, ty, v)
+            }
+
+            Expr::Cmp(kind, a, b) => {
+                let l = self.lower_expr(a, dst, block, ty);
+                let r = self.lower_expr(b, dst, block, ty);
+                dst.make_cmp(block, *kind, l, r)
+            }
+
+            Expr::FCmp(kind, a, b) => {
+                let l = self.lower_expr(a, dst, block, ty);
+                let r = self.lower_expr(b, dst, block, ty);
+                dst.make_fcmp(block, *kind, l, r)
             }
         }
     }

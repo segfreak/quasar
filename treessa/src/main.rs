@@ -29,7 +29,7 @@ fn main() {
         Expr::Sub(Box::new(Expr::Var(add)), Box::new(Expr::Var(c2))),
     );
     let mul = f.make_mul(b1, Type::I32, sub.into(), sub2.into());
-    let div = f.make_div(b1, Type::I32, mul.into(), Expr::Const(2));
+    let div = f.make_div(b1, Type::I32, true, mul.into(), Expr::Const(2));
     let mul2 = f.make_mul(b1, Type::I32, div.into(), Expr::Const(2));
     let mul64 = f.make_mul(b1, Type::I32, x.into(), Expr::Const(64));
     let div64 = f.make_mul(b1, Type::I32, mul64.into(), Expr::Const(64));

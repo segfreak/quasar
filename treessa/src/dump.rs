@@ -1,14 +1,21 @@
 use crate::*;
 
 impl FunctionDef {
-    fn fmt_expr(&self, expr: &Expr) -> String {
+    pub fn fmt_expr(&self, expr: &Expr) -> String {
         match expr {
             Expr::Var(v) => format!("%{}", v),
             Expr::Const(c) => c.to_string(),
             Expr::Add(a, b) => format!("add({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
             Expr::Sub(a, b) => format!("sub({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
             Expr::Mul(a, b) => format!("mul({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
-            Expr::Div(a, b) => format!("div({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
+            Expr::Div(signed, a, b) => {
+                format!(
+                    "{}div({}, {})",
+                    if *signed { "s" } else { "u" },
+                    self.fmt_expr(a),
+                    self.fmt_expr(b)
+                )
+            }
             Expr::BitShl(a, b) => format!("shl({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
             Expr::BitShr(a, b) => format!("shr({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
             Expr::ArithShr(a, b) => format!("ashr({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
@@ -16,6 +23,43 @@ impl FunctionDef {
             Expr::BitOr(a, b) => format!("bor({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
             Expr::BitXor(a, b) => format!("bxor({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
             Expr::BitNeg(a) => format!("bneg({})", self.fmt_expr(a)),
+            Expr::Cmp(kind, a, b) => {
+                format!("icmp({}, {}, {})", kind, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            Expr::FCmp(kind, a, b) => {
+                format!("fcmp({}, {}, {})", kind, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            Expr::Alloca(ty) => format!("alloca({})", ty),
+            Expr::Load(volatile, ptr) => {
+                format!(
+                    "{}load({})",
+                    if *volatile { "v" } else { "" },
+                    self.fmt_expr(ptr)
+                )
+            }
+            Expr::Store(volatile, ptr, value) => {
+                format!(
+                    "{}store({}, {})",
+                    if *volatile { "v" } else { "" },
+                    self.fmt_expr(ptr),
+                    self.fmt_expr(value),
+                )
+            }
+            Expr::PtrOffset(base, offset) => {
+                format!(
+                    "ptroffset({}, {})",
+                    self.fmt_expr(base),
+                    self.fmt_expr(offset),
+                )
+            }
+            Expr::ElementPtr(ty, base, offset) => {
+                format!(
+                    "elementptr({}, {}, {})",
+                    ty,
+                    self.fmt_expr(base),
+                    self.fmt_expr(offset),
+                )
+            }
         }
     }
 

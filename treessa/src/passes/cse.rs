@@ -24,16 +24,42 @@ fn count_expr(expr: &Expr, cnt: &mut HashMap<Expr, usize>) {
             count_expr(a, cnt);
         }
 
+        Expr::Alloca(_) => {}
+        Expr::Load(_, ptr) => {
+            *cnt.entry(expr.clone()).or_insert(0) += 1;
+            count_expr(ptr, cnt);
+        }
+
+        Expr::Store(_, ptr, value) => {
+            *cnt.entry(expr.clone()).or_insert(0) += 1;
+            count_expr(ptr, cnt);
+            count_expr(value, cnt);
+        }
+
+        Expr::PtrOffset(base, offset) => {
+            *cnt.entry(expr.clone()).or_insert(0) += 1;
+            count_expr(base, cnt);
+            count_expr(offset, cnt);
+        }
+
+        Expr::ElementPtr(_ty, base, offset) => {
+            *cnt.entry(expr.clone()).or_insert(0) += 1;
+            count_expr(base, cnt);
+            count_expr(offset, cnt);
+        }
+
         Expr::Add(a, b)
         | Expr::Sub(a, b)
         | Expr::Mul(a, b)
-        | Expr::Div(a, b)
+        | Expr::Div(_, a, b)
         | Expr::BitShl(a, b)
         | Expr::BitShr(a, b)
         | Expr::ArithShr(a, b)
         | Expr::BitAnd(a, b)
         | Expr::BitOr(a, b)
-        | Expr::BitXor(a, b) => {
+        | Expr::BitXor(a, b)
+        | Expr::Cmp(_, a, b)
+        | Expr::FCmp(_, a, b) => {
             *cnt.entry(expr.clone()).or_insert(0) += 1;
 
             count_expr(a, cnt);
@@ -93,6 +119,31 @@ fn rewrite(
         Expr::Var(vid) => {
             let ty = func.values[&vid].ty;
             (Expr::Var(vid), ty)
+        }
+
+        Expr::Alloca(ty) => (expr, ty),
+        Expr::Load(volatile, ptr) => {
+            let (ptr, ty_ptr) = rewrite(func, bid, *ptr, cnt, memo, new_values, changed);
+            let expr = Expr::Load(volatile, Box::new(ptr));
+            (expr, ty_ptr)
+        }
+        Expr::Store(volatile, ptr, value) => {
+            let (ptr, ty_ptr) = rewrite(func, bid, *ptr, cnt, memo, new_values, changed);
+            let (value, _) = rewrite(func, bid, *value, cnt, memo, new_values, changed);
+            let expr = Expr::Store(volatile, Box::new(ptr), Box::new(value));
+            (expr, ty_ptr)
+        }
+        Expr::PtrOffset(base, offset) => {
+            let (base, ty_base) = rewrite(func, bid, *base, cnt, memo, new_values, changed);
+            let (offset, _) = rewrite(func, bid, *offset, cnt, memo, new_values, changed);
+            let expr = Expr::PtrOffset(Box::new(base), Box::new(offset));
+            hoist_if_needed(func, bid, expr, ty_base, cnt, memo, new_values, changed)
+        }
+        Expr::ElementPtr(ty, base, offset) => {
+            let (base, ty_base) = rewrite(func, bid, *base, cnt, memo, new_values, changed);
+            let (offset, _) = rewrite(func, bid, *offset, cnt, memo, new_values, changed);
+            let expr = Expr::ElementPtr(ty, Box::new(base), Box::new(offset));
+            hoist_if_needed(func, bid, expr, ty_base, cnt, memo, new_values, changed)
         }
 
         Expr::Add(a, b) => {
@@ -164,12 +215,24 @@ fn rewrite(
             hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
         }
 
-        Expr::Div(a, b) => {
+        Expr::Div(signed, a, b) => {
             let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
             let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
+            let expr = Expr::Div(signed, Box::new(a), Box::new(b));
+            hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
+        }
 
-            let expr = Expr::Div(Box::new(a), Box::new(b));
+        Expr::Cmp(kind, a, b) => {
+            let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
+            let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
+            let expr = Expr::Cmp(kind, Box::new(a), Box::new(b));
+            hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
+        }
 
+        Expr::FCmp(kind, a, b) => {
+            let (a, ty_a) = rewrite(func, bid, *a, cnt, memo, new_values, changed);
+            let (b, _) = rewrite(func, bid, *b, cnt, memo, new_values, changed);
+            let expr = Expr::FCmp(kind, Box::new(a), Box::new(b));
             hoist_if_needed(func, bid, expr, ty_a, cnt, memo, new_values, changed)
         }
     }

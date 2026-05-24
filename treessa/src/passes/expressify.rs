@@ -17,22 +17,27 @@ fn collect_uses(expr: &Expr, uses: &mut HashMap<ValueId, usize>) {
             *uses.entry(*v).or_insert(0) += 1;
         }
 
-        Expr::Const(_) => {}
+        Expr::Const(_) | Expr::Alloca(_) => {}
 
-        Expr::BitNeg(a) => {
+        Expr::BitNeg(a) | Expr::Load(_, a) => {
             collect_uses(a, uses);
         }
 
         Expr::Add(a, b)
         | Expr::Sub(a, b)
         | Expr::Mul(a, b)
-        | Expr::Div(a, b)
+        | Expr::Div(_, a, b)
         | Expr::BitShl(a, b)
         | Expr::BitShr(a, b)
         | Expr::ArithShr(a, b)
         | Expr::BitAnd(a, b)
         | Expr::BitOr(a, b)
-        | Expr::BitXor(a, b) => {
+        | Expr::BitXor(a, b)
+        | Expr::Cmp(_, a, b)
+        | Expr::FCmp(_, a, b)
+        | Expr::Store(_, a, b)
+        | Expr::PtrOffset(a, b)
+        | Expr::ElementPtr(_, a, b) => {
             collect_uses(a, uses);
             collect_uses(b, uses);
         }
@@ -88,7 +93,12 @@ fn should_inline(
         return false;
     }
 
-    matches!(func.get_expr(v), Expr::Const(_)) || matches!(uses.get(&v), Some(&1))
+    matches!(func.get_expr(v), Expr::Const(_))
+        || matches!(uses.get(&v), Some(&1))
+            && !matches!(
+                func.get_expr(v),
+                Expr::Alloca(_) | Expr::Load(_, _) | Expr::Store(_, _, _)
+            )
 }
 
 fn expand_value(
@@ -128,7 +138,42 @@ fn expand_expr(
             }
         }
 
+        Expr::Alloca(ty) => Expr::Alloca(ty),
+
+        Expr::PtrOffset(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            Expr::PtrOffset(Box::new(a), Box::new(b))
+        }
+        Expr::ElementPtr(ty, a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            Expr::ElementPtr(ty, Box::new(a), Box::new(b))
+        }
+
+        Expr::Load(volatile, ptr) => {
+            let ptr = expand_expr(func, *ptr, cache, uses, params, changed);
+            Expr::Load(volatile, Box::new(ptr))
+        }
+        Expr::Store(volatile, ptr, value) => {
+            let ptr = expand_expr(func, *ptr, cache, uses, params, changed);
+            let value = expand_expr(func, *value, cache, uses, params, changed);
+            Expr::Store(volatile, Box::new(ptr), Box::new(value))
+        }
+
         Expr::Const(_) => expr,
+
+        Expr::Cmp(kind, a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            Expr::Cmp(kind, Box::new(a), Box::new(b))
+        }
+
+        Expr::FCmp(kind, a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            Expr::FCmp(kind, Box::new(a), Box::new(b))
+        }
 
         Expr::Add(a, b) => {
             let a = expand_expr(func, *a, cache, uses, params, changed);
@@ -145,10 +190,10 @@ fn expand_expr(
             let b = expand_expr(func, *b, cache, uses, params, changed);
             Expr::Mul(Box::new(a), Box::new(b))
         }
-        Expr::Div(a, b) => {
+        Expr::Div(signed, a, b) => {
             let a = expand_expr(func, *a, cache, uses, params, changed);
             let b = expand_expr(func, *b, cache, uses, params, changed);
-            Expr::Div(Box::new(a), Box::new(b))
+            Expr::Div(signed, Box::new(a), Box::new(b))
         }
         Expr::BitShl(a, b) => {
             let a = expand_expr(func, *a, cache, uses, params, changed);
