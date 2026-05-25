@@ -28,6 +28,8 @@ impl FunctionDef {
                 format!("fcmp {}( {}, {})", kind, self.fmt_expr(a), self.fmt_expr(b))
             }
             ExprKind::Alloca(ty) => format!("alloca({})", ty),
+            ExprKind::NAlloca(ty, cnt) => format!("alloca({} x {})", ty, cnt),
+
             ExprKind::Load(volatile, ptr) => {
                 format!(
                     "{}load({})",

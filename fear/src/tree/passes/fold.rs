@@ -14,6 +14,7 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
         ExprKind::Var(_)
         | ExprKind::Const(_)
         | ExprKind::Alloca(_)
+        | ExprKind::NAlloca(_, _)
         | ExprKind::Load(_, _)
         | ExprKind::Store(_, _, _)
         | ExprKind::PtrOffset(_, _)

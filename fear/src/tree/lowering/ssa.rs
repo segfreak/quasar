@@ -137,6 +137,7 @@ impl SsaRaiser {
             }
 
             ExprKind::Alloca(ty) => dst.make_alloca(block, *ty),
+            ExprKind::NAlloca(ty, cnt) => dst.make_nalloca(block, *ty, *cnt),
 
             ExprKind::PtrOffset(base, offset) => {
                 let base = self.raise_expr(base, dst, block);

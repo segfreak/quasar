@@ -30,7 +30,7 @@ fn count_expr(expr: &Expr, cnt: &mut HashMap<Expr, usize>) {
             count_expr(a, cnt);
         }
 
-        ExprKind::Alloca(_) => {}
+        ExprKind::Alloca(_) | ExprKind::NAlloca(_, _) => {}
         ExprKind::Load(_, ptr) => {
             *cnt.entry(expr.clone()).or_insert(0) += 1;
             count_expr(ptr, cnt);
@@ -125,7 +125,9 @@ fn rewrite(
     let ty = expr.ty;
 
     match &expr.kind {
-        ExprKind::Const(_) | ExprKind::Var(_) | ExprKind::Alloca(_) => expr,
+        ExprKind::Const(_) | ExprKind::Var(_) | ExprKind::Alloca(_) | ExprKind::NAlloca(_, _) => {
+            expr
+        }
 
         ExprKind::Call(func_id, params) => {
             let new_params: Vec<Expr> = params

@@ -46,6 +46,7 @@ pub enum ExprKind {
     FCmp(FloatCmp, Box<Expr>, Box<Expr>),
 
     Alloca(Type),
+    NAlloca(Type, usize),
     Load(/* volatile */ bool, /* ptr */ Box<Expr>),
     Store(
         /* volatile */ bool,
@@ -105,7 +106,7 @@ impl ExprKind {
             Self::Cmp(_, a, b) => 1 + a.get_cost() + b.get_cost(),
             Self::FCmp(_, a, b) => 4 + a.get_cost() + b.get_cost(),
 
-            Self::Alloca(_) => 2,
+            Self::Alloca(_) | ExprKind::NAlloca(_, _) => 2,
             Self::PtrOffset(_, _) | Self::ElementPtr(_, _, _) => 2,
             Self::Load(_, _) | Self::Store(_, _, _) => 5,
 
@@ -247,6 +248,15 @@ impl FunctionDef {
         );
 
         id
+    }
+
+    pub fn get_entry_param_exprs(&self) -> Vec<&Expr> {
+        let entry_block = self.blocks.get(&self.entry).unwrap();
+        entry_block
+            .params
+            .iter()
+            .map(|vid| self.values.get(vid).unwrap())
+            .collect()
     }
 
     pub fn get_block_params(&self, block: BlockId) -> &Vec<ValueId> {
@@ -461,6 +471,16 @@ impl FunctionDef {
             Expr {
                 ty: Type::Ptr,
                 kind: ExprKind::Alloca(ty),
+            },
+        )
+    }
+
+    pub fn make_nalloca(&mut self, block: BlockId, ty: Type, count: usize) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty: Type::Ptr,
+                kind: ExprKind::NAlloca(ty, count),
             },
         )
     }

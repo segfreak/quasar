@@ -143,7 +143,7 @@ impl TreeSsaRaiser {
             }
 
             ssa::InstKind::Alloca(ty) => dst.make_alloca(block, *ty),
-            ssa::InstKind::NAlloca(_, _) => todo!("NAlloca has no fear equivalent"),
+            ssa::InstKind::NAlloca(ty, cnt) => dst.make_nalloca(block, *ty, *cnt),
 
             ssa::InstKind::Load { volatile } => {
                 dst.make_load(block, ty, *volatile, &self.v(ops[0], dst))

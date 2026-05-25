@@ -16,6 +16,10 @@ pub fn dce(func: &mut FunctionDef) -> bool {
         }
     }
 
+    for entry_param in func.get_entry_param_exprs() {
+        mark_expr(func, &entry_param.clone(), &mut used);
+    }
+
     for block in func.blocks.values() {
         if let Some(term) = &block.terminator {
             match term {
@@ -66,13 +70,15 @@ fn mark_expr(func: &FunctionDef, expr: &Expr, used: &mut std::collections::HashS
         ExprKind::Var(v) => {
             if used.insert(*v) {
                 if let Some(val) = func.values.get(v) {
-                    mark_expr(func, &val, used);
+                    mark_expr(func, val, used);
                 }
             }
         }
 
         ExprKind::Const(_) => {}
         ExprKind::Alloca(_) => {}
+        ExprKind::NAlloca(_, _) => {}
+
         ExprKind::Call(_, params) => {
             for expr in params {
                 mark_expr(func, expr, used);

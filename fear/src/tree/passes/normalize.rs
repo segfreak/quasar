@@ -13,7 +13,9 @@ pub fn normalize(func: &mut FunctionDef) -> bool {
 
 fn normalize_expr(expr: Expr, changed: &mut bool) -> Expr {
     let kind = match expr.kind {
-        ExprKind::Var(_) | ExprKind::Const(_) | ExprKind::Alloca(_) => expr.kind,
+        ExprKind::Var(_) | ExprKind::Const(_) | ExprKind::Alloca(_) | ExprKind::NAlloca(_, _) => {
+            expr.kind
+        }
 
         ExprKind::Call(func, params) => {
             let normalized: Vec<Expr> = params
