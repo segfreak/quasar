@@ -111,6 +111,8 @@ impl PassManager {
             }
         );
 
+        log::debug!("after passes:\n{}", f.dump());
+
         result
     }
 }

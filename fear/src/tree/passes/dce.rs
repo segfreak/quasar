@@ -8,10 +8,10 @@ pub fn dce(func: &mut FunctionDef) -> bool {
     let mut used = HashSet::<ValueId>::new();
 
     for (vid, val) in func.values.iter() {
-        if val.expr.is_memory() || val.expr.is_call() {
+        if val.kind.is_memory() || val.kind.is_call() {
             // pre-use for call or memory operations
             if used.insert(*vid) {
-                mark_expr(func, &val.expr.clone(), &mut used);
+                mark_expr(func, &val.clone(), &mut used);
             }
         }
     }
@@ -19,20 +19,14 @@ pub fn dce(func: &mut FunctionDef) -> bool {
     for block in func.blocks.values() {
         if let Some(term) = &block.terminator {
             match term {
+                Terminator::RetVoid => {}
+
                 Terminator::Ret(v) => {
-                    if used.insert(*v) {
-                        if let Some(val) = func.values.get(v) {
-                            mark_expr(func, &val.expr.clone(), &mut used);
-                        }
-                    }
+                    mark_expr(func, &v.clone(), &mut used);
                 }
                 Terminator::Br { params, .. } => {
                     for v in params {
-                        if used.insert(*v) {
-                            if let Some(val) = func.values.get(v) {
-                                mark_expr(func, &val.expr.clone(), &mut used);
-                            }
-                        }
+                        mark_expr(func, &v.clone(), &mut used);
                     }
                 }
 
@@ -42,25 +36,13 @@ pub fn dce(func: &mut FunctionDef) -> bool {
                     else_params,
                     ..
                 } => {
-                    if used.insert(*cond) {
-                        if let Some(val) = func.values.get(cond) {
-                            mark_expr(func, &val.expr.clone(), &mut used);
-                        }
-                    }
+                    mark_expr(func, &cond.clone(), &mut used);
 
                     for v in then_params {
-                        if used.insert(*v) {
-                            if let Some(val) = func.values.get(v) {
-                                mark_expr(func, &val.expr.clone(), &mut used);
-                            }
-                        }
+                        mark_expr(func, &v.clone(), &mut used);
                     }
                     for v in else_params {
-                        if used.insert(*v) {
-                            if let Some(val) = func.values.get(v) {
-                                mark_expr(func, &val.expr.clone(), &mut used);
-                            }
-                        }
+                        mark_expr(func, &v.clone(), &mut used);
                     }
                 }
             }
@@ -74,54 +56,49 @@ pub fn dce(func: &mut FunctionDef) -> bool {
     for block in func.blocks.values_mut() {
         block.params.retain(|v| used.contains(v));
         block.values.retain(|v| used.contains(v));
-
-        if let Some(Terminator::Ret(v)) = &block.terminator {
-            if !used.contains(v) {
-                block.terminator = None;
-            }
-        }
     }
 
     old_value_count != func.values.len()
 }
 
 fn mark_expr(func: &FunctionDef, expr: &Expr, used: &mut std::collections::HashSet<ValueId>) {
-    match expr {
-        Expr::Var(v) => {
+    match &expr.kind {
+        ExprKind::Var(v) => {
             if used.insert(*v) {
                 if let Some(val) = func.values.get(v) {
-                    mark_expr(func, &val.expr, used);
+                    mark_expr(func, &val, used);
                 }
             }
         }
 
-        Expr::Const(_) => {}
-        Expr::Alloca(_) => {}
-        Expr::Call(_, params) => {
+        ExprKind::Const(_) => {}
+        ExprKind::Alloca(_) => {}
+        ExprKind::Call(_, params) => {
             for expr in params {
                 mark_expr(func, expr, used);
             }
         }
 
-        Expr::BitNeg(a) | Expr::Load(_, a) => {
+        ExprKind::BitNeg(a) | ExprKind::Load(_, a) => {
             mark_expr(func, a, used);
         }
 
-        Expr::Add(a, b)
-        | Expr::Sub(a, b)
-        | Expr::Mul(a, b)
-        | Expr::Div(_, a, b)
-        | Expr::BitShl(a, b)
-        | Expr::BitShr(a, b)
-        | Expr::ArithShr(a, b)
-        | Expr::BitAnd(a, b)
-        | Expr::BitOr(a, b)
-        | Expr::BitXor(a, b)
-        | Expr::Cmp(_, a, b)
-        | Expr::FCmp(_, a, b)
-        | Expr::Store(_, a, b)
-        | Expr::PtrOffset(a, b)
-        | Expr::ElementPtr(_, a, b) => {
+        ExprKind::Add(a, b)
+        | ExprKind::Sub(a, b)
+        | ExprKind::Mul(a, b)
+        | ExprKind::Div(_, a, b)
+        | ExprKind::Rem(_, a, b)
+        | ExprKind::BitShl(a, b)
+        | ExprKind::BitShr(a, b)
+        | ExprKind::ArithShr(a, b)
+        | ExprKind::BitAnd(a, b)
+        | ExprKind::BitOr(a, b)
+        | ExprKind::BitXor(a, b)
+        | ExprKind::Cmp(_, a, b)
+        | ExprKind::FCmp(_, a, b)
+        | ExprKind::Store(_, a, b)
+        | ExprKind::PtrOffset(a, b)
+        | ExprKind::ElementPtr(_, a, b) => {
             mark_expr(func, a, used);
             mark_expr(func, b, used);
         }

@@ -35,9 +35,9 @@ pub enum FearType {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub enum FearOptLevel {
-    FearOptLevelNone,
-    FearOptLevelDefault,
-    FearOptLevelFull,
+    FearOptNone,
+    FearOptDefault,
+    FearOptFull,
 }
 
 /// Calling conventions supported for function declarations and calls.
@@ -121,9 +121,9 @@ impl From<FearType> for Type {
 impl From<FearOptLevel> for OptLevel {
     fn from(t: FearOptLevel) -> Self {
         match t {
-            FearOptLevel::FearOptLevelNone => OptLevel::None,
-            FearOptLevel::FearOptLevelDefault => OptLevel::Default,
-            FearOptLevel::FearOptLevelFull => OptLevel::Full,
+            FearOptLevel::FearOptNone => OptLevel::None,
+            FearOptLevel::FearOptDefault => OptLevel::Default,
+            FearOptLevel::FearOptFull => OptLevel::Full,
         }
     }
 }

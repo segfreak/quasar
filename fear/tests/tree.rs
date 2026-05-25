@@ -12,43 +12,61 @@ fn test() {
 
     let slot0 = f.make_alloca(b0, Type::I32);
     let c228 = f.make_iconst(b0, Type::I32, 228);
-    f.make_store(b0, false, slot0.into(), c228.into());
+    f.make_store(b0, false, &slot0, &c228);
 
     let b1 = f.new_block();
     let x = f.add_block_param(b1, Type::I32);
 
     f.make_br(b0, b1, vec![x0]);
 
-    let c9 = f.append_expr(b1, Type::I32, Expr::Const(9));
-    let tmp = f.append_expr(
-        b1,
-        Type::I32,
-        Expr::Mul(Box::new(Expr::Var(x)), Box::new(Expr::Var(c9))),
-    );
-
-    let add = f.make_add(b1, Type::I32, tmp.into(), c9.into());
+    let c9 = f.make_iconst(b1, Type::I32, 9);
+    let tmp = f.make_mul(b1, Type::I32, &x, &c9);
+    let add = f.make_add(b1, Type::I32, &tmp, &c9);
     let c2 = f.make_iconst(b1, Type::I32, 2);
-    let sub = f.make_sub(b1, Type::I32, add.into(), c2.into());
-    let sub2 = f.append_expr(
+    let c4 = f.make_iconst(b1, Type::I32, 4);
+    let c64 = f.make_iconst(b1, Type::I32, 64);
+
+    let sub = f.make_sub(b1, Type::I32, &add, &c2);
+    let sub2 = f.make_sub(b1, Type::I32, &add, &c2);
+    let mul = f.make_mul(b1, Type::I32, &sub, &sub2);
+    let div = f.make_div(b1, Type::I32, true, &mul, &c2);
+    let mul2 = f.make_mul(b1, Type::I32, &div, &c2);
+    let mul64 = f.make_mul(b1, Type::I32, &x, &c64);
+    let div64 = f.make_mul(b1, Type::I32, &mul64, &c64);
+    let sum = f.make_add(b1, Type::I32, &mul2, &div64);
+    let nonprofit = f.make_mul(
         b1,
         Type::I32,
-        Expr::Sub(Box::new(Expr::Var(add)), Box::new(Expr::Var(c2))),
+        &sum,
+        &Expr {
+            ty: Type::I32,
+            kind: ExprKind::Const(0x1000000),
+        },
     );
-    let mul = f.make_mul(b1, Type::I32, sub.into(), sub2.into());
-    let div = f.make_div(b1, Type::I32, true, mul.into(), Expr::Const(2));
-    let mul2 = f.make_mul(b1, Type::I32, div.into(), Expr::Const(2));
-    let mul64 = f.make_mul(b1, Type::I32, x.into(), Expr::Const(64));
-    let div64 = f.make_mul(b1, Type::I32, mul64.into(), Expr::Const(64));
-    let sum = f.make_add(b1, Type::I32, mul2.into(), div64.into());
-    let nonprofit = f.make_mul(b1, Type::I32, sum.into(), Expr::Const(0x1000000));
-    let square = f.make_mul(b1, Type::I32, x.into(), x.into());
-    let mul8 = f.make_mul(b1, Type::I32, square.into(), Expr::Const(8));
-    let y = f.make_add(b1, Type::I32, nonprofit.into(), mul8.into());
-    let decompose = f.make_mul(b1, Type::I32, sum.into(), Expr::Const(9));
-    let z = f.make_sub(b1, Type::I32, y.into(), decompose.into());
-    let slot0v = f.make_load(b1, Type::I32, false, slot0.into());
-    let c = f.make_add(b1, Type::I32, z.into(), slot0v.into());
-    f.make_ret(b1, c);
+    let square = f.make_mul(b1, Type::I32, &x, &x);
+    let mul8 = f.make_mul(
+        b1,
+        Type::I32,
+        &square,
+        &Expr {
+            ty: Type::I32,
+            kind: ExprKind::Const(8),
+        },
+    );
+    let y = f.make_add(b1, Type::I32, &nonprofit, &mul8);
+    let decompose = f.make_mul(
+        b1,
+        Type::I32,
+        &sum,
+        &Expr {
+            ty: Type::I32,
+            kind: ExprKind::Const(9),
+        },
+    );
+    let z = f.make_sub(b1, Type::I32, &y, &decompose);
+    let slot0v = f.make_load(b1, Type::I32, false, &slot0);
+    let c = f.make_add(b1, Type::I32, &z, &slot0v);
+    f.make_ret(b1, &c);
     println!("{}", f.dump());
 
     let mut m = fear::ssa::Module::new("treessa");
@@ -64,9 +82,9 @@ fn test() {
             fear::types::Linkage::External,
             fear::types::CallingConvention::C,
         );
-        // defining a tree function (lowers into ssa)
+        // defining a tree-ssa function (lowers into ssa)
         m.define_function(mfoo, f).expect("cannot define function");
-        m.optimize();
+        m.optimize(OptLevel::Default, false);
         m.verify().expect("verify error");
         println!("{}", m.dump());
 

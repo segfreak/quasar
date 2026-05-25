@@ -1,125 +1,142 @@
-use crate::{tree::*};
+use crate::tree::*;
 
 pub fn fold(func: &mut FunctionDef) -> bool {
     let mut changed = false;
-    for val in func.values.values_mut() {
-        let old = std::mem::replace(&mut val.expr, Expr::Const(0));
-        val.expr = fold_expr(old.clone(), &mut changed);
+    for expr in func.values.values_mut() {
+        *expr = fold_expr(expr.clone(), &mut changed);
     }
     changed
 }
 
 pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
-    match expr {
-        Expr::Var(_)
-        | Expr::Const(_)
-        | Expr::Alloca(_)
-        | Expr::Load(_, _)
-        | Expr::Store(_, _, _)
-        | Expr::PtrOffset(_, _)
-        | Expr::ElementPtr(_, _, _) => expr,
+    let ty = expr.ty;
+    let kind = match expr.kind {
+        ExprKind::Var(_)
+        | ExprKind::Const(_)
+        | ExprKind::Alloca(_)
+        | ExprKind::Load(_, _)
+        | ExprKind::Store(_, _, _)
+        | ExprKind::PtrOffset(_, _)
+        | ExprKind::ElementPtr(_, _, _) => expr.kind,
 
-        Expr::Call(func, params) => {
+        ExprKind::Call(func, params) => {
             let folded: Vec<Expr> = params
                 .iter()
                 .map(|expr| fold_expr(expr.clone(), changed))
                 .collect();
-            Expr::Call(func, folded)
+            ExprKind::Call(func, folded)
         }
 
-        Expr::Add(a, b) => {
+        ExprKind::Add(a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);
-            if let (Expr::Const(x), Expr::Const(y)) = (&a, &b) {
+            if let (ExprKind::Const(x), ExprKind::Const(y)) = (&a.kind, &b.kind) {
                 *changed = true;
-                Expr::Const(x + y)
+                ExprKind::Const(x + y)
             } else {
-                Expr::Add(Box::new(a), Box::new(b))
+                ExprKind::Add(Box::new(a), Box::new(b))
             }
         }
 
-        Expr::Sub(a, b) => {
+        ExprKind::Sub(a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);
-            if let (Expr::Const(x), Expr::Const(y)) = (&a, &b) {
+            if let (ExprKind::Const(x), ExprKind::Const(y)) = (&a.kind, &b.kind) {
                 *changed = true;
-                Expr::Const(x - y)
+                ExprKind::Const(x - y)
             } else {
-                Expr::Sub(Box::new(a), Box::new(b))
+                ExprKind::Sub(Box::new(a), Box::new(b))
             }
         }
 
-        Expr::Mul(a, b) => {
+        ExprKind::Mul(a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);
-            if let (Expr::Const(x), Expr::Const(y)) = (&a, &b) {
+            if let (ExprKind::Const(x), ExprKind::Const(y)) = (&a.kind, &b.kind) {
                 *changed = true;
-                Expr::Const(x * y)
+                ExprKind::Const(x * y)
             } else {
-                Expr::Mul(Box::new(a), Box::new(b))
+                ExprKind::Mul(Box::new(a), Box::new(b))
             }
         }
 
-        Expr::Div(signed, a, b) => {
+        ExprKind::Div(signed, a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);
-            if let (Expr::Const(x), Expr::Const(y)) = (&a, &b) {
+            if let (ExprKind::Const(x), ExprKind::Const(y)) = (&a.kind, &b.kind) {
                 *changed = true;
                 if signed {
-                    Expr::Const(x / y)
+                    ExprKind::Const(x / y)
                 } else {
-                    Expr::Const((*x as u64 / *y as u64) as i64)
+                    ExprKind::Const((*x as u64 / *y as u64) as i64)
                 }
             } else {
-                Expr::Div(signed, Box::new(a), Box::new(b))
+                ExprKind::Div(signed, Box::new(a), Box::new(b))
             }
         }
 
-        Expr::BitShl(a, b) => {
+        ExprKind::Rem(signed, a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);
-            Expr::BitShl(Box::new(a), Box::new(b))
-        }
-        Expr::BitShr(a, b) => {
-            let a = fold_expr(*a, changed);
-            let b = fold_expr(*b, changed);
-            Expr::BitShr(Box::new(a), Box::new(b))
-        }
-        Expr::ArithShr(a, b) => {
-            let a = fold_expr(*a, changed);
-            let b = fold_expr(*b, changed);
-            Expr::ArithShr(Box::new(a), Box::new(b))
-        }
-        Expr::BitAnd(a, b) => {
-            let a = fold_expr(*a, changed);
-            let b = fold_expr(*b, changed);
-            Expr::BitAnd(Box::new(a), Box::new(b))
-        }
-        Expr::BitOr(a, b) => {
-            let a = fold_expr(*a, changed);
-            let b = fold_expr(*b, changed);
-            Expr::BitOr(Box::new(a), Box::new(b))
-        }
-        Expr::BitXor(a, b) => {
-            let a = fold_expr(*a, changed);
-            let b = fold_expr(*b, changed);
-            Expr::BitXor(Box::new(a), Box::new(b))
-        }
-        Expr::BitNeg(a) => {
-            let a = fold_expr(*a, changed);
-            Expr::BitNeg(Box::new(a))
+            if let (ExprKind::Const(x), ExprKind::Const(y)) = (&a.kind, &b.kind) {
+                *changed = true;
+                if signed {
+                    ExprKind::Const(x % y)
+                } else {
+                    ExprKind::Const((*x as u64 % *y as u64) as i64)
+                }
+            } else {
+                ExprKind::Div(signed, Box::new(a), Box::new(b))
+            }
         }
 
-        Expr::Cmp(kind, a, b) => {
+        ExprKind::BitShl(a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);
-            Expr::Cmp(kind, Box::new(a), Box::new(b))
+            ExprKind::BitShl(Box::new(a), Box::new(b))
+        }
+        ExprKind::BitShr(a, b) => {
+            let a = fold_expr(*a, changed);
+            let b = fold_expr(*b, changed);
+            ExprKind::BitShr(Box::new(a), Box::new(b))
+        }
+        ExprKind::ArithShr(a, b) => {
+            let a = fold_expr(*a, changed);
+            let b = fold_expr(*b, changed);
+            ExprKind::ArithShr(Box::new(a), Box::new(b))
+        }
+        ExprKind::BitAnd(a, b) => {
+            let a = fold_expr(*a, changed);
+            let b = fold_expr(*b, changed);
+            ExprKind::BitAnd(Box::new(a), Box::new(b))
+        }
+        ExprKind::BitOr(a, b) => {
+            let a = fold_expr(*a, changed);
+            let b = fold_expr(*b, changed);
+            ExprKind::BitOr(Box::new(a), Box::new(b))
+        }
+        ExprKind::BitXor(a, b) => {
+            let a = fold_expr(*a, changed);
+            let b = fold_expr(*b, changed);
+            ExprKind::BitXor(Box::new(a), Box::new(b))
+        }
+        ExprKind::BitNeg(a) => {
+            let a = fold_expr(*a, changed);
+            ExprKind::BitNeg(Box::new(a))
         }
 
-        Expr::FCmp(kind, a, b) => {
+        ExprKind::Cmp(kind, a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);
-            Expr::FCmp(kind, Box::new(a), Box::new(b))
+            ExprKind::Cmp(kind, Box::new(a), Box::new(b))
         }
-    }
+
+        ExprKind::FCmp(kind, a, b) => {
+            let a = fold_expr(*a, changed);
+            let b = fold_expr(*b, changed);
+            ExprKind::FCmp(kind, Box::new(a), Box::new(b))
+        }
+    };
+
+    Expr { ty, kind }
 }
