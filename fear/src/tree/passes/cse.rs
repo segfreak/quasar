@@ -118,6 +118,7 @@ fn cse_block(m: &crate::ssa::Module, func: &mut FunctionDef, bid: u32) -> bool {
     changed
 }
 
+#[allow(clippy::too_many_arguments, clippy::only_used_in_recursion)]
 fn rewrite(
     m: &crate::ssa::Module,
     func: &mut FunctionDef,

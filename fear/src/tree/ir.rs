@@ -591,6 +591,6 @@ impl FunctionDef {
     }
 
     pub fn get_expr(&self, v: ValueId) -> &Expr {
-        &self.values.get(&v).unwrap()
+        self.values.get(&v).unwrap()
     }
 }

@@ -56,7 +56,7 @@ impl SsaRaiser {
 
         for &vid in &block.values {
             let v = &src.values[&vid];
-            let ssa_val = self.raise_expr(&v, dst, dst_block);
+            let ssa_val = self.raise_expr(v, dst, dst_block);
             self.value_map.insert(vid, ssa_val);
         }
 

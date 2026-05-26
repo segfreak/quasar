@@ -6,7 +6,7 @@ fn build_use_counts(func: &FunctionDef) -> HashMap<ValueId, usize> {
     let mut uses = HashMap::new();
 
     for v in func.values.values() {
-        collect_uses(&v, &mut uses);
+        collect_uses(v, &mut uses);
     }
 
     uses
