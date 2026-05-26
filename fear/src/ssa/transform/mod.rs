@@ -56,7 +56,7 @@ impl PassManager {
     pub fn run_function(opts: &PassManagerOpts, m: &mut Module, f: FuncId) -> PassResult {
         let mut result = PassResult::default();
 
-        if opts.multilevel && opts.level >= OptLevel::Default {
+        if opts.multilevel && let lvl = opts.multilevel_tree_level.unwrap_or(opts.level) && lvl >= OptLevel::Default {
             let old_def = m
                 .get_function(f)
                 .and_then(|func| func.get_definition())
@@ -64,7 +64,7 @@ impl PassManager {
 
             if let Some(def) = old_def {
                 let mut tdef = tree::FunctionDef::from(def);
-                let res = tree::passes::PassManager::optimize(m, &mut tdef, opts.multilevel_tree_level.unwrap_or(opts.level), opts.multilevel_tree_max_passes);
+                let res = tree::passes::PassManager::optimize(m, &mut tdef, lvl, opts.multilevel_tree_max_passes);
                 log::debug!("tree optimizer performed {} passes", res.passes.len());
                 let new_def = FunctionDef::from(tdef);
                 if let Some(func) = m.get_function_mut(f) && let Some(def_ref) = func.get_definition_mut()  {
