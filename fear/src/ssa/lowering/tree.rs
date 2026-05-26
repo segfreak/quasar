@@ -164,7 +164,9 @@ impl TreeSsaRaiser {
                 dst.make_call(block, ty, *func_id, args)
             }
 
-            ssa::InstKind::Cast(_) => todo!("Cast has no fear Expr equivalent"),
+            ssa::InstKind::Cast(kind) => {
+                dst.make_cast(block, ty, *kind, &self.v(ops[0], dst))
+            },
 
             ssa::InstKind::Ret
             | ssa::InstKind::Jump(_)

@@ -1,5 +1,5 @@
 use crate::{
-    ssa::FuncId,
+    ssa::{CastKind, FuncId},
     types::{FloatCmp, IntCmp, Type},
 };
 use std::{
@@ -44,6 +44,7 @@ pub enum ExprKind {
 
     Cmp(IntCmp, Box<Expr>, Box<Expr>),
     FCmp(FloatCmp, Box<Expr>, Box<Expr>),
+    Cast(CastKind, Box<Expr>),
 
     Alloca(Type),
     NAlloca(Type, usize),
@@ -85,6 +86,23 @@ impl ExprKind {
         matches!(self, Self::Load(_, _) | Self::Store(_, _, _))
     }
 
+    fn cast_cost(kind: CastKind) -> u32 {
+        use CastKind::*;
+        match kind {
+            // zero extension is free in x86
+            Zext => 0,
+            Sext => 1,
+            // truncate is free in x86
+            Trunc => 0,
+            // bitcast is free in x86
+            Bitcast => 0,
+            SIToFP | UIToFP => 5,
+            FPToSI | FPToUI => 5,
+            FPromote => 3,
+            FTrunc => 4,
+        }
+    }
+
     pub fn get_cost(&self) -> u32 {
         match self {
             Self::Var(_) | Self::Const(_) => 0,
@@ -105,6 +123,7 @@ impl ExprKind {
 
             Self::Cmp(_, a, b) => 1 + a.get_cost() + b.get_cost(),
             Self::FCmp(_, a, b) => 4 + a.get_cost() + b.get_cost(),
+            Self::Cast(kind, a) => Self::cast_cost(*kind) + a.get_cost(),
 
             Self::Alloca(_) | ExprKind::NAlloca(_, _) => 2,
             Self::PtrOffset(_, _) | Self::ElementPtr(_, _, _) => 2,
@@ -307,6 +326,16 @@ impl FunctionDef {
             Expr {
                 ty,
                 kind: ExprKind::Const(value),
+            },
+        )
+    }
+
+    pub fn make_cast(&mut self, block: BlockId, ty: Type, kind: CastKind, value: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::Cast(kind, Box::new(value.clone())),
             },
         )
     }

@@ -20,7 +20,7 @@ fn collect_uses(expr: &Expr, uses: &mut HashMap<ValueId, usize>) {
 
         ExprKind::Const(_) | ExprKind::Alloca(_) | ExprKind::NAlloca(_, _) => {}
 
-        ExprKind::BitNeg(a) | ExprKind::Load(_, a) => {
+        ExprKind::Cast(_, a) | ExprKind::BitNeg(a) | ExprKind::Load(_, a) => {
             collect_uses(a, uses);
         }
 
@@ -155,6 +155,10 @@ fn expand_expr(
         ExprKind::NAlloca(ty, cnt) => ExprKind::NAlloca(ty, cnt),
         ExprKind::Call(func, params) => ExprKind::Call(func, params),
 
+        ExprKind::Cast(kind, a) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            ExprKind::Cast(kind, Box::new(a))
+        }
         ExprKind::PtrOffset(a, b) => {
             let a = expand_expr(func, *a, cache, uses, params, changed);
             let b = expand_expr(func, *b, cache, uses, params, changed);

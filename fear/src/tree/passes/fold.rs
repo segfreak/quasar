@@ -18,7 +18,8 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
         | ExprKind::Load(_, _)
         | ExprKind::Store(_, _, _)
         | ExprKind::PtrOffset(_, _)
-        | ExprKind::ElementPtr(_, _, _) => expr.kind,
+        | ExprKind::ElementPtr(_, _, _)
+        | ExprKind::Cast(_, _) => expr.kind,
 
         ExprKind::Call(func, params) => {
             let folded: Vec<Expr> = params

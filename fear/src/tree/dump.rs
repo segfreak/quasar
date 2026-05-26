@@ -2,37 +2,60 @@ use crate::{tree::*, types::Type};
 
 impl FunctionDef {
     pub fn fmt_expr(&self, expr: &Expr) -> String {
+        let ty = expr.ty;
         match &expr.kind {
             ExprKind::Var(v) => format!("%{}", v),
             ExprKind::Const(c) => c.to_string(),
-            ExprKind::Add(a, b) => format!("add({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
-            ExprKind::Sub(a, b) => format!("sub({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
-            ExprKind::Mul(a, b) => format!("mul({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
+            ExprKind::Add(a, b) => {
+                format!("{}.add({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            ExprKind::Sub(a, b) => {
+                format!("{}.sub({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            ExprKind::Mul(a, b) => {
+                format!("{}.mul({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
+            }
             ExprKind::Div(_, a, b) => {
-                format!("div({}, {})", self.fmt_expr(a), self.fmt_expr(b))
+                format!("{}.div({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
             }
             ExprKind::Rem(_, a, b) => {
-                format!("rem({}, {})", self.fmt_expr(a), self.fmt_expr(b))
+                format!("{}.rem({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
             }
-            ExprKind::BitShl(a, b) => format!("shl({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
-            ExprKind::BitShr(a, b) => format!("shr({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
-            ExprKind::ArithShr(a, b) => format!("ashr({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
-            ExprKind::BitAnd(a, b) => format!("band({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
-            ExprKind::BitOr(a, b) => format!("bor({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
-            ExprKind::BitXor(a, b) => format!("bxor({}, {})", self.fmt_expr(a), self.fmt_expr(b)),
-            ExprKind::BitNeg(a) => format!("bneg({})", self.fmt_expr(a)),
+            ExprKind::BitShl(a, b) => {
+                format!("{}.shl({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            ExprKind::BitShr(a, b) => {
+                format!("{}.shr({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            ExprKind::ArithShr(a, b) => {
+                format!("{}.ashr({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            ExprKind::BitAnd(a, b) => {
+                format!("{}.band({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            ExprKind::BitOr(a, b) => {
+                format!("{}.bor({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            ExprKind::BitXor(a, b) => {
+                format!("{}.bxor({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            ExprKind::BitNeg(a) => format!("{}.bneg({})", ty, self.fmt_expr(a)),
             ExprKind::Cmp(kind, a, b) => {
-                format!("icmp {}({}, {})", kind, self.fmt_expr(a), self.fmt_expr(b))
+                format!("icmp.{}({}, {})", kind, self.fmt_expr(a), self.fmt_expr(b))
             }
             ExprKind::FCmp(kind, a, b) => {
-                format!("fcmp {}( {}, {})", kind, self.fmt_expr(a), self.fmt_expr(b))
+                format!("fcmp.{}({}, {})", kind, self.fmt_expr(a), self.fmt_expr(b))
             }
-            ExprKind::Alloca(ty) => format!("alloca({})", ty),
-            ExprKind::NAlloca(ty, cnt) => format!("alloca({} x {})", ty, cnt),
+            ExprKind::Cast(kind, a) => {
+                format!("{}.{}({})", ty, kind, self.fmt_expr(a))
+            }
+            ExprKind::Alloca(ty) => format!("{}.alloca", ty),
+            ExprKind::NAlloca(ty, cnt) => format!("{}.alloca({})", ty, cnt),
 
             ExprKind::Load(volatile, ptr) => {
                 format!(
-                    "{}load({})",
+                    "{}.{}load({})",
+                    ty,
                     if *volatile { "v" } else { "" },
                     self.fmt_expr(ptr)
                 )
@@ -62,7 +85,7 @@ impl FunctionDef {
             }
             ExprKind::Call(func, params) => {
                 let params: Vec<String> = params.iter().map(|expr| self.fmt_expr(expr)).collect();
-                format!("m.call({}, {})", func, params.join(", "))
+                format!("call({}, {})", func, params.join(", "))
             }
         }
     }
@@ -133,7 +156,11 @@ impl FunctionDef {
 
             for v in &block.values {
                 let val = &self.values[v];
-                out.push_str(&format!("  %{} = {}\n", v, self.fmt_expr(&val)));
+                if val.ty.is_void() {
+                    out.push_str(&format!("  {}\n", self.fmt_expr(val)));
+                } else {
+                    out.push_str(&format!("  %{} = {}\n", v, self.fmt_expr(val)));
+                }
             }
 
             if let Some(term) = &block.terminator {

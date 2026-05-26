@@ -44,7 +44,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 &target_triple,
                 "generic",
                 "",
-                OptimizationLevel::Default,
+                OptimizationLevel::None,
                 RelocMode::PIC,
                 CodeModel::Default,
             )

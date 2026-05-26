@@ -1,3 +1,4 @@
+use fear::ssa::CastKind;
 use fear::tree::{passes::PassManager, *};
 use fear::types::{FunctionSignature, OptLevel, Type};
 
@@ -65,9 +66,12 @@ fn test() {
     );
     let z = f.make_sub(b1, Type::I32, &y, &decompose);
     let slot0v = f.make_load(b1, Type::I32, false, &slot0);
-    let c = f.make_add(b1, Type::I32, &z, &slot0v);
-    f.make_ret(b1, &c);
+    let x0 = f.make_add(b1, Type::I32, &z, &slot0v);
+    let x0_64 = f.make_cast(b1, Type::I64, CastKind::Sext, &x0);
+    f.make_ret(b1, &x0_64);
     println!("{}", f.dump());
+
+    log::debug!("before opts: {}", f.dump());
 
     let mut m = fear::ssa::Module::new("treessa");
     let res = PassManager::optimize(&m, &mut f, OptLevel::Default, i32::MAX);
@@ -78,13 +82,14 @@ fn test() {
     {
         let mfoo = m.declare_function(
             "foo",
-            FunctionSignature::new(vec![Type::I32], Type::I32),
+            FunctionSignature::new(vec![Type::I32], Type::I64),
             fear::types::Linkage::External,
             fear::types::CallingConvention::C,
         );
         // defining a tree-ssa function (lowers into ssa)
         m.define_function(mfoo, f).expect("cannot define function");
         m.optimize(OptLevel::Default, false);
+        log::debug!("{}\n", m.dump());
         m.verify().expect("verify error");
         println!("{}", m.dump());
 

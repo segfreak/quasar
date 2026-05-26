@@ -17,6 +17,11 @@ fn normalize_expr(expr: Expr, changed: &mut bool) -> Expr {
             expr.kind
         }
 
+        ExprKind::Cast(kind, a) => {
+            let a = normalize_expr(*a, changed);
+            ExprKind::Cast(kind, Box::new(a))
+        }
+
         ExprKind::Call(func, params) => {
             let normalized: Vec<Expr> = params
                 .iter()

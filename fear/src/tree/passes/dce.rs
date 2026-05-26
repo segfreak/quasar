@@ -85,7 +85,7 @@ fn mark_expr(func: &FunctionDef, expr: &Expr, used: &mut std::collections::HashS
             }
         }
 
-        ExprKind::BitNeg(a) | ExprKind::Load(_, a) => {
+        ExprKind::Cast(_, a) | ExprKind::BitNeg(a) | ExprKind::Load(_, a) => {
             mark_expr(func, a, used);
         }
 

@@ -1,5 +1,5 @@
 // algebraic simplify, algebraic reassociation
-use crate::tree::*;
+use crate::{ssa::CastKind, tree::*};
 
 pub fn simplify(func: &mut FunctionDef) -> bool {
     let mut changed = false;
@@ -403,6 +403,20 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
             let a = simplify_expr(*a, changed);
             let b = simplify_expr(*b, changed);
             ExprKind::Rem(signed, Box::new(a), Box::new(b))
+        }
+
+        ExprKind::Cast(kind, a) => {
+            let a = simplify_expr(*a, changed);
+            if expr.ty == a.ty
+                && matches!(
+                    kind,
+                    CastKind::Zext | CastKind::Sext | CastKind::Trunc | CastKind::Bitcast
+                )
+            {
+                a.kind
+            } else {
+                ExprKind::Cast(kind, Box::new(a))
+            }
         }
 
         other => other,

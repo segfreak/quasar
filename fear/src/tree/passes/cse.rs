@@ -54,6 +54,12 @@ fn count_expr(expr: &Expr, cnt: &mut HashMap<Expr, usize>) {
             count_expr(offset, cnt);
         }
 
+        ExprKind::Cast(_kind, a) => {
+            *cnt.entry(expr.clone()).or_insert(0) += 1;
+
+            count_expr(a, cnt);
+        }
+
         ExprKind::Add(a, b)
         | ExprKind::Sub(a, b)
         | ExprKind::Mul(a, b)
@@ -127,6 +133,15 @@ fn rewrite(
     match &expr.kind {
         ExprKind::Const(_) | ExprKind::Var(_) | ExprKind::Alloca(_) | ExprKind::NAlloca(_, _) => {
             expr
+        }
+
+        ExprKind::Cast(kind, a) => {
+            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::Cast(*kind, Box::new(a)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
         }
 
         ExprKind::Call(func_id, params) => {

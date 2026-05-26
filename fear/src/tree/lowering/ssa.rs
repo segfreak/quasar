@@ -264,6 +264,11 @@ impl SsaRaiser {
                 let r = self.raise_expr(b, dst, block);
                 dst.make_fcmp(block, *kind, l, r)
             }
+
+            ExprKind::Cast(kind, a) => {
+                let l = self.raise_expr(a, dst, block);
+                dst.make_cast(block, *kind, ty, l)
+            }
         }
     }
 }
