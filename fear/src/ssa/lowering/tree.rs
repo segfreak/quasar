@@ -42,8 +42,7 @@ impl TreeSsaRaiser {
             for &param in &block.params {
                 let ty = src.values[&param].ty;
                 let var_expr = dst.add_block_param(dst_bid, ty);
-                if let ExprKind::Var(v) = &var_expr.kind
-                {
+                if let ExprKind::Var(v) = &var_expr.kind {
                     self.value_map.insert(param, *v);
                 }
             }
@@ -65,7 +64,9 @@ impl TreeSsaRaiser {
             }
 
             let expr = self.raise_inst(src, inst, dst_bid, dst);
-            if let Some(result) = inst.result && let ExprKind::Var(v) = &expr.kind {
+            if let Some(result) = inst.result
+                && let ExprKind::Var(v) = &expr.kind
+            {
                 self.value_map.insert(result, *v);
             }
         }
@@ -104,15 +105,29 @@ impl TreeSsaRaiser {
             }
             ssa::InstKind::FConst(_) => todo!("FConst not in fear Expr"),
 
-            ssa::InstKind::Add => dst.make_add(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst)),
-            ssa::InstKind::Sub => dst.make_sub(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst)),
-            ssa::InstKind::Mul => dst.make_mul(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst)),
-            ssa::InstKind::Div { signed } => {
-                dst.make_div(block, ty, *signed, &self.v(ops[0], dst), &self.v(ops[1], dst))
+            ssa::InstKind::Add => {
+                dst.make_add(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))
             }
-            ssa::InstKind::Rem { signed } => {
-                dst.make_rem(block, ty, *signed, &self.v(ops[0], dst), &self.v(ops[1], dst))
+            ssa::InstKind::Sub => {
+                dst.make_sub(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))
             }
+            ssa::InstKind::Mul => {
+                dst.make_mul(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))
+            }
+            ssa::InstKind::Div { signed } => dst.make_div(
+                block,
+                ty,
+                *signed,
+                &self.v(ops[0], dst),
+                &self.v(ops[1], dst),
+            ),
+            ssa::InstKind::Rem { signed } => dst.make_rem(
+                block,
+                ty,
+                *signed,
+                &self.v(ops[0], dst),
+                &self.v(ops[1], dst),
+            ),
 
             ssa::InstKind::LShl => {
                 dst.make_shl(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))
@@ -164,9 +179,7 @@ impl TreeSsaRaiser {
                 dst.make_call(block, ty, *func_id, args)
             }
 
-            ssa::InstKind::Cast(kind) => {
-                dst.make_cast(block, ty, *kind, &self.v(ops[0], dst))
-            },
+            ssa::InstKind::Cast(kind) => dst.make_cast(block, ty, *kind, &self.v(ops[0], dst)),
 
             ssa::InstKind::Ret
             | ssa::InstKind::Jump(_)
