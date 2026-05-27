@@ -540,6 +540,14 @@ impl FunctionDef {
         self.append_inst(block, InstKind::IConst(x), ty, vec![])
     }
 
+    pub fn make_fconst_bits(&mut self, block: BlockId, ty: Type, bits: u64) -> ValueId {
+        self.append_inst(block, InstKind::FConst(bits), ty, vec![])
+    }
+
+    pub fn make_fconst(&mut self, block: BlockId, ty: Type, x: f64) -> ValueId {
+        self.append_inst(block, InstKind::FConst(x.to_bits()), ty, vec![])
+    }
+
     fn make_unary(&mut self, block: BlockId, kind: InstKind, ty: Type, value: ValueId) -> ValueId {
         self.append_inst(block, kind, ty, vec![value])
     }

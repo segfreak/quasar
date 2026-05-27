@@ -75,7 +75,7 @@ fn mark_expr(func: &FunctionDef, expr: &Expr, used: &mut std::collections::HashS
             }
         }
 
-        ExprKind::Const(_) => {}
+        ExprKind::Const(_) | ExprKind::FConst(_) => {}
         ExprKind::Alloca(_) => {}
         ExprKind::NAlloca(_, _) => {}
 

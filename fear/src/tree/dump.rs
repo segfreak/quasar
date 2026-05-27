@@ -6,6 +6,7 @@ impl FunctionDef {
         match &expr.kind {
             ExprKind::Var(v) => format!("%{}", v),
             ExprKind::Const(c) => c.to_string(),
+            ExprKind::FConst(bits) => f64::from_bits(*bits).to_string(),
             ExprKind::Add(a, b) => {
                 format!("{}.add({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
             }

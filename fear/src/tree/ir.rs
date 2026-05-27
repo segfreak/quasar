@@ -22,50 +22,12 @@ impl Expr {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ExprTag {
-    Var,
-    Const,
-
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Rem,
-
-    FAdd,
-    FSub,
-    FMul,
-    FDiv,
-    FRem,
-
-    BitShl,
-    BitShr,
-    ArithShr,
-
-    BitNeg,
-    BitAnd,
-    BitOr,
-    BitXor,
-
-    Cmp,
-    FCmp,
-    Cast,
-
-    Alloca,
-    NAlloca,
-    Load,
-    Store,
-    PtrOffset,
-    ElementPtr,
-
-    Call,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExprKind {
     Var(ValueId),
     Const(i64),
+    /// raw bits, use with f64::from_bits()
+    FConst(u64),
 
     Add(Box<Expr>, Box<Expr>),
     Sub(Box<Expr>, Box<Expr>),
@@ -117,194 +79,10 @@ impl From<ValueId> for ExprKind {
 }
 
 impl ExprKind {
-    pub fn tag(&self) -> ExprTag {
-        match self {
-            Self::Var(_) => ExprTag::Var,
-            Self::Const(_) => ExprTag::Const,
-
-            Self::Add(_, _) => ExprTag::Add,
-            Self::Sub(_, _) => ExprTag::Sub,
-            Self::Mul(_, _) => ExprTag::Mul,
-            Self::Div(_, _, _) => ExprTag::Div,
-            Self::Rem(_, _, _) => ExprTag::Rem,
-
-            Self::FAdd(_, _) => ExprTag::FAdd,
-            Self::FSub(_, _) => ExprTag::FSub,
-            Self::FMul(_, _) => ExprTag::FMul,
-            Self::FDiv(_, _) => ExprTag::FDiv,
-            Self::FRem(_, _) => ExprTag::FRem,
-
-            Self::BitShl(_, _) => ExprTag::BitShl,
-            Self::BitShr(_, _) => ExprTag::BitShr,
-            Self::ArithShr(_, _) => ExprTag::ArithShr,
-
-            Self::BitNeg(_) => ExprTag::BitNeg,
-            Self::BitAnd(_, _) => ExprTag::BitAnd,
-            Self::BitOr(_, _) => ExprTag::BitOr,
-            Self::BitXor(_, _) => ExprTag::BitXor,
-
-            Self::Cmp(_, _, _) => ExprTag::Cmp,
-            Self::FCmp(_, _, _) => ExprTag::FCmp,
-            Self::Cast(_, _) => ExprTag::Cast,
-
-            Self::Alloca(_) => ExprTag::Alloca,
-            Self::NAlloca(_, _) => ExprTag::NAlloca,
-            Self::Load(_, _) => ExprTag::Load,
-            Self::Store(_, _, _) => ExprTag::Store,
-            Self::PtrOffset(_, _) => ExprTag::PtrOffset,
-            Self::ElementPtr(_, _, _) => ExprTag::ElementPtr,
-
-            Self::Call(_, _) => ExprTag::Call,
-        }
-    }
-
-    fn take1(exprs: &mut Vec<Expr>) -> Expr {
-        exprs.remove(0)
-    }
-
-    fn take2(exprs: &mut Vec<Expr>) -> (Box<Expr>, Box<Expr>) {
-        let a = exprs.remove(0);
-        let b = exprs.remove(0);
-
-        (Box::new(a), Box::new(b))
-    }
-
-    pub fn from_tag(tag: ExprTag, mut exprs: Vec<Expr>) -> Self {
-        match tag {
-            ExprTag::Var => panic!("Var requires ValueId"),
-            ExprTag::Const => panic!("Const requires value"),
-
-            ExprTag::Add => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::Add(a, b)
-            }
-
-            ExprTag::Sub => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::Sub(a, b)
-            }
-
-            ExprTag::Mul => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::Mul(a, b)
-            }
-
-            ExprTag::Div => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::Div(false, a, b)
-            }
-
-            ExprTag::Rem => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::Rem(false, a, b)
-            }
-
-            ExprTag::FAdd => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::FAdd(a, b)
-            }
-
-            ExprTag::FSub => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::FSub(a, b)
-            }
-
-            ExprTag::FMul => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::FMul(a, b)
-            }
-
-            ExprTag::FDiv => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::FDiv(a, b)
-            }
-
-            ExprTag::FRem => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::FRem(a, b)
-            }
-
-            ExprTag::BitShl => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::BitShl(a, b)
-            }
-
-            ExprTag::BitShr => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::BitShr(a, b)
-            }
-
-            ExprTag::ArithShr => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::ArithShr(a, b)
-            }
-
-            ExprTag::BitNeg => {
-                let v = Self::take1(&mut exprs);
-                Self::BitNeg(Box::new(v))
-            }
-
-            ExprTag::BitAnd => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::BitAnd(a, b)
-            }
-
-            ExprTag::BitOr => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::BitOr(a, b)
-            }
-
-            ExprTag::BitXor => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::BitXor(a, b)
-            }
-
-            ExprTag::Cmp => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::Cmp(IntCmp::Eq, a, b)
-            }
-
-            ExprTag::FCmp => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::FCmp(FloatCmp::OEq, a, b)
-            }
-
-            ExprTag::Cast => {
-                let v = Self::take1(&mut exprs);
-                Self::Cast(CastKind::Bitcast, Box::new(v))
-            }
-
-            ExprTag::Alloca => panic!("Alloca requires Type"),
-            ExprTag::NAlloca => panic!("NAlloca requires Type + usize"),
-
-            ExprTag::Load => {
-                let v = Self::take1(&mut exprs);
-                Self::Load(false, Box::new(v))
-            }
-
-            ExprTag::Store => {
-                let (ptr, value) = Self::take2(&mut exprs);
-                Self::Store(false, ptr, value)
-            }
-
-            ExprTag::PtrOffset => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::PtrOffset(a, b)
-            }
-
-            ExprTag::ElementPtr => {
-                let (a, b) = Self::take2(&mut exprs);
-                Self::ElementPtr(Type::Void, a, b)
-            }
-
-            ExprTag::Call => Self::Call(0, exprs),
-        }
-    }
-
     pub fn get_uses(&self) -> Vec<Expr> {
         match self {
             Self::Var(_) => vec![],
-            Self::Const(_) => vec![],
+            Self::Const(_) | Self::FConst(_) => vec![],
 
             Self::Add(a, b)
             | Self::Sub(a, b)
@@ -381,7 +159,7 @@ impl ExprKind {
 
     pub fn get_cost(&self) -> u32 {
         match self {
-            Self::Var(_) | Self::Const(_) => 0,
+            Self::Var(_) | Self::Const(_) | Self::FConst(_) => 0,
 
             Self::Add(a, b) | Self::Sub(a, b) => 1 + a.get_cost() + b.get_cost(),
             Self::BitShl(a, b)
@@ -609,6 +387,16 @@ impl FunctionDef {
             Expr {
                 ty,
                 kind: ExprKind::Const(value),
+            },
+        )
+    }
+
+    pub fn make_fconst(&mut self, block: BlockId, ty: Type, bits: u64) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FConst(bits),
             },
         )
     }

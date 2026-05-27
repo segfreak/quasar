@@ -127,6 +127,7 @@ impl SsaRaiser {
         match &e.kind {
             ExprKind::Var(v) => self.value_map[v],
             ExprKind::Const(c) => dst.make_iconst(block, ty, *c),
+            ExprKind::FConst(c) => dst.make_fconst_bits(block, ty, *c),
 
             ExprKind::Call(func, params) => {
                 let params = params

@@ -18,7 +18,10 @@ fn collect_uses(expr: &Expr, uses: &mut HashMap<ValueId, usize>) {
             *uses.entry(*v).or_insert(0) += 1;
         }
 
-        ExprKind::Const(_) | ExprKind::Alloca(_) | ExprKind::NAlloca(_, _) => {}
+        ExprKind::Const(_)
+        | ExprKind::FConst(_)
+        | ExprKind::Alloca(_)
+        | ExprKind::NAlloca(_, _) => {}
 
         ExprKind::Cast(_, a) | ExprKind::BitNeg(a) | ExprKind::Load(_, a) => {
             collect_uses(a, uses);
@@ -145,7 +148,7 @@ fn expand_expr(
     changed: &mut bool,
 ) -> Expr {
     let kind = match expr.kind {
-        ExprKind::Const(_) => expr.kind,
+        ExprKind::Const(_) | ExprKind::FConst(_) => expr.kind,
 
         ExprKind::Var(v) => {
             if should_inline(func, v, uses, params) {

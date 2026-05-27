@@ -13,6 +13,7 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
     let kind = match expr.kind {
         ExprKind::Var(_)
         | ExprKind::Const(_)
+        | ExprKind::FConst(_)
         | ExprKind::Alloca(_)
         | ExprKind::NAlloca(_, _)
         | ExprKind::Load(_, _)

@@ -16,7 +16,7 @@ pub fn cse(m: &crate::ssa::Module, func: &mut FunctionDef) -> bool {
 
 fn count_expr(expr: &Expr, cnt: &mut HashMap<Expr, usize>) {
     match &expr.kind {
-        ExprKind::Var(_) | ExprKind::Const(_) => {}
+        ExprKind::Var(_) | ExprKind::Const(_) | ExprKind::FConst(_) => {}
 
         ExprKind::Call(_, params) => {
             *cnt.entry(expr.clone()).or_insert(0) += 1;
@@ -137,9 +137,11 @@ fn rewrite(
     let ty = expr.ty;
 
     match &expr.kind {
-        ExprKind::Const(_) | ExprKind::Var(_) | ExprKind::Alloca(_) | ExprKind::NAlloca(_, _) => {
-            expr
-        }
+        ExprKind::Const(_)
+        | ExprKind::FConst(_)
+        | ExprKind::Var(_)
+        | ExprKind::Alloca(_)
+        | ExprKind::NAlloca(_, _) => expr,
 
         ExprKind::Cast(kind, a) => {
             let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);

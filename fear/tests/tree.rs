@@ -2,6 +2,7 @@ use fear::ssa::CastKind;
 use fear::tree::{passes::PassManager, *};
 use fear::types::{FunctionSignature, OptLevel, Type};
 
+#[allow(unused)]
 #[test]
 fn test() {
     pretty_env_logger::init();
@@ -68,7 +69,15 @@ fn test() {
     let slot0v = f.make_load(b1, Type::I32, false, &slot0);
     let x0 = f.make_add(b1, Type::I32, &z, &slot0v);
     let x0_64 = f.make_cast(b1, Type::I64, CastKind::Sext, &x0);
-    f.make_ret(b1, &x0_64);
+
+    let fc = f.make_fconst(b1, Type::F32, 3.143f64.to_bits());
+    let fc2 = f.make_fconst(b1, Type::F32, 3.48f64.to_bits());
+    let fsum = f.make_fadd(b1, Type::F32, &fc, &fc2);
+
+    let isum = f.make_cast(b1, Type::I64, CastKind::FPToSI, &fsum);
+    let isum2 = f.make_add(b1, Type::I64, &x0_64, &isum);
+
+    f.make_ret(b1, &isum2);
     println!("{}", f.dump());
 
     log::debug!("before opts: {}", f.dump());

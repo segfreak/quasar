@@ -13,9 +13,11 @@ pub fn normalize(func: &mut FunctionDef) -> bool {
 
 fn normalize_expr(expr: Expr, changed: &mut bool) -> Expr {
     let kind = match expr.kind {
-        ExprKind::Var(_) | ExprKind::Const(_) | ExprKind::Alloca(_) | ExprKind::NAlloca(_, _) => {
-            expr.kind
-        }
+        ExprKind::Var(_)
+        | ExprKind::Const(_)
+        | ExprKind::FConst(_)
+        | ExprKind::Alloca(_)
+        | ExprKind::NAlloca(_, _) => expr.kind,
 
         ExprKind::Cast(kind, a) => {
             let a = normalize_expr(*a, changed);
