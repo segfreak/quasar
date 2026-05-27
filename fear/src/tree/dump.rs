@@ -15,10 +15,37 @@ impl FunctionDef {
             ExprKind::Mul(a, b) => {
                 format!("{}.mul({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
             }
-            ExprKind::Div(_, a, b) => {
+            ExprKind::Div(signed, a, b) => {
+                format!(
+                    "{}.{}div({}, {})",
+                    if *signed { "" } else { "u" },
+                    ty,
+                    self.fmt_expr(a),
+                    self.fmt_expr(b)
+                )
+            }
+            ExprKind::Rem(signed, a, b) => {
+                format!(
+                    "{}.{}rem({}, {})",
+                    if *signed { "" } else { "u" },
+                    ty,
+                    self.fmt_expr(a),
+                    self.fmt_expr(b)
+                )
+            }
+            ExprKind::FAdd(a, b) => {
+                format!("{}.add({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            ExprKind::FSub(a, b) => {
+                format!("{}.sub({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            ExprKind::FMul(a, b) => {
+                format!("{}.mul({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
+            }
+            ExprKind::FDiv(a, b) => {
                 format!("{}.div({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
             }
-            ExprKind::Rem(_, a, b) => {
+            ExprKind::FRem(a, b) => {
                 format!("{}.rem({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
             }
             ExprKind::BitShl(a, b) => {

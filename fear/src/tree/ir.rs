@@ -22,6 +22,46 @@ impl Expr {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ExprTag {
+    Var,
+    Const,
+
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+
+    FAdd,
+    FSub,
+    FMul,
+    FDiv,
+    FRem,
+
+    BitShl,
+    BitShr,
+    ArithShr,
+
+    BitNeg,
+    BitAnd,
+    BitOr,
+    BitXor,
+
+    Cmp,
+    FCmp,
+    Cast,
+
+    Alloca,
+    NAlloca,
+    Load,
+    Store,
+    PtrOffset,
+    ElementPtr,
+
+    Call,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExprKind {
     Var(ValueId),
@@ -32,6 +72,12 @@ pub enum ExprKind {
     Mul(Box<Expr>, Box<Expr>),
     Div(bool, Box<Expr>, Box<Expr>),
     Rem(bool, Box<Expr>, Box<Expr>),
+
+    FAdd(Box<Expr>, Box<Expr>),
+    FSub(Box<Expr>, Box<Expr>),
+    FMul(Box<Expr>, Box<Expr>),
+    FDiv(Box<Expr>, Box<Expr>),
+    FRem(Box<Expr>, Box<Expr>),
 
     BitShl(Box<Expr>, Box<Expr>),
     BitShr(Box<Expr>, Box<Expr>),
@@ -71,6 +117,236 @@ impl From<ValueId> for ExprKind {
 }
 
 impl ExprKind {
+    pub fn tag(&self) -> ExprTag {
+        match self {
+            Self::Var(_) => ExprTag::Var,
+            Self::Const(_) => ExprTag::Const,
+
+            Self::Add(_, _) => ExprTag::Add,
+            Self::Sub(_, _) => ExprTag::Sub,
+            Self::Mul(_, _) => ExprTag::Mul,
+            Self::Div(_, _, _) => ExprTag::Div,
+            Self::Rem(_, _, _) => ExprTag::Rem,
+
+            Self::FAdd(_, _) => ExprTag::FAdd,
+            Self::FSub(_, _) => ExprTag::FSub,
+            Self::FMul(_, _) => ExprTag::FMul,
+            Self::FDiv(_, _) => ExprTag::FDiv,
+            Self::FRem(_, _) => ExprTag::FRem,
+
+            Self::BitShl(_, _) => ExprTag::BitShl,
+            Self::BitShr(_, _) => ExprTag::BitShr,
+            Self::ArithShr(_, _) => ExprTag::ArithShr,
+
+            Self::BitNeg(_) => ExprTag::BitNeg,
+            Self::BitAnd(_, _) => ExprTag::BitAnd,
+            Self::BitOr(_, _) => ExprTag::BitOr,
+            Self::BitXor(_, _) => ExprTag::BitXor,
+
+            Self::Cmp(_, _, _) => ExprTag::Cmp,
+            Self::FCmp(_, _, _) => ExprTag::FCmp,
+            Self::Cast(_, _) => ExprTag::Cast,
+
+            Self::Alloca(_) => ExprTag::Alloca,
+            Self::NAlloca(_, _) => ExprTag::NAlloca,
+            Self::Load(_, _) => ExprTag::Load,
+            Self::Store(_, _, _) => ExprTag::Store,
+            Self::PtrOffset(_, _) => ExprTag::PtrOffset,
+            Self::ElementPtr(_, _, _) => ExprTag::ElementPtr,
+
+            Self::Call(_, _) => ExprTag::Call,
+        }
+    }
+
+    fn take1(exprs: &mut Vec<Expr>) -> Expr {
+        exprs.remove(0)
+    }
+
+    fn take2(exprs: &mut Vec<Expr>) -> (Box<Expr>, Box<Expr>) {
+        let a = exprs.remove(0);
+        let b = exprs.remove(0);
+
+        (Box::new(a), Box::new(b))
+    }
+
+    pub fn from_tag(tag: ExprTag, mut exprs: Vec<Expr>) -> Self {
+        match tag {
+            ExprTag::Var => panic!("Var requires ValueId"),
+            ExprTag::Const => panic!("Const requires value"),
+
+            ExprTag::Add => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::Add(a, b)
+            }
+
+            ExprTag::Sub => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::Sub(a, b)
+            }
+
+            ExprTag::Mul => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::Mul(a, b)
+            }
+
+            ExprTag::Div => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::Div(false, a, b)
+            }
+
+            ExprTag::Rem => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::Rem(false, a, b)
+            }
+
+            ExprTag::FAdd => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::FAdd(a, b)
+            }
+
+            ExprTag::FSub => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::FSub(a, b)
+            }
+
+            ExprTag::FMul => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::FMul(a, b)
+            }
+
+            ExprTag::FDiv => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::FDiv(a, b)
+            }
+
+            ExprTag::FRem => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::FRem(a, b)
+            }
+
+            ExprTag::BitShl => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::BitShl(a, b)
+            }
+
+            ExprTag::BitShr => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::BitShr(a, b)
+            }
+
+            ExprTag::ArithShr => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::ArithShr(a, b)
+            }
+
+            ExprTag::BitNeg => {
+                let v = Self::take1(&mut exprs);
+                Self::BitNeg(Box::new(v))
+            }
+
+            ExprTag::BitAnd => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::BitAnd(a, b)
+            }
+
+            ExprTag::BitOr => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::BitOr(a, b)
+            }
+
+            ExprTag::BitXor => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::BitXor(a, b)
+            }
+
+            ExprTag::Cmp => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::Cmp(IntCmp::Eq, a, b)
+            }
+
+            ExprTag::FCmp => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::FCmp(FloatCmp::OEq, a, b)
+            }
+
+            ExprTag::Cast => {
+                let v = Self::take1(&mut exprs);
+                Self::Cast(CastKind::Bitcast, Box::new(v))
+            }
+
+            ExprTag::Alloca => panic!("Alloca requires Type"),
+            ExprTag::NAlloca => panic!("NAlloca requires Type + usize"),
+
+            ExprTag::Load => {
+                let v = Self::take1(&mut exprs);
+                Self::Load(false, Box::new(v))
+            }
+
+            ExprTag::Store => {
+                let (ptr, value) = Self::take2(&mut exprs);
+                Self::Store(false, ptr, value)
+            }
+
+            ExprTag::PtrOffset => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::PtrOffset(a, b)
+            }
+
+            ExprTag::ElementPtr => {
+                let (a, b) = Self::take2(&mut exprs);
+                Self::ElementPtr(Type::Void, a, b)
+            }
+
+            ExprTag::Call => Self::Call(0, exprs),
+        }
+    }
+
+    pub fn get_uses(&self) -> Vec<Expr> {
+        match self {
+            Self::Var(_) => vec![],
+            Self::Const(_) => vec![],
+
+            Self::Add(a, b)
+            | Self::Sub(a, b)
+            | Self::Mul(a, b)
+            | Self::FAdd(a, b)
+            | Self::FSub(a, b)
+            | Self::FMul(a, b)
+            | Self::FDiv(a, b)
+            | Self::FRem(a, b)
+            | Self::BitShl(a, b)
+            | Self::BitShr(a, b)
+            | Self::ArithShr(a, b)
+            | Self::BitAnd(a, b)
+            | Self::BitOr(a, b)
+            | Self::BitXor(a, b)
+            | Self::PtrOffset(a, b) => {
+                vec![a.as_ref().clone(), b.as_ref().clone()]
+            }
+
+            Self::Div(_, a, b)
+            | Self::Rem(_, a, b)
+            | Self::Cmp(_, a, b)
+            | Self::FCmp(_, a, b)
+            | Self::ElementPtr(_, a, b) => {
+                vec![a.as_ref().clone(), b.as_ref().clone()]
+            }
+
+            Self::BitNeg(v) | Self::Cast(_, v) | Self::Load(_, v) => {
+                vec![v.as_ref().clone()]
+            }
+
+            Self::Store(_, ptr, value) => {
+                vec![ptr.as_ref().clone(), value.as_ref().clone()]
+            }
+
+            Self::Call(_, args) => args.clone(),
+
+            Self::Alloca(_) => vec![],
+            Self::NAlloca(_, _) => vec![],
+        }
+    }
+
     pub fn is_volatile(&self) -> bool {
         match self {
             Self::Load(volatile, _) | Self::Store(volatile, _, _) => *volatile,
@@ -114,6 +390,13 @@ impl ExprKind {
             | Self::BitAnd(a, b)
             | Self::BitOr(a, b)
             | Self::BitXor(a, b) => 1 + a.get_cost() + b.get_cost(),
+
+            Self::FAdd(a, b) | Self::FSub(a, b) | Self::FMul(a, b) => {
+                4 + a.get_cost() + b.get_cost()
+            }
+
+            Self::FDiv(a, b) => 13 + a.get_cost() + b.get_cost(),
+            Self::FRem(a, b) => 15 + a.get_cost() + b.get_cost(),
 
             Self::BitNeg(a) => 1 + a.get_cost(),
 
@@ -400,6 +683,56 @@ impl FunctionDef {
             Expr {
                 ty,
                 kind: ExprKind::Rem(signed, Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_fadd(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FAdd(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_fsub(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FSub(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_fmul(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FMul(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_fdiv(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FDiv(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_frem(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FRem(Box::new(left.clone()), Box::new(right.clone())),
             },
         )
     }

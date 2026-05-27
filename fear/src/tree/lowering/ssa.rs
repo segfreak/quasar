@@ -165,51 +165,61 @@ impl SsaRaiser {
             ExprKind::Add(a, b) => {
                 let l = self.raise_expr(a, dst, block);
                 let r = self.raise_expr(b, dst, block);
-                if ty.is_float() {
-                    dst.make_fadd(block, ty, l, r)
-                } else {
-                    dst.make_add(block, ty, l, r)
-                }
+                dst.make_add(block, ty, l, r)
             }
 
             ExprKind::Sub(a, b) => {
                 let l = self.raise_expr(a, dst, block);
                 let r = self.raise_expr(b, dst, block);
-                if ty.is_float() {
-                    dst.make_fsub(block, ty, l, r)
-                } else {
-                    dst.make_sub(block, ty, l, r)
-                }
+                dst.make_sub(block, ty, l, r)
             }
 
             ExprKind::Mul(a, b) => {
                 let l = self.raise_expr(a, dst, block);
                 let r = self.raise_expr(b, dst, block);
-                if ty.is_float() {
-                    dst.make_fmul(block, ty, l, r)
-                } else {
-                    dst.make_mul(block, ty, l, r)
-                }
+                dst.make_mul(block, ty, l, r)
             }
 
             ExprKind::Div(signed, a, b) => {
                 let l = self.raise_expr(a, dst, block);
                 let r = self.raise_expr(b, dst, block);
-                if ty.is_float() {
-                    dst.make_fdiv(block, ty, l, r)
-                } else {
-                    dst.make_div(block, *signed, ty, l, r)
-                }
+                dst.make_div(block, *signed, ty, l, r)
             }
 
             ExprKind::Rem(signed, a, b) => {
                 let l = self.raise_expr(a, dst, block);
                 let r = self.raise_expr(b, dst, block);
-                if ty.is_float() {
-                    dst.make_frem(block, ty, l, r)
-                } else {
-                    dst.make_rem(block, *signed, ty, l, r)
-                }
+                dst.make_rem(block, *signed, ty, l, r)
+            }
+
+            ExprKind::FAdd(a, b) => {
+                let l = self.raise_expr(a, dst, block);
+                let r = self.raise_expr(b, dst, block);
+                dst.make_fadd(block, ty, l, r)
+            }
+
+            ExprKind::FSub(a, b) => {
+                let l = self.raise_expr(a, dst, block);
+                let r = self.raise_expr(b, dst, block);
+                dst.make_fsub(block, ty, l, r)
+            }
+
+            ExprKind::FMul(a, b) => {
+                let l = self.raise_expr(a, dst, block);
+                let r = self.raise_expr(b, dst, block);
+                dst.make_fmul(block, ty, l, r)
+            }
+
+            ExprKind::FDiv(a, b) => {
+                let l = self.raise_expr(a, dst, block);
+                let r = self.raise_expr(b, dst, block);
+                dst.make_fdiv(block, ty, l, r)
+            }
+
+            ExprKind::FRem(a, b) => {
+                let l = self.raise_expr(a, dst, block);
+                let r = self.raise_expr(b, dst, block);
+                dst.make_frem(block, ty, l, r)
             }
 
             ExprKind::BitShl(a, b) => {

@@ -65,6 +65,11 @@ fn count_expr(expr: &Expr, cnt: &mut HashMap<Expr, usize>) {
         | ExprKind::Mul(a, b)
         | ExprKind::Div(_, a, b)
         | ExprKind::Rem(_, a, b)
+        | ExprKind::FAdd(a, b)
+        | ExprKind::FSub(a, b)
+        | ExprKind::FMul(a, b)
+        | ExprKind::FDiv(a, b)
+        | ExprKind::FRem(a, b)
         | ExprKind::BitShl(a, b)
         | ExprKind::BitShr(a, b)
         | ExprKind::ArithShr(a, b)
@@ -240,6 +245,76 @@ fn rewrite(
             hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
         }
 
+        ExprKind::Div(signed, a, b) => {
+            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
+            let b = rewrite(m, func, bid, *b.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::Div(*signed, Box::new(a), Box::new(b)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
+        }
+
+        ExprKind::Rem(signed, a, b) => {
+            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
+            let b = rewrite(m, func, bid, *b.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::Rem(*signed, Box::new(a), Box::new(b)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
+        }
+
+        ExprKind::FAdd(a, b) => {
+            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
+            let b = rewrite(m, func, bid, *b.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::FAdd(Box::new(a), Box::new(b)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
+        }
+
+        ExprKind::FSub(a, b) => {
+            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
+            let b = rewrite(m, func, bid, *b.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::FSub(Box::new(a), Box::new(b)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
+        }
+
+        ExprKind::FMul(a, b) => {
+            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
+            let b = rewrite(m, func, bid, *b.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::FMul(Box::new(a), Box::new(b)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
+        }
+
+        ExprKind::FDiv(a, b) => {
+            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
+            let b = rewrite(m, func, bid, *b.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::FDiv(Box::new(a), Box::new(b)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
+        }
+
+        ExprKind::FRem(a, b) => {
+            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
+            let b = rewrite(m, func, bid, *b.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::FRem(Box::new(a), Box::new(b)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
+        }
+
         ExprKind::BitShl(a, b) => {
             let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
             let b = rewrite(m, func, bid, *b.clone(), cnt, memo, new_values, changed);
@@ -305,26 +380,6 @@ fn rewrite(
             let new_expr = Expr {
                 ty,
                 kind: ExprKind::BitNeg(Box::new(a)),
-            };
-            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
-        }
-
-        ExprKind::Div(signed, a, b) => {
-            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
-            let b = rewrite(m, func, bid, *b.clone(), cnt, memo, new_values, changed);
-            let new_expr = Expr {
-                ty,
-                kind: ExprKind::Div(*signed, Box::new(a), Box::new(b)),
-            };
-            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
-        }
-
-        ExprKind::Rem(signed, a, b) => {
-            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
-            let b = rewrite(m, func, bid, *b.clone(), cnt, memo, new_values, changed);
-            let new_expr = Expr {
-                ty,
-                kind: ExprKind::Rem(*signed, Box::new(a), Box::new(b)),
             };
             hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
         }

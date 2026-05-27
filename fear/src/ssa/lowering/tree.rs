@@ -129,6 +129,22 @@ impl TreeSsaRaiser {
                 &self.v(ops[1], dst),
             ),
 
+            ssa::InstKind::FAdd => {
+                dst.make_fadd(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))
+            }
+            ssa::InstKind::FSub => {
+                dst.make_fsub(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))
+            }
+            ssa::InstKind::FMul => {
+                dst.make_fmul(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))
+            }
+            ssa::InstKind::FDiv => {
+                dst.make_fdiv(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))
+            }
+            ssa::InstKind::FRem => {
+                dst.make_frem(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))
+            }
+
             ssa::InstKind::LShl => {
                 dst.make_shl(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))
             }
@@ -181,14 +197,9 @@ impl TreeSsaRaiser {
 
             ssa::InstKind::Cast(kind) => dst.make_cast(block, ty, *kind, &self.v(ops[0], dst)),
 
-            ssa::InstKind::Ret
-            | ssa::InstKind::Jump(_)
-            | ssa::InstKind::JumpIf { .. }
-            | ssa::InstKind::FAdd
-            | ssa::InstKind::FSub
-            | ssa::InstKind::FMul
-            | ssa::InstKind::FDiv
-            | ssa::InstKind::FRem => todo!("{:?} has no fear equivalent", inst.kind),
+            ssa::InstKind::Ret | ssa::InstKind::Jump(_) | ssa::InstKind::JumpIf { .. } => {
+                todo!("{:?} has no fear equivalent", inst.kind)
+            }
         }
     }
 

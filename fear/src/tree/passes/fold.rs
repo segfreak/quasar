@@ -92,6 +92,37 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
             }
         }
 
+        ExprKind::FAdd(a, b) => {
+            let a = fold_expr(*a, changed);
+            let b = fold_expr(*b, changed);
+            log::debug!("float-folding is not implemented yet");
+            ExprKind::FAdd(Box::new(a), Box::new(b))
+        }
+        ExprKind::FSub(a, b) => {
+            let a = fold_expr(*a, changed);
+            let b = fold_expr(*b, changed);
+            log::debug!("float-folding is not implemented yet");
+            ExprKind::FSub(Box::new(a), Box::new(b))
+        }
+        ExprKind::FMul(a, b) => {
+            let a = fold_expr(*a, changed);
+            let b = fold_expr(*b, changed);
+            log::debug!("float-folding is not implemented yet");
+            ExprKind::FMul(Box::new(a), Box::new(b))
+        }
+        ExprKind::FDiv(a, b) => {
+            let a = fold_expr(*a, changed);
+            let b = fold_expr(*b, changed);
+            log::debug!("float-folding is not implemented yet");
+            ExprKind::FDiv(Box::new(a), Box::new(b))
+        }
+        ExprKind::FRem(a, b) => {
+            let a = fold_expr(*a, changed);
+            let b = fold_expr(*b, changed);
+            log::debug!("float-folding is not implemented yet");
+            ExprKind::FRem(Box::new(a), Box::new(b))
+        }
+
         ExprKind::BitShl(a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);

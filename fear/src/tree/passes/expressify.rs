@@ -35,6 +35,11 @@ fn collect_uses(expr: &Expr, uses: &mut HashMap<ValueId, usize>) {
         | ExprKind::Mul(a, b)
         | ExprKind::Div(_, a, b)
         | ExprKind::Rem(_, a, b)
+        | ExprKind::FAdd(a, b)
+        | ExprKind::FSub(a, b)
+        | ExprKind::FMul(a, b)
+        | ExprKind::FDiv(a, b)
+        | ExprKind::FRem(a, b)
         | ExprKind::BitShl(a, b)
         | ExprKind::BitShr(a, b)
         | ExprKind::ArithShr(a, b)
@@ -217,6 +222,33 @@ fn expand_expr(
             let b = expand_expr(func, *b, cache, uses, params, changed);
             ExprKind::Rem(signed, Box::new(a), Box::new(b))
         }
+
+        ExprKind::FAdd(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            ExprKind::FAdd(Box::new(a), Box::new(b))
+        }
+        ExprKind::FSub(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            ExprKind::FSub(Box::new(a), Box::new(b))
+        }
+        ExprKind::FMul(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            ExprKind::FMul(Box::new(a), Box::new(b))
+        }
+        ExprKind::FDiv(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            ExprKind::FDiv(Box::new(a), Box::new(b))
+        }
+        ExprKind::FRem(a, b) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            let b = expand_expr(func, *b, cache, uses, params, changed);
+            ExprKind::FRem(Box::new(a), Box::new(b))
+        }
+
         ExprKind::BitShl(a, b) => {
             let a = expand_expr(func, *a, cache, uses, params, changed);
             let b = expand_expr(func, *b, cache, uses, params, changed);

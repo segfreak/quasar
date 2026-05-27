@@ -113,6 +113,44 @@ fn normalize_expr(expr: Expr, changed: &mut bool) -> Expr {
             ExprKind::Rem(signed, Box::new(a), Box::new(b))
         }
 
+        ExprKind::FAdd(a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            match (&a.kind, &b.kind) {
+                (ExprKind::Const(_), _) => {
+                    *changed = true;
+                    ExprKind::FAdd(Box::new(b), Box::new(a))
+                }
+                _ => ExprKind::FAdd(Box::new(a), Box::new(b)),
+            }
+        }
+        ExprKind::FSub(a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            ExprKind::FSub(Box::new(a), Box::new(b))
+        }
+        ExprKind::FMul(a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            match (&a.kind, &b.kind) {
+                (ExprKind::Const(_), _) => {
+                    *changed = true;
+                    ExprKind::FMul(Box::new(b), Box::new(a))
+                }
+                _ => ExprKind::FMul(Box::new(a), Box::new(b)),
+            }
+        }
+        ExprKind::FDiv(a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            ExprKind::FDiv(Box::new(a), Box::new(b))
+        }
+        ExprKind::FRem(a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            ExprKind::FRem(Box::new(a), Box::new(b))
+        }
+
         ExprKind::BitShl(a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
