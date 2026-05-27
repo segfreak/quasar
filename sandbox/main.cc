@@ -5,18 +5,20 @@
 int
 main ()
 {
-  fear::Module m ("hello");
-  auto         mfoo = m.declareFunction ("foo", {}, fear::Type::Int32);
-  fear::FunctionDef f{};
-  auto slot  = f.createAlloca (f.getEntryBlock (), fear::Type::Int32);
-  auto undef = f.createLoad (f.getEntryBlock (), fear::Type::Int32, slot);
-  f.createRet (f.getEntryBlock (), undef);
-  m.defineFunction (mfoo, f);
+  using namespace fear;
 
-  // m.optimize ();
+  Module      m ("hello");
+  auto        foo = Function::declare (&m, "foo", {}, Type::Int32);
+  FunctionDef f{};
+  auto        slot  = f.stack_alloca (Type::Int32);
+  auto        undef = f.load (Type::Int32, slot);
+  f.ret (undef);
+  foo.define (f);
+
+  m.optimize (OptLevel::Default);
   m.dumpToFile (0);
 
   FILE *file = fopen ("hello.o", "w");
-  m.emitCraneliftObjectToFile (fear::OptLevel::Full, fileno (file));
+  m.emitObject (fear::OptLevel::Full, fileno (file));
   fclose (file);
 }

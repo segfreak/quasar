@@ -1,3 +1,5 @@
+use crate::compiler::Backend;
+
 #[cfg(feature = "cranelift")]
 pub mod cranelift;
 #[cfg(feature = "llvm")]

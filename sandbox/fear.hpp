@@ -9,6 +9,11 @@
 namespace fear
 {
 
+// forward declarations
+struct Module;
+struct Function;
+struct FunctionDef;
+
 enum class Type
 {
   Void,
@@ -91,11 +96,11 @@ __unwrap (OptLevel level)
   switch (level)
   {
   case OptLevel::None:
-    return FearOptLevelNone;
+    return FearOptNone;
   case OptLevel::Default:
-    return FearOptLevelDefault;
+    return FearOptDefault;
   case OptLevel::Full:
-    return FearOptLevelFull;
+    return FearOptFull;
   }
   throw std::runtime_error ("Unknown Fear OptLevel");
 }
@@ -131,7 +136,9 @@ hasCranelift ()
 
 struct FunctionDef
 {
-  FunctionDef () : raw_ (fearDefinitionCreate ())
+  FunctionDef ()
+      : raw_ (fearDefinitionCreate ()),
+        currentBlock_ (fearGetEntryBlock (raw_))
   {
     if (!raw_)
       throw std::runtime_error ("Failed to create Fear FunctionDef");
@@ -162,135 +169,208 @@ struct FunctionDef
   }
 
   RawFuncDef *
-  raw () const
+  getRaw () const
   { return raw_; }
+  BlockId
+  getCurrentBlock () const
+  { return currentBlock_; }
 
   BlockId
-  getEntryBlock ()
-  { return fearGetEntryBlock (raw_); }
+  entryBlock ()
+  { return fearGetEntryBlock (getRaw ()); }
   BlockId
   createBlock ()
-  { return fearCreateBlock (raw_); }
-  BlockId
-  createFuncParam (Type ty)
-  { return fearCreateFuncParam (raw_, __unwrap (ty)); }
-  BlockId
-  createBlockParam (BlockId block, Type ty)
-  { return fearCreateBlockParam (raw_, block, __unwrap (ty)); }
-
-  ValueId
-  createIntConst (BlockId parent, Type ty, int64_t val)
-  { return fearCreateIntConst (raw_, parent, __unwrap (ty), val); }
-
-  ValueId
-  createAlloca (BlockId parent, Type ty)
-  { return fearCreateAlloca (raw_, parent, __unwrap (ty)); }
-  ValueId
-  createLoad (BlockId parent, Type ty, ValueId ptr)
-  { return fearCreateLoad (raw_, parent, __unwrap (ty), ptr); }
+  { return fearCreateBlock (getRaw ()); }
   void
-  createStore (BlockId parent, ValueId ptr, ValueId value)
-  { fearCreateStore (raw_, parent, ptr, value); }
-  ValueId
-  createVolatileLoad (BlockId parent, Type ty, ValueId ptr)
-  { return fearCreateVolatileLoad (raw_, parent, __unwrap (ty), ptr); }
-  void
-  createVolatileStore (BlockId parent, ValueId ptr, ValueId value)
-  { fearCreateVolatileStore (raw_, parent, ptr, value); }
+  switchTo (BlockId id)
+  { currentBlock_ = id; }
 
-  ValueId
-  createAdd (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateAdd (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createSub (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateSub (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createMul (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateMul (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createDiv (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateDiv (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createUnsignedDiv (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateUnsignedDiv (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createRem (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateRem (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createUnsignedRem (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateUnsignedRem (raw_, parent, __unwrap (ty), a, b); }
-
-  ValueId
-  createFloatAdd (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateFloatAdd (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createFloatSub (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateFloatSub (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createFloatMul (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateFloatMul (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createFloatDiv (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateFloatDiv (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createFloatRem (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateFloatRem (raw_, parent, __unwrap (ty), a, b); }
-
-  ValueId
-  createBitwiseNot (BlockId parent, Type ty, ValueId v)
-  { return fearCreateBitwiseNot (raw_, parent, __unwrap (ty), v); }
-  ValueId
-  createBitwiseAnd (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateBitwiseAnd (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createBitwiseOr (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateBitwiseOr (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createBitwiseXor (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateBitwiseXor (raw_, parent, __unwrap (ty), a, b); }
-  ValueId
-  createLogicalShiftLeft (BlockId parent, Type ty, ValueId a, ValueId b)
+  BlockId
+  funcParam (Type ty)
+  { return fearCreateFuncParam (getRaw (), __unwrap (ty)); }
+  BlockId
+  blockParam (Type ty)
   {
-    return fearCreateLogicalShiftLeft (raw_, parent, __unwrap (ty), a, b);
+    return fearCreateBlockParam (getRaw (), getCurrentBlock (),
+                                 __unwrap (ty));
+  }
+
+  ValueId
+  iconst (Type ty, int64_t val)
+  {
+    return fearCreateIntConst (getRaw (), getCurrentBlock (),
+                               __unwrap (ty), val);
+  }
+
+  ValueId
+  stack_alloca (Type ty)
+  {
+    return fearCreateAlloca (getRaw (), getCurrentBlock (), __unwrap (ty));
   }
   ValueId
-  createLogicalShiftRight (BlockId parent, Type ty, ValueId a, ValueId b)
+  load (Type ty, ValueId ptr)
   {
-    return fearCreateLogicalShiftRight (raw_, parent, __unwrap (ty), a, b);
+    return fearCreateLoad (getRaw (), getCurrentBlock (), __unwrap (ty),
+                           ptr);
+  }
+  void
+  store (ValueId ptr, ValueId value)
+  { fearCreateStore (getRaw (), getCurrentBlock (), ptr, value); }
+  ValueId
+  vload (Type ty, ValueId ptr)
+  {
+    return fearCreateVolatileLoad (getRaw (), getCurrentBlock (),
+                                   __unwrap (ty), ptr);
+  }
+  void
+  vstore (ValueId ptr, ValueId value)
+  { fearCreateVolatileStore (getRaw (), getCurrentBlock (), ptr, value); }
+
+  ValueId
+  add (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateAdd (getRaw (), getCurrentBlock (), __unwrap (ty), a,
+                          b);
   }
   ValueId
-  createArithShiftRight (BlockId parent, Type ty, ValueId a, ValueId b)
-  { return fearCreateArithShiftRight (raw_, parent, __unwrap (ty), a, b); }
+  sub (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateSub (getRaw (), getCurrentBlock (), __unwrap (ty), a,
+                          b);
+  }
+  ValueId
+  mul (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateMul (getRaw (), getCurrentBlock (), __unwrap (ty), a,
+                          b);
+  }
+  ValueId
+  div (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateDiv (getRaw (), getCurrentBlock (), __unwrap (ty), a,
+                          b);
+  }
+  ValueId
+  udiv (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateUnsignedDiv (getRaw (), getCurrentBlock (),
+                                  __unwrap (ty), a, b);
+  }
+  ValueId
+  rem (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateRem (getRaw (), getCurrentBlock (), __unwrap (ty), a,
+                          b);
+  }
+  ValueId
+  urem (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateUnsignedRem (getRaw (), getCurrentBlock (),
+                                  __unwrap (ty), a, b);
+  }
+
+  ValueId
+  fadd (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateFloatAdd (getRaw (), getCurrentBlock (),
+                               __unwrap (ty), a, b);
+  }
+  ValueId
+  fsub (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateFloatSub (getRaw (), getCurrentBlock (),
+                               __unwrap (ty), a, b);
+  }
+  ValueId
+  fmul (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateFloatMul (getRaw (), getCurrentBlock (),
+                               __unwrap (ty), a, b);
+  }
+  ValueId
+  fdiv (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateFloatDiv (getRaw (), getCurrentBlock (),
+                               __unwrap (ty), a, b);
+  }
+  ValueId
+  frem (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateFloatRem (getRaw (), getCurrentBlock (),
+                               __unwrap (ty), a, b);
+  }
+
+  ValueId
+  bnot (Type ty, ValueId v)
+  {
+    return fearCreateBitwiseNot (getRaw (), getCurrentBlock (),
+                                 __unwrap (ty), v);
+  }
+  ValueId
+  band (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateBitwiseAnd (getRaw (), getCurrentBlock (),
+                                 __unwrap (ty), a, b);
+  }
+  ValueId
+  bor (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateBitwiseOr (getRaw (), getCurrentBlock (),
+                                __unwrap (ty), a, b);
+  }
+  ValueId
+  bxor (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateBitwiseXor (getRaw (), getCurrentBlock (),
+                                 __unwrap (ty), a, b);
+  }
+  ValueId
+  shl (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateLogicalShiftLeft (getRaw (), getCurrentBlock (),
+                                       __unwrap (ty), a, b);
+  }
+  ValueId
+  shr (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateLogicalShiftRight (getRaw (), getCurrentBlock (),
+                                        __unwrap (ty), a, b);
+  }
+  ValueId
+  ashr (Type ty, ValueId a, ValueId b)
+  {
+    return fearCreateArithShiftRight (getRaw (), getCurrentBlock (),
+                                      __unwrap (ty), a, b);
+  }
 
   void
-  createJump (BlockId parent, BlockId target,
-              const std::vector<ValueId> &params = {})
+  jmp (BlockId target, const std::vector<ValueId> &params = {})
   {
-    fearCreateJump (raw_, parent, target, params.data (),
+    fearCreateJump (getRaw (), getCurrentBlock (), target, params.data (),
                     static_cast<uint32_t> (params.size ()));
   }
 
   void
-  createCondJump (BlockId parent, ValueId cond, BlockId true_block,
-                  const std::vector<ValueId> &true_args,
-                  BlockId                     false_block,
-                  const std::vector<ValueId> &false_args)
+  jmpif (ValueId cond, BlockId true_block,
+         const std::vector<ValueId> &true_args, BlockId false_block,
+         const std::vector<ValueId> &false_args)
   {
-    fearCreateCondJump (raw_, parent, cond, true_block, true_args.data (),
-                        static_cast<uint32_t> (true_args.size ()),
-                        false_block, false_args.data (),
-                        static_cast<uint32_t> (false_args.size ()));
+    fearCreateCondJump (
+        getRaw (), getCurrentBlock (), cond, true_block, true_args.data (),
+        static_cast<uint32_t> (true_args.size ()), false_block,
+        false_args.data (), static_cast<uint32_t> (false_args.size ()));
   }
 
   void
-  createRet (BlockId parent, ValueId v)
-  { fearCreateRet (raw_, parent, v); }
+  ret (ValueId v)
+  { fearCreateRet (getRaw (), getCurrentBlock (), v); }
   void
-  createRet (BlockId parent)
-  { fearCreateRetVoid (raw_, parent); }
+  ret ()
+  { fearCreateRetVoid (getRaw (), getCurrentBlock ()); }
 
 private:
   RawFuncDef *raw_;
+  BlockId     currentBlock_;
 };
 
 struct Module
@@ -334,12 +414,40 @@ struct Module
   }
 
   RawModule *
-  raw () const
+  getRaw () const
   { return raw_; }
 
+  unsigned
+  optimize (OptLevel lvl)
+  { return fearModuleOptimize (getRaw (), __unwrap (lvl)); }
+
+  void
+  dumpToFile (int fd)
+  { fearDumpToFile (getRaw (), fd); }
+
+  void
+  binaryDumpToFile (int fd)
+  { fearBinaryDumpToFile (getRaw (), fd); }
+
+  int
+  emitObject (OptLevel opt, int fd)
+  {
+    return fearEmitObject (getRaw (), fearSelectBackendForObject (),
+                           __unwrap (opt), fd);
+  }
+
+  // Function
+  // declareFunction (std::string_view name, const std::vector<Type>
+  // &params,
+  //                  Type returns, Linkage linkage = Linkage::External)
+  // { Function::declare (self, name, params, returns, linkage) }
+
+private:
+  friend class Function;
+
   FuncId
-  declareFunction (std::string_view name, const std::vector<Type> &params,
-                   Type returns, Linkage linkage = Linkage::External)
+  _declareFunction (std::string_view name, const std::vector<Type> &params,
+                    Type returns, Linkage linkage = Linkage::External)
   {
     std::vector<FearType> raw_params;
     raw_params.reserve (params.size ());
@@ -350,39 +458,51 @@ struct Module
 
     std::string nt_name (name);
 
-    return fearDeclareFunction (raw_, nt_name.c_str (), raw_params.data (),
+    return fearDeclareFunction (getRaw (), nt_name.c_str (),
+                                raw_params.data (),
                                 static_cast<uint32_t> (raw_params.size ()),
                                 __unwrap (returns), __unwrap (linkage));
   }
 
   void
-  functionSetCC (FuncId id, CallConv cc)
-  { fearFunctionSetCC (raw_, id, __unwrap (cc)); }
+  _defineFunction (FuncId id, const FunctionDef &def)
+  { fearDefineFunction (getRaw (), id, def.getRaw ()); }
 
-  void
-  defineFunction (FuncId id, const FunctionDef &def)
-  { fearDefineFunction (raw_, id, def.raw ()); }
+  RawModule *raw_;
+};
 
-  unsigned
-  optimize ()
-  { return fearModuleOptimize (raw_); }
+struct Function
+{
+  Function (Module *parent, FuncId id) : parent_ (parent), id_ (id) {}
 
-  void
-  dumpToFile (int fd)
-  { fearDumpToFile (raw_, fd); }
-
-  void
-  binaryDumpToFile (int fd)
-  { fearBinaryDumpToFile (raw_, fd); }
-
-  int
-  emitObject (OptLevel opt, int fd)
+  static Function
+  declare (Module *m, std::string_view name,
+           const std::vector<Type> &params, Type returns,
+           Linkage linkage = Linkage::External)
   {
-    return fearEmitObject (raw_, fearSelectBackend (), __unwrap (opt), fd);
+    FuncId id = m->_declareFunction (name, params, returns, linkage);
+    return Function (m, id);
   }
 
+  void
+  define (const FunctionDef &def)
+  { parent_->_defineFunction (getId (), def); }
+
+  void
+  setCallingConvention (FuncId id, CallConv cc)
+  { fearFunctionSetCC (parent_->getRaw (), id, __unwrap (cc)); }
+
+  const Module *
+  getParent ()
+  { return parent_; }
+
+  FuncId
+  getId () const
+  { return id_; }
+
 private:
-  RawModule *raw_;
+  Module *parent_;
+  FuncId  id_;
 };
 
 } // namespace fear

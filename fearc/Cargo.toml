@@ -6,8 +6,14 @@ edition = "2024"
 [lib]
 crate-type = ["cdylib", "staticlib"]
 
+[features]
+default = ["cranelift", "binary-ir"]
+llvm = ["fear/llvm"]
+cranelift = ["fear/cranelift"]
+binary-ir = ["fear/binary-ir"]
+
 [dependencies]
-fear = { workspace = true }
+fear = { workspace = true, features = [] }
 libc = "0.2.186"
 log = "0.4.29"
 pretty_env_logger = "0.5.0"

@@ -48,14 +48,7 @@ unsafe fn as_def(f: *mut FearFunctionDef) -> &'static mut FunctionDef {
 /// Checks if the backend is supported in this library build.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearHasBackend(backend: FearBackend) -> bool {
-    match Backend::from(backend) {
-        Backend::Llvm => fear::ssa::lowering::has_llvm(),
-        Backend::Cranelift => fear::ssa::lowering::has_cranelift(),
-        Backend::Fear => {
-            /* not yet implemented */
-            false
-        }
-    }
+    fear::compiler::has_backend(Backend::from(backend))
 }
 
 /// Initialising logging system
@@ -83,6 +76,13 @@ pub unsafe extern "C" fn fearSelectBackend() -> FearBackend {
     }
 
     t
+}
+
+/// Select backend for output type object
+/// Check by fearHasBackend()
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearSelectBackendForObject() -> FearBackend {
+    FearBackend::from(Backend::select_for(OutputType::Object).unwrap_or(Backend::Fear))
 }
 
 /// Compiles a `FearModule` into a native machine object file via target backend, streaming to a raw file descriptor.
@@ -148,6 +148,7 @@ pub unsafe extern "C" fn fearDumpToFile(m: *mut FearModule, fd: c_int) {
 
 /// Serializes the module into the compiler's native binary format and outputs it to a file descriptor.
 #[unsafe(no_mangle)]
+#[cfg(feature = "binary-ir")]
 pub unsafe extern "C" fn fearBinaryDumpToFile(m: *mut FearModule, fd: c_int) {
     let m = as_module(m);
     let file = unsafe { std::fs::File::from_raw_fd(fd) };
