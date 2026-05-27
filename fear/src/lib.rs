@@ -3,8 +3,9 @@
 #[cfg(feature = "binary-ir")]
 pub mod binary;
 
-pub mod compiler;
 pub mod ssa;
-pub mod target;
 pub mod tree;
+
+pub mod compiler;
+pub mod target;
 pub mod types;
