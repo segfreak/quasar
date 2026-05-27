@@ -599,7 +599,7 @@ impl FunctionDef {
         self.append_expr(
             block,
             Expr {
-                ty: Type::I1,
+                ty: Type::Int1,
                 kind: ExprKind::Cmp(kind, Box::new(left.clone()), Box::new(right.clone())),
             },
         )
@@ -609,7 +609,7 @@ impl FunctionDef {
         self.append_expr(
             block,
             Expr {
-                ty: Type::I1,
+                ty: Type::Int1,
                 kind: ExprKind::FCmp(kind, Box::new(left.clone()), Box::new(right.clone())),
             },
         )
@@ -619,7 +619,7 @@ impl FunctionDef {
         self.append_expr(
             block,
             Expr {
-                ty: Type::Ptr,
+                ty: Type::Pointer,
                 kind: ExprKind::Alloca(ty),
             },
         )
@@ -629,7 +629,7 @@ impl FunctionDef {
         self.append_expr(
             block,
             Expr {
-                ty: Type::Ptr,
+                ty: Type::Pointer,
                 kind: ExprKind::NAlloca(ty, count),
             },
         )
@@ -659,7 +659,7 @@ impl FunctionDef {
         self.append_expr(
             block,
             Expr {
-                ty: Type::Ptr,
+                ty: Type::Pointer,
                 kind: ExprKind::PtrOffset(Box::new(base.clone()), Box::new(offset.clone())),
             },
         )
@@ -675,7 +675,7 @@ impl FunctionDef {
         self.append_expr(
             block,
             Expr {
-                ty: Type::Ptr,
+                ty: Type::Pointer,
                 kind: ExprKind::ElementPtr(ty, Box::new(base.clone()), Box::new(offset.clone())),
             },
         )

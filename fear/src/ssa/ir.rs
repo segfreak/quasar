@@ -570,7 +570,7 @@ impl FunctionDef {
         lhs: ValueId,
         rhs: ValueId,
     ) -> ValueId {
-        self.make_binary(block, InstKind::Cmp(kind), Type::I1, lhs, rhs)
+        self.make_binary(block, InstKind::Cmp(kind), Type::Int1, lhs, rhs)
     }
 
     pub fn make_fcmp(
@@ -580,7 +580,7 @@ impl FunctionDef {
         lhs: ValueId,
         rhs: ValueId,
     ) -> ValueId {
-        self.make_binary(block, InstKind::FCmp(kind), Type::I1, lhs, rhs)
+        self.make_binary(block, InstKind::FCmp(kind), Type::Int1, lhs, rhs)
     }
 
     pub fn make_cast(
@@ -695,7 +695,12 @@ impl FunctionDef {
     }
 
     pub fn make_ptr_offset(&mut self, block: BlockId, base: ValueId, offset: ValueId) -> ValueId {
-        self.append_inst(block, InstKind::PtrOffset, Type::Ptr, vec![base, offset])
+        self.append_inst(
+            block,
+            InstKind::PtrOffset,
+            Type::Pointer,
+            vec![base, offset],
+        )
     }
 
     pub fn make_element_ptr(
@@ -708,17 +713,17 @@ impl FunctionDef {
         self.append_inst(
             block,
             InstKind::ElementPtr(ty),
-            Type::Ptr,
+            Type::Pointer,
             vec![base, offset],
         )
     }
 
     pub fn make_alloca(&mut self, block: BlockId, ty: Type) -> ValueId {
-        self.append_inst(block, InstKind::Alloca(ty), Type::Ptr, vec![])
+        self.append_inst(block, InstKind::Alloca(ty), Type::Pointer, vec![])
     }
 
     pub fn make_nalloca(&mut self, block: BlockId, ty: Type, count: usize) -> ValueId {
-        self.append_inst(block, InstKind::NAlloca(ty, count), Type::Ptr, vec![])
+        self.append_inst(block, InstKind::NAlloca(ty, count), Type::Pointer, vec![])
     }
 
     pub fn make_call(

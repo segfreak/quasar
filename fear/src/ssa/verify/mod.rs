@@ -90,7 +90,11 @@ impl Module {
             }
         }
 
-        if errs.is_empty() { Ok(()) } else { Err(errs) }
+        if errs.is_empty() {
+            Ok(())
+        } else {
+            Err(errs)
+        }
     }
 
     fn verify_function(&self, id: FuncId, fun: &Function) -> Result<(), VerifyError> {
@@ -248,9 +252,9 @@ impl Module {
 
                     let cond_val = inst.operands[0];
                     let cond_ty = f.get_type(cond_val);
-                    if cond_ty != Type::I1 {
+                    if cond_ty != Type::Int1 {
                         return Err(VerifyError::TypeMismatch {
-                            expected: Type::I1,
+                            expected: Type::Int1,
                             got: cond_ty,
                         });
                     }
@@ -292,7 +296,7 @@ impl Module {
                 }
 
                 InstKind::Store { .. } | InstKind::Load { .. } => {
-                    let expected = Type::Ptr;
+                    let expected = Type::Pointer;
                     let actual = f.get_type(inst.operands[0]);
                     if expected != actual {
                         return Err(VerifyError::TypeMismatch {
@@ -333,9 +337,9 @@ impl Module {
                     let vbase = inst.operands[0];
 
                     let basety = f.get_type(vbase);
-                    if basety != Type::Ptr {
+                    if basety != Type::Pointer {
                         return Err(VerifyError::TypeMismatch {
-                            expected: Type::Ptr,
+                            expected: Type::Pointer,
                             got: basety,
                         });
                     }

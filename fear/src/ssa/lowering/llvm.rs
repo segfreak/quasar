@@ -1,11 +1,11 @@
 use inkwell::{
-    AddressSpace, FloatPredicate, IntPredicate, OptimizationLevel,
     builder::Builder,
     context::Context,
     module::Module,
     targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple},
     types::{AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum, FloatType, FunctionType, IntType},
     values::{BasicValue, BasicValueEnum, FloatValue, FunctionValue, IntValue, PhiValue},
+    AddressSpace, FloatPredicate, IntPredicate, OptimizationLevel,
 };
 
 use std::collections::HashMap;
@@ -70,16 +70,16 @@ impl<'ctx> LlvmLowerer<'ctx> {
         let ctx = self.context;
 
         match ty {
-            Type::I1 => ctx.bool_type().into(),
-            Type::I8 => ctx.i8_type().into(),
-            Type::I16 => ctx.i16_type().into(),
-            Type::I32 => ctx.i32_type().into(),
-            Type::I64 => ctx.i64_type().into(),
+            Type::Int1 => ctx.bool_type().into(),
+            Type::Int8 => ctx.i8_type().into(),
+            Type::Int16 => ctx.i16_type().into(),
+            Type::Int32 => ctx.i32_type().into(),
+            Type::Int64 => ctx.i64_type().into(),
 
-            Type::F32 => ctx.f32_type().into(),
-            Type::F64 => ctx.f64_type().into(),
+            Type::Float32 => ctx.f32_type().into(),
+            Type::Float64 => ctx.f64_type().into(),
 
-            Type::Ptr => ctx.ptr_type(AddressSpace::default()).into(),
+            Type::Pointer => ctx.ptr_type(AddressSpace::default()).into(),
 
             Type::Void => panic!("void cannot be BasicType"),
         }
@@ -89,16 +89,16 @@ impl<'ctx> LlvmLowerer<'ctx> {
         let ctx = self.context;
 
         match ty {
-            Type::I1 => ctx.bool_type().into(),
-            Type::I8 => ctx.i8_type().into(),
-            Type::I16 => ctx.i16_type().into(),
-            Type::I32 => ctx.i32_type().into(),
-            Type::I64 => ctx.i64_type().into(),
+            Type::Int1 => ctx.bool_type().into(),
+            Type::Int8 => ctx.i8_type().into(),
+            Type::Int16 => ctx.i16_type().into(),
+            Type::Int32 => ctx.i32_type().into(),
+            Type::Int64 => ctx.i64_type().into(),
 
-            Type::F32 => ctx.f32_type().into(),
-            Type::F64 => ctx.f64_type().into(),
+            Type::Float32 => ctx.f32_type().into(),
+            Type::Float64 => ctx.f64_type().into(),
 
-            Type::Ptr => ctx.ptr_type(AddressSpace::default()).into(),
+            Type::Pointer => ctx.ptr_type(AddressSpace::default()).into(),
 
             Type::Void => ctx.void_type().into(),
         }
@@ -108,11 +108,11 @@ impl<'ctx> LlvmLowerer<'ctx> {
         let ctx = self.context;
 
         match ty {
-            Type::I1 => ctx.bool_type(),
-            Type::I8 => ctx.i8_type(),
-            Type::I16 => ctx.i16_type(),
-            Type::I32 => ctx.i32_type(),
-            Type::I64 => ctx.i64_type(),
+            Type::Int1 => ctx.bool_type(),
+            Type::Int8 => ctx.i8_type(),
+            Type::Int16 => ctx.i16_type(),
+            Type::Int32 => ctx.i32_type(),
+            Type::Int64 => ctx.i64_type(),
             _ => panic!("not int"),
         }
     }
@@ -121,8 +121,8 @@ impl<'ctx> LlvmLowerer<'ctx> {
         let ctx = self.context;
 
         match ty {
-            Type::F32 => ctx.f32_type(),
-            Type::F64 => ctx.f64_type(),
+            Type::Float32 => ctx.f32_type(),
+            Type::Float64 => ctx.f64_type(),
             _ => panic!("not float"),
         }
     }
@@ -390,11 +390,11 @@ impl<'ctx> LlvmLowerer<'ctx> {
             InstKind::FConst(bits) => {
                 let ty = def.get_type(inst.result.unwrap());
                 let val: BasicValueEnum = match ty {
-                    Type::F32 => {
+                    Type::Float32 => {
                         let f = f32::from_bits(*bits as u32);
                         self.context.f32_type().const_float(f as f64).into()
                     }
-                    Type::F64 => {
+                    Type::Float64 => {
                         let f = f64::from_bits(*bits);
                         self.context.f64_type().const_float(f).into()
                     }
@@ -635,15 +635,18 @@ impl<'ctx> LlvmLowerer<'ctx> {
                     .into()
             }
             CastKind::Bitcast => match (src, dst_ty) {
-                (BasicValueEnum::IntValue(i), Type::F32) => self
+                (BasicValueEnum::IntValue(i), Type::Float32) => self
                     .builder
                     .build_bit_cast(i, self.context.f32_type(), &kind.to_string())
                     .unwrap(),
-                (BasicValueEnum::IntValue(i), Type::F64) => self
+                (BasicValueEnum::IntValue(i), Type::Float64) => self
                     .builder
                     .build_bit_cast(i, self.context.f64_type(), &kind.to_string())
                     .unwrap(),
-                (BasicValueEnum::FloatValue(f), Type::I32 | Type::I64 | Type::I8 | Type::I16) => {
+                (
+                    BasicValueEnum::FloatValue(f),
+                    Type::Int32 | Type::Int64 | Type::Int8 | Type::Int16,
+                ) => {
                     let int_ty = self.map_int_type(dst_ty);
                     self.builder
                         .build_bit_cast(f, int_ty, &kind.to_string())

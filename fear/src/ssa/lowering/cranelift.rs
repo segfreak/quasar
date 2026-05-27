@@ -11,16 +11,23 @@ use crate::types::{CallingConvention, FloatCmp, FunctionSignature, IntCmp, Linka
 
 use std::collections::HashMap;
 
+fn pointer_type() -> types::Type {
+    // todo: get pointer type
+    types::I64
+}
+
 fn map_type(ty: Type) -> types::Type {
     match ty {
-        Type::I1 => types::I8,
-        Type::I8 => types::I8,
-        Type::I16 => types::I16,
-        Type::I32 => types::I32,
-        Type::I64 => types::I64,
-        Type::F32 => types::F32,
-        Type::F64 => types::F64,
-        Type::Ptr => types::I64,
+        // cranelift has no int1 type
+        Type::Int1 => types::I8,
+        Type::Int8 => types::I8,
+        Type::Int16 => types::I16,
+        Type::Int32 => types::I32,
+        Type::Int64 => types::I64,
+        Type::Float32 => types::F32,
+        Type::Float64 => types::F64,
+        //
+        Type::Pointer => pointer_type(),
         Type::Void => panic!("void has no Cranelift type"),
     }
 }
@@ -269,8 +276,8 @@ fn get_float_or_const(
 ) -> cranelift::prelude::Value {
     if let Some(f) = def.get_fconst(v) {
         match def.get_type(v) {
-            Type::F32 => fx.ins().f32const(f as f32),
-            Type::F64 => fx.ins().f64const(f),
+            Type::Float32 => fx.ins().f32const(f as f32),
+            Type::Float64 => fx.ins().f64const(f),
             _ => panic!("fconst on non-float type"),
         }
     } else {
@@ -314,8 +321,8 @@ fn compile_inst(
         InstKind::FConst(bits) => {
             let ty = def.get_type(inst.result.unwrap());
             let val = match ty {
-                Type::F32 => fx.ins().f32const(f32::from_bits(*bits as u32)),
-                Type::F64 => fx.ins().f64const(f64::from_bits(*bits)),
+                Type::Float32 => fx.ins().f32const(f32::from_bits(*bits as u32)),
+                Type::Float64 => fx.ins().f64const(f64::from_bits(*bits)),
                 _ => panic!("FConst with non-float type"),
             };
             values.insert(inst.result.unwrap(), val);
@@ -540,10 +547,10 @@ fn lower_cast(
         CastKind::Sext => fx.ins().sextend(cl_dst, src),
         CastKind::Trunc => fx.ins().ireduce(cl_dst, src),
         CastKind::Bitcast => match (src_ty, dst_ty) {
-            (Type::I32, Type::F32)
-            | (Type::I64, Type::F64)
-            | (Type::F32, Type::I32)
-            | (Type::F64, Type::I64) => fx.ins().bitcast(cl_dst, MemFlags::new(), src),
+            (Type::Int32, Type::Float32)
+            | (Type::Int64, Type::Float64)
+            | (Type::Float32, Type::Int32)
+            | (Type::Float64, Type::Int64) => fx.ins().bitcast(cl_dst, MemFlags::new(), src),
             _ => src,
         },
         CastKind::SIToFP => fx.ins().fcvt_from_sint(cl_dst, src),

@@ -1,6 +1,5 @@
-use crate::types::Type;
-
 use crate::ssa::*;
+
 fn is_zero(func: &FunctionDef, v: ValueId) -> bool {
     func.get_iconst(v) == Some(0)
 }
@@ -31,19 +30,6 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
                 func.remove_inst(id);
                 return true;
             }
-
-            // x + x => x << 1
-            // if a == b {
-            //     let shift = func.make_iconst(inst.parent, Type::I32, 1);
-            //     let new_inst = Inst {
-            //         kind: InstKind::LShl,
-            //         operands: vec![a, shift],
-            //         parent: inst.parent,
-            //         result: inst.result,
-            //     };
-            //     func.replace_inst(id, new_inst);
-            //     return true;
-            // }
         }
 
         InstKind::Sub => {
@@ -58,7 +44,8 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
 
             // x - x => 0
             if a == b {
-                let zero = func.make_iconst(inst.parent, Type::I32, 0);
+                let ty = func.get_type(a);
+                let zero = func.make_iconst(inst.parent, ty, 0);
                 func.replace_uses(inst.result.unwrap(), zero);
                 func.remove_inst(id);
                 return true;
@@ -70,7 +57,8 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
 
             // x * 0 => 0
             if is_zero(func, a) || is_zero(func, b) {
-                let zero = func.make_iconst(inst.parent, Type::I32, 0);
+                let ty = func.get_type(a);
+                let zero = func.make_iconst(inst.parent, ty, 0);
                 func.replace_uses(inst.result.unwrap(), zero);
                 func.remove_inst(id);
                 return true;
@@ -95,7 +83,8 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
 
             // x & 0 => 0
             if is_zero(func, a) || is_zero(func, b) {
-                let zero = func.make_iconst(inst.parent, Type::I32, 0);
+                let ty = func.get_type(a);
+                let zero = func.make_iconst(inst.parent, ty, 0);
                 func.replace_uses(inst.result.unwrap(), zero);
                 func.remove_inst(id);
                 return true;

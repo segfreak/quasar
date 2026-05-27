@@ -10,72 +10,72 @@ fn test() {
     let mut f = FunctionDef::new();
 
     let b0 = f.get_entry();
-    let x0 = f.add_block_param(b0, Type::I32);
+    let x0 = f.add_block_param(b0, Type::Int32);
 
-    let slot0 = f.make_alloca(b0, Type::I32);
-    let c228 = f.make_iconst(b0, Type::I32, 228);
+    let slot0 = f.make_alloca(b0, Type::Int32);
+    let c228 = f.make_iconst(b0, Type::Int32, 228);
     f.make_store(b0, false, &slot0, &c228);
 
     let b1 = f.new_block();
-    let x = f.add_block_param(b1, Type::I32);
+    let x = f.add_block_param(b1, Type::Int32);
 
     f.make_br(b0, b1, vec![x0]);
 
-    let c9 = f.make_iconst(b1, Type::I32, 9);
-    let tmp = f.make_mul(b1, Type::I32, &x, &c9);
-    let add = f.make_add(b1, Type::I32, &tmp, &c9);
-    let c2 = f.make_iconst(b1, Type::I32, 2);
-    let c4 = f.make_iconst(b1, Type::I32, 4);
-    let c64 = f.make_iconst(b1, Type::I32, 64);
+    let c9 = f.make_iconst(b1, Type::Int32, 9);
+    let tmp = f.make_mul(b1, Type::Int32, &x, &c9);
+    let add = f.make_add(b1, Type::Int32, &tmp, &c9);
+    let c2 = f.make_iconst(b1, Type::Int32, 2);
+    let c4 = f.make_iconst(b1, Type::Int32, 4);
+    let c64 = f.make_iconst(b1, Type::Int32, 64);
 
-    let sub = f.make_sub(b1, Type::I32, &add, &c2);
-    let sub2 = f.make_sub(b1, Type::I32, &add, &c2);
-    let mul = f.make_mul(b1, Type::I32, &sub, &sub2);
-    let div = f.make_div(b1, Type::I32, true, &mul, &c2);
-    let mul2 = f.make_mul(b1, Type::I32, &div, &c2);
-    let mul64 = f.make_mul(b1, Type::I32, &x, &c64);
-    let div64 = f.make_mul(b1, Type::I32, &mul64, &c64);
-    let sum = f.make_add(b1, Type::I32, &mul2, &div64);
+    let sub = f.make_sub(b1, Type::Int32, &add, &c2);
+    let sub2 = f.make_sub(b1, Type::Int32, &add, &c2);
+    let mul = f.make_mul(b1, Type::Int32, &sub, &sub2);
+    let div = f.make_div(b1, Type::Int32, true, &mul, &c2);
+    let mul2 = f.make_mul(b1, Type::Int32, &div, &c2);
+    let mul64 = f.make_mul(b1, Type::Int32, &x, &c64);
+    let div64 = f.make_mul(b1, Type::Int32, &mul64, &c64);
+    let sum = f.make_add(b1, Type::Int32, &mul2, &div64);
     let nonprofit = f.make_mul(
         b1,
-        Type::I32,
+        Type::Int32,
         &sum,
         &Expr {
-            ty: Type::I32,
+            ty: Type::Int32,
             kind: ExprKind::Const(0x1000000),
         },
     );
-    let square = f.make_mul(b1, Type::I32, &x, &x);
+    let square = f.make_mul(b1, Type::Int32, &x, &x);
     let mul8 = f.make_mul(
         b1,
-        Type::I32,
+        Type::Int32,
         &square,
         &Expr {
-            ty: Type::I32,
+            ty: Type::Int32,
             kind: ExprKind::Const(8),
         },
     );
-    let y = f.make_add(b1, Type::I32, &nonprofit, &mul8);
+    let y = f.make_add(b1, Type::Int32, &nonprofit, &mul8);
     let decompose = f.make_mul(
         b1,
-        Type::I32,
+        Type::Int32,
         &sum,
         &Expr {
-            ty: Type::I32,
+            ty: Type::Int32,
             kind: ExprKind::Const(9),
         },
     );
-    let z = f.make_sub(b1, Type::I32, &y, &decompose);
-    let slot0v = f.make_load(b1, Type::I32, false, &slot0);
-    let x0 = f.make_add(b1, Type::I32, &z, &slot0v);
-    let x0_64 = f.make_cast(b1, Type::I64, CastKind::Sext, &x0);
+    let z = f.make_sub(b1, Type::Int32, &y, &decompose);
+    let slot0v = f.make_load(b1, Type::Int32, false, &slot0);
+    let x0 = f.make_add(b1, Type::Int32, &z, &slot0v);
+    let x0_64 = f.make_cast(b1, Type::Int64, CastKind::Sext, &x0);
 
-    let fc = f.make_fconst(b1, Type::F32, 3.143f64.to_bits());
-    let fc2 = f.make_fconst(b1, Type::F32, 3.48f64.to_bits());
-    let fsum = f.make_fadd(b1, Type::F32, &fc, &fc2);
+    let fc = f.make_fconst(b1, Type::Float32, 3.143f64.to_bits());
+    let fc2 = f.make_fconst(b1, Type::Float32, 3.48f64.to_bits());
+    let fsum = f.make_fadd(b1, Type::Float32, &fc, &fc2);
 
-    let isum = f.make_cast(b1, Type::I64, CastKind::FPToSI, &fsum);
-    let isum2 = f.make_add(b1, Type::I64, &x0_64, &isum);
+    let isum = f.make_cast(b1, Type::Int64, CastKind::FPToSI, &fsum);
+    let isum2 = f.make_add(b1, Type::Int64, &x0_64, &isum);
 
     f.make_ret(b1, &isum2);
     println!("{}", f.dump());
@@ -91,7 +91,7 @@ fn test() {
     {
         let mfoo = m.declare_function(
             "foo",
-            FunctionSignature::new(vec![Type::I32], Type::I64),
+            FunctionSignature::new(vec![Type::Int32], Type::Int64),
             fear::types::Linkage::External,
             fear::types::CallingConvention::C,
         );
