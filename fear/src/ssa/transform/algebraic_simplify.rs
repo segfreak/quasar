@@ -8,93 +8,66 @@ fn is_one(func: &FunctionDef, v: ValueId) -> bool {
     func.get_iconst(v) == Some(1)
 }
 
-fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
-    let inst = match func.insts.get(&id).cloned() {
-        Some(i) => i,
+pub fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
+    let inst = match func.insts.get(&id) {
+        Some(i) => &i.clone(),
         None => return false,
     };
 
+    let bin = |i: &Inst| (i.operands[0], i.operands[1]);
+
     match inst.kind {
         InstKind::Add => {
-            let (a, b) = (inst.operands[0], inst.operands[1]);
+            let (a, b) = bin(inst);
 
-            // x + 0 => x
             if is_zero(func, a) {
-                func.replace_uses(inst.result.unwrap(), b);
-                func.remove_inst(id);
-                return true;
+                return replace(func, inst, id, b);
             }
-
             if is_zero(func, b) {
-                func.replace_uses(inst.result.unwrap(), a);
-                func.remove_inst(id);
-                return true;
+                return replace(func, inst, id, a);
             }
         }
 
         InstKind::Sub => {
-            let (a, b) = (inst.operands[0], inst.operands[1]);
+            let (a, b) = bin(inst);
 
-            // x - 0 => x
             if is_zero(func, b) {
-                func.replace_uses(inst.result.unwrap(), a);
-                func.remove_inst(id);
-                return true;
+                return replace(func, inst, id, a);
             }
 
-            // x - x => 0
             if a == b {
-                let ty = func.get_type(a);
-                let zero = func.make_iconst(inst.parent, ty, 0);
-                func.replace_uses(inst.result.unwrap(), zero);
-                func.remove_inst(id);
-                return true;
+                let zero = func.make_iconst(inst.parent, func.get_type(a), 0);
+                return replace(func, inst, id, zero);
             }
         }
 
         InstKind::Mul => {
-            let (a, b) = (inst.operands[0], inst.operands[1]);
+            let (a, b) = bin(inst);
 
-            // x * 0 => 0
             if is_zero(func, a) || is_zero(func, b) {
-                let ty = func.get_type(a);
-                let zero = func.make_iconst(inst.parent, ty, 0);
-                func.replace_uses(inst.result.unwrap(), zero);
-                func.remove_inst(id);
-                return true;
+                let zero = func.make_iconst(inst.parent, func.get_type(a), 0);
+                return replace(func, inst, id, zero);
             }
 
-            // x * 1 => x
             if is_one(func, a) {
-                func.replace_uses(inst.result.unwrap(), b);
-                func.remove_inst(id);
-                return true;
+                return replace(func, inst, id, b);
             }
 
             if is_one(func, b) {
-                func.replace_uses(inst.result.unwrap(), a);
-                func.remove_inst(id);
-                return true;
+                return replace(func, inst, id, a);
             }
         }
 
         InstKind::And => {
-            let (a, b) = (inst.operands[0], inst.operands[1]);
+            let (a, b) = bin(inst);
 
-            // x & 0 => 0
             if is_zero(func, a) || is_zero(func, b) {
-                let ty = func.get_type(a);
-                let zero = func.make_iconst(inst.parent, ty, 0);
-                func.replace_uses(inst.result.unwrap(), zero);
-                func.remove_inst(id);
-                return true;
+                let zero = func.make_iconst(inst.parent, func.get_type(a), 0);
+                return replace(func, inst, id, zero);
             }
 
-            // x & x => x
             if a == b {
-                func.replace_uses(inst.result.unwrap(), a);
-                func.remove_inst(id);
-                return true;
+                return replace(func, inst, id, a);
             }
         }
 
@@ -102,6 +75,13 @@ fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
     }
 
     false
+}
+
+fn replace(func: &mut FunctionDef, inst: &Inst, id: InstId, val: ValueId) -> bool {
+    let res = inst.result.unwrap();
+    func.replace_uses(res, val);
+    func.remove_inst(id);
+    true
 }
 
 pub fn algebraic_simplify(m: &mut Module, f: FuncId) -> bool {
