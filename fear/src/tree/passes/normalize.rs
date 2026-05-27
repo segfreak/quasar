@@ -5,163 +5,232 @@ pub fn normalize(func: &mut FunctionDef) -> bool {
     let mut changed = false;
 
     for value in func.values.values_mut() {
-        value.expr = normalize_expr(value.expr.clone(), &mut changed);
+        *value = normalize_expr(value.clone(), &mut changed);
     }
 
     changed
 }
 
 fn normalize_expr(expr: Expr, changed: &mut bool) -> Expr {
-    match expr {
-        Expr::Var(_) | Expr::Const(_) | Expr::Alloca(_) => expr,
+    let kind = match expr.kind {
+        ExprKind::Var(_)
+        | ExprKind::Const(_)
+        | ExprKind::FConst(_)
+        | ExprKind::Alloca(_)
+        | ExprKind::NAlloca(_, _) => expr.kind,
 
-        Expr::Call(func, params) => {
+        ExprKind::Cast(kind, a) => {
+            let a = normalize_expr(*a, changed);
+            ExprKind::Cast(kind, Box::new(a))
+        }
+
+        ExprKind::Call(func, params) => {
             let normalized: Vec<Expr> = params
                 .iter()
                 .map(|expr| normalize_expr(expr.clone(), changed))
                 .collect();
-            Expr::Call(func, normalized)
+            ExprKind::Call(func, normalized)
         }
 
-        Expr::Load(volatile, ptr) => {
+        ExprKind::Load(volatile, ptr) => {
             let ptr = normalize_expr(*ptr, changed);
-            Expr::Load(volatile, Box::new(ptr))
+            ExprKind::Load(volatile, Box::new(ptr))
         }
 
-        Expr::Store(volatile, ptr, value) => {
+        ExprKind::Store(volatile, ptr, value) => {
             let ptr = normalize_expr(*ptr, changed);
             let value = normalize_expr(*value, changed);
-            Expr::Store(volatile, Box::new(ptr), Box::new(value))
+            ExprKind::Store(volatile, Box::new(ptr), Box::new(value))
         }
 
-        Expr::PtrOffset(base, offset) => {
+        ExprKind::PtrOffset(base, offset) => {
             let base = normalize_expr(*base, changed);
             let offset = normalize_expr(*offset, changed);
-            Expr::PtrOffset(Box::new(base), Box::new(offset))
+            ExprKind::PtrOffset(Box::new(base), Box::new(offset))
         }
 
-        Expr::ElementPtr(ty, base, offset) => {
+        ExprKind::ElementPtr(ty, base, offset) => {
             let base = normalize_expr(*base, changed);
             let offset = normalize_expr(*offset, changed);
-            Expr::ElementPtr(ty, Box::new(base), Box::new(offset))
+            ExprKind::ElementPtr(ty, Box::new(base), Box::new(offset))
         }
 
-        Expr::Add(a, b) => {
+        ExprKind::Add(a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
 
-            // add(x, x) -> mul(x, 2)
-            if a == b {
-                *changed = true;
-
-                return Expr::Mul(Box::new(a), Box::new(Expr::Const(2)));
-            }
-
-            // canonical constant ordering
-            // add(const, x) -> add(x, const)
-            match (&a, &b) {
-                (Expr::Const(_), _) => {
+            match (&a.kind, &b.kind) {
+                // canonical constant ordering
+                // add(const, x) -> add(x, const)
+                (ExprKind::Const(_), _) => {
                     *changed = true;
 
-                    Expr::Add(Box::new(b), Box::new(a))
+                    ExprKind::Add(Box::new(b), Box::new(a))
                 }
 
-                _ => Expr::Add(Box::new(a), Box::new(b)),
+                // add(x, x) -> mul(x, 2)
+                (x, y) if x == y => ExprKind::Mul(
+                    Box::new(a),
+                    Box::new(Expr {
+                        ty: b.ty,
+                        kind: ExprKind::Const(2),
+                    }),
+                ),
+
+                _ => ExprKind::Add(Box::new(a), Box::new(b)),
             }
         }
 
-        Expr::Sub(a, b) => {
+        ExprKind::Sub(a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
 
-            Expr::Sub(Box::new(a), Box::new(b))
+            ExprKind::Sub(Box::new(a), Box::new(b))
         }
 
-        Expr::Mul(a, b) => {
+        ExprKind::Mul(a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
 
-            match (&a, &b) {
-                (Expr::Const(_), _) => {
+            match (&a.kind, &b.kind) {
+                (ExprKind::Const(_), _) => {
                     *changed = true;
 
-                    Expr::Mul(Box::new(b), Box::new(a))
+                    ExprKind::Mul(Box::new(b), Box::new(a))
                 }
 
-                _ => Expr::Mul(Box::new(a), Box::new(b)),
+                _ => ExprKind::Mul(Box::new(a), Box::new(b)),
             }
         }
 
-        Expr::Div(signed, a, b) => {
+        ExprKind::Div(signed, a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
-            Expr::Div(signed, Box::new(a), Box::new(b))
+            ExprKind::Div(signed, Box::new(a), Box::new(b))
         }
 
-        Expr::BitShl(a, b) => {
+        ExprKind::Rem(signed, a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            ExprKind::Rem(signed, Box::new(a), Box::new(b))
+        }
+
+        ExprKind::FAdd(a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            match (&a.kind, &b.kind) {
+                (ExprKind::Const(_), _) => {
+                    *changed = true;
+                    ExprKind::FAdd(Box::new(b), Box::new(a))
+                }
+                _ => ExprKind::FAdd(Box::new(a), Box::new(b)),
+            }
+        }
+        ExprKind::FSub(a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            ExprKind::FSub(Box::new(a), Box::new(b))
+        }
+        ExprKind::FMul(a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            match (&a.kind, &b.kind) {
+                (ExprKind::Const(_), _) => {
+                    *changed = true;
+                    ExprKind::FMul(Box::new(b), Box::new(a))
+                }
+                _ => ExprKind::FMul(Box::new(a), Box::new(b)),
+            }
+        }
+        ExprKind::FDiv(a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            ExprKind::FDiv(Box::new(a), Box::new(b))
+        }
+        ExprKind::FRem(a, b) => {
+            let a = normalize_expr(*a, changed);
+            let b = normalize_expr(*b, changed);
+            ExprKind::FRem(Box::new(a), Box::new(b))
+        }
+
+        ExprKind::BitShl(a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
 
-            match &b {
+            match &b.kind {
                 // shl(x, C) -> mul(x, 1<<C)
-                Expr::Const(shift) if *shift >= 0 && *shift < 63 => {
+                ExprKind::Const(shift) if *shift >= 0 && *shift < 63 => {
                     *changed = true;
 
-                    Expr::Mul(Box::new(a), Box::new(Expr::Const(1i64 << shift)))
+                    ExprKind::Mul(
+                        Box::new(a),
+                        Box::new(Expr {
+                            ty: b.ty,
+                            kind: ExprKind::Const(1i64 << shift),
+                        }),
+                    )
                 }
 
-                _ => Expr::BitShl(Box::new(a), Box::new(b)),
+                _ => ExprKind::BitShl(Box::new(a), Box::new(b)),
             }
         }
 
-        Expr::BitShr(a, b) => {
+        ExprKind::BitShr(a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
 
-            Expr::BitShr(Box::new(a), Box::new(b))
+            ExprKind::BitShr(Box::new(a), Box::new(b))
         }
 
-        Expr::ArithShr(a, b) => {
+        ExprKind::ArithShr(a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
 
-            Expr::ArithShr(Box::new(a), Box::new(b))
+            ExprKind::ArithShr(Box::new(a), Box::new(b))
         }
 
-        Expr::BitNeg(a) => {
+        ExprKind::BitNeg(a) => {
             let a = normalize_expr(*a, changed);
             *changed = true;
-            Expr::Mul(Box::new(a), Box::new(Expr::Const(-1)))
+            ExprKind::Mul(
+                Box::new(a.clone()),
+                Box::new(Expr {
+                    ty: a.ty,
+                    kind: ExprKind::Const(-1),
+                }),
+            )
         }
 
-        Expr::BitAnd(a, b) => {
+        ExprKind::BitAnd(a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
-            Expr::BitAnd(Box::new(a), Box::new(b))
+            ExprKind::BitAnd(Box::new(a), Box::new(b))
         }
 
-        Expr::BitOr(a, b) => {
+        ExprKind::BitOr(a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
-            Expr::BitOr(Box::new(a), Box::new(b))
+            ExprKind::BitOr(Box::new(a), Box::new(b))
         }
 
-        Expr::BitXor(a, b) => {
+        ExprKind::BitXor(a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
-            Expr::BitXor(Box::new(a), Box::new(b))
+            ExprKind::BitXor(Box::new(a), Box::new(b))
         }
 
-        Expr::Cmp(kind, a, b) => {
+        ExprKind::Cmp(kind, a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
-            Expr::Cmp(kind, Box::new(a), Box::new(b))
+            ExprKind::Cmp(kind, Box::new(a), Box::new(b))
         }
 
-        Expr::FCmp(kind, a, b) => {
+        ExprKind::FCmp(kind, a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
-            Expr::FCmp(kind, Box::new(a), Box::new(b))
+            ExprKind::FCmp(kind, Box::new(a), Box::new(b))
         }
-    }
+    };
+
+    Expr { ty: expr.ty, kind }
 }

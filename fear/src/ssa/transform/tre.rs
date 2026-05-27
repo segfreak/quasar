@@ -1,5 +1,6 @@
 use crate::ssa::*;
 
+// tail recursion elimination
 pub fn tre(module: &mut Module, fid: FuncId) -> bool {
     let (entry_block, entry_params, ret_ty) = {
         let func = match module.get_function(fid) {

@@ -35,9 +35,9 @@ pub enum FearType {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub enum FearOptLevel {
-    FearOptLevelNone,
-    FearOptLevelDefault,
-    FearOptLevelFull,
+    FearOptNone,
+    FearOptDefault,
+    FearOptFull,
 }
 
 /// Calling conventions supported for function declarations and calls.
@@ -106,14 +106,14 @@ impl From<FearType> for Type {
     fn from(t: FearType) -> Self {
         match t {
             FearType::FearVoid => Type::Void,
-            FearType::FearBool => Type::I1,
-            FearType::FearInt8 => Type::I8,
-            FearType::FearInt16 => Type::I16,
-            FearType::FearInt32 => Type::I32,
-            FearType::FearInt64 => Type::I64,
-            FearType::FearFloat32 => Type::F32,
-            FearType::FearFloat64 => Type::F64,
-            FearType::FearPointer => Type::Ptr,
+            FearType::FearBool => Type::Int1,
+            FearType::FearInt8 => Type::Int8,
+            FearType::FearInt16 => Type::Int16,
+            FearType::FearInt32 => Type::Int32,
+            FearType::FearInt64 => Type::Int64,
+            FearType::FearFloat32 => Type::Float32,
+            FearType::FearFloat64 => Type::Float64,
+            FearType::FearPointer => Type::Pointer,
         }
     }
 }
@@ -121,9 +121,9 @@ impl From<FearType> for Type {
 impl From<FearOptLevel> for OptLevel {
     fn from(t: FearOptLevel) -> Self {
         match t {
-            FearOptLevel::FearOptLevelNone => OptLevel::None,
-            FearOptLevel::FearOptLevelDefault => OptLevel::Default,
-            FearOptLevel::FearOptLevelFull => OptLevel::Full,
+            FearOptLevel::FearOptNone => OptLevel::None,
+            FearOptLevel::FearOptDefault => OptLevel::Default,
+            FearOptLevel::FearOptFull => OptLevel::Full,
         }
     }
 }

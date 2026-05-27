@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::{ssa::FunctionDef, tree, types::OptLevel};
+
 use super::{FuncId, Module};
 
 pub mod algebraic_simplify;
@@ -35,9 +37,49 @@ pub struct PassResult {
 
 pub struct PassManager;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PassManagerOpts {
+    // optimization level
+    pub level: OptLevel,
+    // enable multilevel optimization pipeline
+    // pipeline: fear::ssa -> fear::tree (opt) -> fear::ssa (opt)
+    pub multilevel: bool,
+    // max passes for fear::tree optimizer pipeline
+    pub multilevel_tree_max_passes: i32,
+    // optimization level for fear::tree optimizer pipeline
+    pub multilevel_tree_level: Option<OptLevel>,
+}
+
 impl PassManager {
-    pub fn run_function(m: &mut Module, f: FuncId) -> PassResult {
+    pub fn run_function(opts: &PassManagerOpts, m: &mut Module, f: FuncId) -> PassResult {
         let mut result = PassResult::default();
+
+        if opts.multilevel
+            && let lvl = opts.multilevel_tree_level.unwrap_or(opts.level)
+            && lvl >= OptLevel::Default
+        {
+            let old_def = m
+                .get_function(f)
+                .and_then(|func| func.get_definition())
+                .cloned();
+
+            if let Some(def) = old_def {
+                let mut tdef = tree::FunctionDef::from(def);
+                let res = tree::passes::PassManager::optimize(
+                    m,
+                    &mut tdef,
+                    lvl,
+                    opts.multilevel_tree_max_passes,
+                );
+                log::debug!("tree optimizer performed {} passes", res.passes.len());
+                let new_def = FunctionDef::from(tdef);
+                if let Some(func) = m.get_function_mut(f)
+                    && let Some(def_ref) = func.get_definition_mut()
+                {
+                    *def_ref = new_def;
+                }
+            }
+        }
 
         loop {
             let mut changed = false;
@@ -57,22 +99,24 @@ impl PassManager {
                 };
             }
 
-            run_pass!(constfold::constfold, PassKind::ConstantFolding);
-            run_pass!(
-                algebraic_simplify::algebraic_simplify,
-                PassKind::AlgebraicSimplify
-            );
-            run_pass!(
-                strength_reduction::strength_reduction,
-                PassKind::StrengthReduction
-            );
-            run_pass!(copyprop::copyprop, PassKind::CopyPropagation);
-            run_pass!(gvn::gvn, PassKind::GlobalValueNumbering);
-            run_pass!(cse::cse, PassKind::CommonSubexpressionElimination);
-            run_pass!(dse::dse, PassKind::DeadStoreElimination);
-            run_pass!(tre::tre, PassKind::TailRecursionElimination);
-            run_pass!(dce::dce, PassKind::DeadCodeElimination);
-            run_pass!(cfg_simplify::cfg_simplify, PassKind::CFGSimplify);
+            if opts.level <= OptLevel::Default {
+                run_pass!(constfold::constfold, PassKind::ConstantFolding);
+                run_pass!(
+                    algebraic_simplify::algebraic_simplify,
+                    PassKind::AlgebraicSimplify
+                );
+                run_pass!(
+                    strength_reduction::strength_reduction,
+                    PassKind::StrengthReduction
+                );
+                run_pass!(copyprop::copyprop, PassKind::CopyPropagation);
+                run_pass!(gvn::gvn, PassKind::GlobalValueNumbering);
+                run_pass!(cse::cse, PassKind::CommonSubexpressionElimination);
+                run_pass!(dse::dse, PassKind::DeadStoreElimination);
+                run_pass!(tre::tre, PassKind::TailRecursionElimination);
+                run_pass!(dce::dce, PassKind::DeadCodeElimination);
+                run_pass!(cfg_simplify::cfg_simplify, PassKind::CFGSimplify);
+            }
 
             result.passes.extend(run);
 
@@ -86,7 +130,7 @@ impl PassManager {
         result
     }
 
-    pub fn run_module(m: &mut Module) -> HashMap<FuncId, PassResult> {
+    pub fn run_module(opts: &PassManagerOpts, m: &mut Module) -> HashMap<FuncId, PassResult> {
         let mut tmp = HashMap::new();
 
         let func_ids: Vec<FuncId> = m
@@ -101,7 +145,7 @@ impl PassManager {
             .collect();
 
         for func_id in func_ids {
-            let pass_result = PassManager::run_function(m, func_id);
+            let pass_result = PassManager::run_function(opts, m, func_id);
 
             let func_name = &m.functions[&func_id].name;
 
@@ -120,7 +164,13 @@ impl PassManager {
 }
 
 impl Module {
-    pub fn optimize(&mut self) -> HashMap<FuncId, PassResult> {
-        PassManager::run_module(self)
+    pub fn optimize(&mut self, level: OptLevel, multilevel: bool) -> HashMap<FuncId, PassResult> {
+        let opts = PassManagerOpts {
+            level,
+            multilevel,
+            multilevel_tree_max_passes: 128,
+            multilevel_tree_level: None,
+        };
+        PassManager::run_module(&opts, self)
     }
 }

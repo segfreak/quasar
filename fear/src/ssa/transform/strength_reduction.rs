@@ -1,4 +1,4 @@
-use crate::{ssa::*, types::Type};
+use crate::ssa::*;
 
 fn is_power_of_two(func: &FunctionDef, v: ValueId) -> Option<u32> {
     let c = func.get_iconst(v)?;
@@ -34,11 +34,11 @@ fn try_reduce_inst(func: &mut FunctionDef, id: InstId) -> bool {
     match inst.kind {
         InstKind::Mul => {
             let (mut a, mut b) = (inst.operands[0], inst.operands[1]);
-
             (a, b) = normalize_commutative(a, b, func);
+            let ty = func.get_type(b);
 
             if let Some(k) = is_power_of_two(func, b) {
-                let shift = func.make_iconst(inst.parent, Type::I32, k as i64);
+                let shift = func.make_iconst(inst.parent, ty, k as i64);
 
                 let new_inst = Inst {
                     kind: InstKind::LShl,
@@ -53,9 +53,9 @@ fn try_reduce_inst(func: &mut FunctionDef, id: InstId) -> bool {
 
         InstKind::Div { signed } if !signed => {
             let (a, b) = (inst.operands[0], inst.operands[1]);
-
+            let ty = func.get_type(b);
             if let Some(k) = is_power_of_two(func, b) {
-                let shift = func.make_iconst(inst.parent, Type::I32, k as i64);
+                let shift = func.make_iconst(inst.parent, ty, k as i64);
 
                 let new_inst = Inst {
                     kind: InstKind::LShr,

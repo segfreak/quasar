@@ -303,6 +303,47 @@ test_memory_stack_heavy (FearModule *m)
   fearDefineFunction (m, fid, f);
 }
 
+void
+test_algebraic_simplification (FearModule *m)
+{
+  FearType   params[] = { FearInt32, FearInt32, FearInt32 };
+  FearFuncId fid
+      = fearDeclareFunction (m, "algebraic_simplification", params, 3,
+                             FearInt32, FearLinkageExternal);
+
+  FearFunctionDef *f     = fearDefinitionCreate ();
+  FearBlockId      entry = fearGetEntryBlock (f);
+
+  FearValueId      a     = fearCreateFuncParam (f, FearInt32);
+  FearValueId      b     = fearCreateFuncParam (f, FearInt32);
+  FearValueId      c     = fearCreateFuncParam (f, FearInt32);
+
+  FearValueId      zero  = fearCreateIntConst (f, entry, FearInt32, 0);
+  FearValueId      one   = fearCreateIntConst (f, entry, FearInt32, 1);
+  FearValueId      eight = fearCreateIntConst (f, entry, FearInt32, 8);
+  FearValueId      nine  = fearCreateIntConst (f, entry, FearInt32, 9);
+  FearValueId      ten   = fearCreateIntConst (f, entry, FearInt32, 10);
+
+  FearValueId b_mul_zero = fearCreateMul (f, entry, FearInt32, b, zero);
+  FearValueId dead_zero
+      = fearCreateAdd (f, entry, FearInt32, b_mul_zero, zero);
+
+  FearValueId self_sub = fearCreateSub (f, entry, FearInt32, b, b);
+
+  FearValueId t1       = fearCreateAdd (f, entry, FearInt32, a, ten);
+  FearValueId t2       = fearCreateSub (f, entry, FearInt32, t1, ten);
+  FearValueId t3       = fearCreateMul (f, entry, FearInt32, one, c);
+  FearValueId t4       = fearCreateMul (f, entry, FearInt32, t2, nine);
+  FearValueId t5       = fearCreateDiv (f, entry, FearInt32, t3, eight);
+
+  FearValueId sum1     = fearCreateAdd (f, entry, FearInt32, t4, t5);
+  FearValueId sum2 = fearCreateAdd (f, entry, FearInt32, sum1, dead_zero);
+  FearValueId res  = fearCreateAdd (f, entry, FearInt32, sum2, self_sub);
+
+  fearCreateRet (f, entry, res);
+  fearDefineFunction (m, fid, f);
+}
+
 int
 main ()
 {
@@ -321,22 +362,23 @@ main ()
   test_cross_phi (mod);
   test_big_cfg_stress (mod);
   test_memory_stack_heavy (mod);
+  test_algebraic_simplification (mod);
 
-  uint32_t passes = fearModuleOptimize (mod);
+  fearModuleVerify (mod);
 
-  fearDumpToFile (mod, 1);
+#ifdef MULT
+  uint32_t passes = fearModuleOptimizeMultilevel (mod, FearOptDefault);
+#else
+  uint32_t passes = fearModuleOptimize (mod, FearOptDefault);
+#endif
 
-  if (fearHasBackend (FearBackendLlvm))
-  {
-    fearEmitAssembly (mod, FearBackendLlvm, FearOptLevelDefault, 1);
-  }
+  fearDumpToFile (mod, 0);
 
   if (fearHasBackend (FearBackendCranelift))
   {
     fprintf (stderr, "=> test.o\n");
     FILE *f = fopen ("test.o", "w");
-    fearEmitObject (mod, FearBackendCranelift, FearOptLevelFull,
-                    fileno (f));
+    fearEmitObject (mod, FearBackendCranelift, FearOptFull, fileno (f));
     fclose (f);
   }
 

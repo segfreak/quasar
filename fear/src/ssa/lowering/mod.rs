@@ -3,6 +3,8 @@ pub mod cranelift;
 #[cfg(feature = "llvm")]
 pub mod llvm;
 
+pub mod tree;
+
 pub fn has_llvm() -> bool {
     #[cfg(feature = "llvm")]
     {

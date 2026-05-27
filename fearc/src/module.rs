@@ -34,9 +34,23 @@ pub unsafe extern "C" fn fearModuleDispose(m: *mut FearModule) {
 /// Runs internal optimization passes (e.g., dead code elimination, simplification) over the module's IR.
 /// Return total passes count
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearModuleOptimize(m: *mut FearModule) -> u32 {
+pub unsafe extern "C" fn fearModuleOptimize(m: *mut FearModule, level: FearOptLevel) -> u32 {
     let m = as_module(m);
-    let map = m.optimize();
+    let map = m.optimize(OptLevel::from(level), false);
+    let total_passes: usize = map.values().map(|result| result.passes.len()).sum();
+    total_passes as u32
+}
+
+/// Runs internal optimization passes (e.g., dead code elimination, simplification) over the module's IR.
+/// Uses multilevel pipeline
+/// Return total passes count (exclude multilevel passes)
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearModuleOptimizeMultilevel(
+    m: *mut FearModule,
+    level: FearOptLevel,
+) -> u32 {
+    let m = as_module(m);
+    let map = m.optimize(OptLevel::from(level), true);
     let total_passes: usize = map.values().map(|result| result.passes.len()).sum();
     total_passes as u32
 }

@@ -1,4 +1,7 @@
-use crate::types::{FloatCmp, IntCmp, Type};
+use crate::{
+    ssa::{CastKind, FuncId},
+    types::{FloatCmp, IntCmp, Type},
+};
 use std::{
     collections::{HashMap, HashSet},
     hash::{DefaultHasher, Hash, Hasher},
@@ -8,20 +11,35 @@ pub type ValueId = u32;
 pub type BlockId = u32;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Value {
+pub struct Expr {
     pub ty: Type,
-    pub expr: Expr,
+    pub kind: ExprKind,
+}
+
+impl Expr {
+    pub fn get_cost(&self) -> u32 {
+        self.kind.get_cost()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Expr {
+pub enum ExprKind {
     Var(ValueId),
     Const(i64),
+    /// raw bits, use with f64::from_bits()
+    FConst(u64),
 
     Add(Box<Expr>, Box<Expr>),
     Sub(Box<Expr>, Box<Expr>),
     Mul(Box<Expr>, Box<Expr>),
     Div(bool, Box<Expr>, Box<Expr>),
+    Rem(bool, Box<Expr>, Box<Expr>),
+
+    FAdd(Box<Expr>, Box<Expr>),
+    FSub(Box<Expr>, Box<Expr>),
+    FMul(Box<Expr>, Box<Expr>),
+    FDiv(Box<Expr>, Box<Expr>),
+    FRem(Box<Expr>, Box<Expr>),
 
     BitShl(Box<Expr>, Box<Expr>),
     BitShr(Box<Expr>, Box<Expr>),
@@ -34,8 +52,10 @@ pub enum Expr {
 
     Cmp(IntCmp, Box<Expr>, Box<Expr>),
     FCmp(FloatCmp, Box<Expr>, Box<Expr>),
+    Cast(CastKind, Box<Expr>),
 
     Alloca(Type),
+    NAlloca(Type, usize),
     Load(/* volatile */ bool, /* ptr */ Box<Expr>),
     Store(
         /* volatile */ bool,
@@ -52,13 +72,59 @@ pub enum Expr {
     Call(/* using fear modules */ crate::ssa::FuncId, Vec<Expr>),
 }
 
-impl From<ValueId> for Expr {
+impl From<ValueId> for ExprKind {
     fn from(value: ValueId) -> Self {
         Self::Var(value)
     }
 }
 
-impl Expr {
+impl ExprKind {
+    pub fn get_uses(&self) -> Vec<Expr> {
+        match self {
+            Self::Var(_) => vec![],
+            Self::Const(_) | Self::FConst(_) => vec![],
+
+            Self::Add(a, b)
+            | Self::Sub(a, b)
+            | Self::Mul(a, b)
+            | Self::FAdd(a, b)
+            | Self::FSub(a, b)
+            | Self::FMul(a, b)
+            | Self::FDiv(a, b)
+            | Self::FRem(a, b)
+            | Self::BitShl(a, b)
+            | Self::BitShr(a, b)
+            | Self::ArithShr(a, b)
+            | Self::BitAnd(a, b)
+            | Self::BitOr(a, b)
+            | Self::BitXor(a, b)
+            | Self::PtrOffset(a, b) => {
+                vec![a.as_ref().clone(), b.as_ref().clone()]
+            }
+
+            Self::Div(_, a, b)
+            | Self::Rem(_, a, b)
+            | Self::Cmp(_, a, b)
+            | Self::FCmp(_, a, b)
+            | Self::ElementPtr(_, a, b) => {
+                vec![a.as_ref().clone(), b.as_ref().clone()]
+            }
+
+            Self::BitNeg(v) | Self::Cast(_, v) | Self::Load(_, v) => {
+                vec![v.as_ref().clone()]
+            }
+
+            Self::Store(_, ptr, value) => {
+                vec![ptr.as_ref().clone(), value.as_ref().clone()]
+            }
+
+            Self::Call(_, args) => args.clone(),
+
+            Self::Alloca(_) => vec![],
+            Self::NAlloca(_, _) => vec![],
+        }
+    }
+
     pub fn is_volatile(&self) -> bool {
         match self {
             Self::Load(volatile, _) | Self::Store(volatile, _, _) => *volatile,
@@ -74,48 +140,75 @@ impl Expr {
         matches!(self, Self::Load(_, _) | Self::Store(_, _, _))
     }
 
+    fn cast_cost(kind: CastKind) -> u32 {
+        use CastKind::*;
+        match kind {
+            // zero extension is free in x86
+            Zext => 0,
+            Sext => 1,
+            // truncate is free in x86
+            Trunc => 0,
+            // bitcast is free in x86
+            Bitcast => 0,
+            SIToFP | UIToFP => 5,
+            FPToSI | FPToUI => 5,
+            FPromote => 3,
+            FTrunc => 4,
+        }
+    }
+
     pub fn get_cost(&self) -> u32 {
         match self {
-            Expr::Var(_) | Expr::Const(_) => 0,
+            Self::Var(_) | Self::Const(_) | Self::FConst(_) => 0,
 
-            Expr::Add(a, b) | Expr::Sub(a, b) => 1 + a.get_cost() + b.get_cost(),
-            Expr::BitShl(a, b)
-            | Expr::BitShr(a, b)
-            | Expr::ArithShr(a, b)
-            | Expr::BitAnd(a, b)
-            | Expr::BitOr(a, b)
-            | Expr::BitXor(a, b) => 1 + a.get_cost() + b.get_cost(),
+            Self::Add(a, b) | Self::Sub(a, b) => 1 + a.get_cost() + b.get_cost(),
+            Self::BitShl(a, b)
+            | Self::BitShr(a, b)
+            | Self::ArithShr(a, b)
+            | Self::BitAnd(a, b)
+            | Self::BitOr(a, b)
+            | Self::BitXor(a, b) => 1 + a.get_cost() + b.get_cost(),
 
-            Expr::BitNeg(a) => 1 + a.get_cost(),
+            Self::FAdd(a, b) | Self::FSub(a, b) | Self::FMul(a, b) => {
+                4 + a.get_cost() + b.get_cost()
+            }
 
-            Expr::Mul(a, b) => 3 + a.get_cost() + b.get_cost(),
-            Expr::Div(_, a, b) => 25 + a.get_cost() + b.get_cost(),
+            Self::FDiv(a, b) => 13 + a.get_cost() + b.get_cost(),
+            Self::FRem(a, b) => 15 + a.get_cost() + b.get_cost(),
 
-            Expr::Cmp(_, a, b) => 1 + a.get_cost() + b.get_cost(),
-            Expr::FCmp(_, a, b) => 4 + a.get_cost() + b.get_cost(),
+            Self::BitNeg(a) => 1 + a.get_cost(),
 
-            Expr::Alloca(_) => 2,
-            Expr::PtrOffset(_, _) | Expr::ElementPtr(_, _, _) => 2,
-            Expr::Load(_, _) | Expr::Store(_, _, _) => 5,
+            Self::Mul(a, b) => 3 + a.get_cost() + b.get_cost(),
+            Self::Div(_, a, b) => 25 + a.get_cost() + b.get_cost(),
+            Self::Rem(_, a, b) => 25 + a.get_cost() + b.get_cost(),
 
-            Expr::Call(_, _) => 30,
+            Self::Cmp(_, a, b) => 1 + a.get_cost() + b.get_cost(),
+            Self::FCmp(_, a, b) => 4 + a.get_cost() + b.get_cost(),
+            Self::Cast(kind, a) => Self::cast_cost(*kind) + a.get_cost(),
+
+            Self::Alloca(_) | ExprKind::NAlloca(_, _) => 2,
+            Self::PtrOffset(_, _) | Self::ElementPtr(_, _, _) => 2,
+            Self::Load(_, _) | Self::Store(_, _, _) => 5,
+
+            Self::Call(_, _) => 30,
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Terminator {
-    Ret(ValueId),
+    Ret(Expr),
+    RetVoid,
     Br {
         bb: BlockId,
-        params: Vec<ValueId>,
+        params: Vec<Expr>,
     },
     BrIf {
-        cond: ValueId,
+        cond: Expr,
         then_bb: BlockId,
-        then_params: Vec<ValueId>,
+        then_params: Vec<Expr>,
         else_bb: BlockId,
-        else_params: Vec<ValueId>,
+        else_params: Vec<Expr>,
     },
 }
 
@@ -133,7 +226,7 @@ pub struct FunctionDef {
     pub next_block: BlockId,
 
     pub blocks: HashMap<BlockId, BasicBlock>,
-    pub values: HashMap<ValueId, Value>,
+    pub values: HashMap<ValueId, Expr>,
 
     entry: BlockId,
 }
@@ -170,7 +263,7 @@ impl FunctionDef {
                     dfs(f, *else_bb, visited, out);
                 }
 
-                Some(Terminator::Ret(_)) | None => {}
+                Some(Terminator::Ret(_) | Terminator::RetVoid) | None => {}
             }
 
             out.push(b);
@@ -217,7 +310,7 @@ impl FunctionDef {
     }
 
     pub fn get_cost(&self) -> u32 {
-        self.values.values().map(|val| val.expr.get_cost()).sum()
+        self.values.values().map(|val| val.kind.get_cost()).sum()
     }
 
     pub fn new_block(&mut self) -> BlockId {
@@ -237,49 +330,115 @@ impl FunctionDef {
         id
     }
 
+    pub fn get_entry_param_exprs(&self) -> Vec<&Expr> {
+        let entry_block = self.blocks.get(&self.entry).unwrap();
+        entry_block
+            .params
+            .iter()
+            .map(|vid| self.values.get(vid).unwrap())
+            .collect()
+    }
+
     pub fn get_block_params(&self, block: BlockId) -> &Vec<ValueId> {
         let block = self.blocks.get(&block).unwrap();
         &block.params
     }
 
-    pub fn add_block_param(&mut self, block: BlockId, ty: Type) -> ValueId {
+    pub fn add_block_param(&mut self, block: BlockId, ty: Type) -> Expr {
         let vid = self.next_value;
+        let expr = Expr {
+            ty,
+            kind: ExprKind::Var(vid),
+        };
         self.next_value += 1;
-        self.values.insert(
-            vid,
-            Value {
-                ty,
-                expr: Expr::Var(vid),
-            },
-        );
+        self.values.insert(vid, expr.clone());
         self.blocks.get_mut(&block).unwrap().params.push(vid);
-        vid
+        expr
     }
 
-    pub fn append_expr(&mut self, block: BlockId, ty: Type, expr: Expr) -> ValueId {
+    pub fn append_expr(&mut self, block: BlockId, expr: Expr) -> Expr {
+        let ty = expr.ty;
+
         let vid = self.next_value;
         self.next_value += 1;
 
-        self.values.insert(vid, Value { ty, expr });
+        self.values.insert(vid, expr);
         self.blocks.get_mut(&block).unwrap().values.push(vid);
 
-        vid
+        Expr {
+            ty,
+            kind: ExprKind::Var(vid),
+        }
     }
 
-    pub fn make_iconst(&mut self, block: BlockId, ty: Type, value: i64) -> ValueId {
-        self.append_expr(block, ty, Expr::Const(value))
+    pub fn make_call(&mut self, block: BlockId, ty: Type, func: FuncId, params: Vec<Expr>) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::Call(func, params),
+            },
+        )
     }
 
-    pub fn make_add(&mut self, block: BlockId, ty: Type, left: Expr, right: Expr) -> ValueId {
-        self.append_expr(block, ty, Expr::Add(Box::new(left), Box::new(right)))
+    pub fn make_iconst(&mut self, block: BlockId, ty: Type, value: i64) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::Const(value),
+            },
+        )
     }
 
-    pub fn make_sub(&mut self, block: BlockId, ty: Type, left: Expr, right: Expr) -> ValueId {
-        self.append_expr(block, ty, Expr::Sub(Box::new(left), Box::new(right)))
+    pub fn make_fconst(&mut self, block: BlockId, ty: Type, bits: u64) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FConst(bits),
+            },
+        )
     }
 
-    pub fn make_mul(&mut self, block: BlockId, ty: Type, left: Expr, right: Expr) -> ValueId {
-        self.append_expr(block, ty, Expr::Mul(Box::new(left), Box::new(right)))
+    pub fn make_cast(&mut self, block: BlockId, ty: Type, kind: CastKind, value: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::Cast(kind, Box::new(value.clone())),
+            },
+        )
+    }
+
+    pub fn make_add(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::Add(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_sub(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::Sub(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_mul(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::Mul(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
     }
 
     pub fn make_div(
@@ -287,43 +446,222 @@ impl FunctionDef {
         block: BlockId,
         ty: Type,
         signed: bool,
-        left: Expr,
-        right: Expr,
-    ) -> ValueId {
+        left: &Expr,
+        right: &Expr,
+    ) -> Expr {
         self.append_expr(
             block,
-            ty,
-            Expr::Div(signed, Box::new(left), Box::new(right)),
+            Expr {
+                ty,
+                kind: ExprKind::Div(signed, Box::new(left.clone()), Box::new(right.clone())),
+            },
         )
     }
 
-    pub fn make_alloca(&mut self, block: BlockId, ty: Type) -> ValueId {
-        self.append_expr(block, Type::Ptr, Expr::Alloca(ty))
-    }
-
-    pub fn make_load(&mut self, block: BlockId, ty: Type, volatile: bool, ptr: Expr) -> ValueId {
-        self.append_expr(block, ty, Expr::Load(volatile, Box::new(ptr)))
-    }
-
-    pub fn make_store(
+    pub fn make_rem(
         &mut self,
         block: BlockId,
-        volatile: bool,
-        ptr: Expr,
-        value: Expr,
-    ) -> ValueId {
+        ty: Type,
+        signed: bool,
+        left: &Expr,
+        right: &Expr,
+    ) -> Expr {
         self.append_expr(
             block,
-            Type::Void,
-            Expr::Store(volatile, Box::new(ptr), Box::new(value)),
+            Expr {
+                ty,
+                kind: ExprKind::Rem(signed, Box::new(left.clone()), Box::new(right.clone())),
+            },
         )
     }
 
-    pub fn make_ptr_offset(&mut self, block: BlockId, base: Expr, offset: Expr) -> ValueId {
+    pub fn make_fadd(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
         self.append_expr(
             block,
-            Type::Ptr,
-            Expr::PtrOffset(Box::new(base), Box::new(offset)),
+            Expr {
+                ty,
+                kind: ExprKind::FAdd(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_fsub(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FSub(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_fmul(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FMul(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_fdiv(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FDiv(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_frem(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FRem(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_shl(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::BitShl(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_shr(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::BitShr(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_ashr(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::ArithShr(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_bitneg(&mut self, block: BlockId, ty: Type, value: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::BitNeg(Box::new(value.clone())),
+            },
+        )
+    }
+
+    pub fn make_bitand(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::BitAnd(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_bitor(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::BitOr(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_bitxor(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::BitXor(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_icmp(&mut self, block: BlockId, kind: IntCmp, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty: Type::Int1,
+                kind: ExprKind::Cmp(kind, Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_fcmp(&mut self, block: BlockId, kind: FloatCmp, left: &Expr, right: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty: Type::Int1,
+                kind: ExprKind::FCmp(kind, Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_alloca(&mut self, block: BlockId, ty: Type) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty: Type::Pointer,
+                kind: ExprKind::Alloca(ty),
+            },
+        )
+    }
+
+    pub fn make_nalloca(&mut self, block: BlockId, ty: Type, count: usize) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty: Type::Pointer,
+                kind: ExprKind::NAlloca(ty, count),
+            },
+        )
+    }
+
+    pub fn make_load(&mut self, block: BlockId, ty: Type, volatile: bool, ptr: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::Load(volatile, Box::new(ptr.clone())),
+            },
+        )
+    }
+
+    pub fn make_store(&mut self, block: BlockId, volatile: bool, ptr: &Expr, value: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty: Type::Void,
+                kind: ExprKind::Store(volatile, Box::new(ptr.clone()), Box::new(value.clone())),
+            },
+        )
+    }
+
+    pub fn make_ptr_offset(&mut self, block: BlockId, base: &Expr, offset: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty: Type::Pointer,
+                kind: ExprKind::PtrOffset(Box::new(base.clone()), Box::new(offset.clone())),
+            },
         )
     }
 
@@ -331,21 +669,26 @@ impl FunctionDef {
         &mut self,
         block: BlockId,
         ty: Type,
-        base: Expr,
-        offset: Expr,
-    ) -> ValueId {
+        base: &Expr,
+        offset: &Expr,
+    ) -> Expr {
         self.append_expr(
             block,
-            Type::Ptr,
-            Expr::ElementPtr(ty, Box::new(base), Box::new(offset)),
+            Expr {
+                ty: Type::Pointer,
+                kind: ExprKind::ElementPtr(ty, Box::new(base.clone()), Box::new(offset.clone())),
+            },
         )
     }
-
-    pub fn make_ret(&mut self, block: BlockId, value: ValueId) {
-        self.blocks.get_mut(&block).unwrap().terminator = Some(Terminator::Ret(value));
+    pub fn make_ret(&mut self, block: BlockId, value: &Expr) {
+        self.blocks.get_mut(&block).unwrap().terminator = Some(Terminator::Ret(value.clone()));
     }
 
-    pub fn make_br(&mut self, block: BlockId, target: BlockId, params: Vec<ValueId>) {
+    pub fn make_retvoid(&mut self, block: BlockId) {
+        self.blocks.get_mut(&block).unwrap().terminator = Some(Terminator::RetVoid);
+    }
+
+    pub fn make_br(&mut self, block: BlockId, target: BlockId, params: Vec<Expr>) {
         self.blocks.get_mut(&block).unwrap().terminator =
             Some(Terminator::Br { bb: target, params });
     }
@@ -353,14 +696,14 @@ impl FunctionDef {
     pub fn make_brif(
         &mut self,
         block: BlockId,
-        cond: ValueId,
+        cond: &Expr,
         then_bb: BlockId,
-        then_params: Vec<ValueId>,
+        then_params: Vec<Expr>,
         else_bb: BlockId,
-        else_params: Vec<ValueId>,
+        else_params: Vec<Expr>,
     ) {
         self.blocks.get_mut(&block).unwrap().terminator = Some(Terminator::BrIf {
-            cond,
+            cond: cond.clone(),
             then_bb,
             then_params,
             else_bb,
@@ -369,6 +712,6 @@ impl FunctionDef {
     }
 
     pub fn get_expr(&self, v: ValueId) -> &Expr {
-        &self.values.get(&v).unwrap().expr
+        self.values.get(&v).unwrap()
     }
 }

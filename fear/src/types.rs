@@ -9,47 +9,51 @@ pub enum Type {
     #[display("void")]
     Void,
     #[display("bool")]
-    I1,
+    Int1,
     #[display("i8")]
-    I8,
+    Int8,
     #[display("i16")]
-    I16,
+    Int16,
     #[display("i32")]
-    I32,
+    Int32,
     #[display("i64")]
-    I64,
+    Int64,
     #[display("f32")]
-    F32,
+    Float32,
     #[display("f64")]
-    F64,
+    Float64,
     #[display("ptr")]
-    Ptr,
+    Pointer,
 }
 
 impl Type {
     pub fn is_integer(&self) -> bool {
-        matches!(self, Type::I8 | Type::I16 | Type::I32 | Type::I64)
+        matches!(self, Type::Int8 | Type::Int16 | Type::Int32 | Type::Int64)
     }
 
     pub fn is_float(&self) -> bool {
-        matches!(self, Type::F32 | Type::F64)
+        matches!(self, Type::Float32 | Type::Float64)
     }
 
     pub fn is_void(&self) -> bool {
         matches!(self, Type::Void)
     }
 
+    pub fn is_pointer(&self) -> bool {
+        matches!(self, Type::Pointer)
+    }
+
     pub fn get_size(&self) -> usize {
         match self {
             Self::Void => 0,
-            Self::I1 => 1,
-            Self::I8 => 1,
-            Self::I16 => 2,
-            Self::I32 => 4,
-            Self::I64 => 8,
-            Self::F32 => 4,
-            Self::F64 => 8,
-            Self::Ptr => crate::target::HOST_DESC.pointer_size,
+            Self::Int1 => 1,
+            Self::Int8 => 1,
+            Self::Int16 => 2,
+            Self::Int32 => 4,
+            Self::Int64 => 8,
+            Self::Float32 => 4,
+            Self::Float64 => 8,
+            Self::Pointer => crate::target::HOST_DESC.pointer_size,
         }
     }
 }
