@@ -1,6 +1,7 @@
 #pragma once
 
-#include "fearc.h"
+#include "fear.h"
+
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -435,12 +436,6 @@ struct Module
     return fearEmitObject (getRaw (), fearSelectBackendForObject (),
                            __unwrap (opt), fd);
   }
-
-  // Function
-  // declareFunction (std::string_view name, const std::vector<Type>
-  // &params,
-  //                  Type returns, Linkage linkage = Linkage::External)
-  // { Function::declare (self, name, params, returns, linkage) }
 
 private:
   friend class Function;

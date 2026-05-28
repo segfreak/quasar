@@ -1,4 +1,4 @@
-#include <fearc.h>
+#include <fear.h>
 #include <stdio.h>
 
 void

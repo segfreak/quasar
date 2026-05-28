@@ -1,6 +1,5 @@
-#include "fear.hpp"
 #include <cstdio>
-#include <fearc.h>
+#include <fear.hpp>
 
 int
 main ()
