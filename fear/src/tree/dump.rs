@@ -16,8 +16,8 @@ impl FunctionDef {
             ExprKind::Mul(a, b) => {
                 format!("{}.mul({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
             }
-            ExprKind::Pow(a) => {
-                format!("{}.pow({})", ty, self.fmt_expr(a))
+            ExprKind::Square(a) => {
+                format!("{}.square({})", ty, self.fmt_expr(a))
             }
             ExprKind::Div(signed, a, b) => {
                 format!(
@@ -52,8 +52,8 @@ impl FunctionDef {
             ExprKind::FRem(a, b) => {
                 format!("{}.rem({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))
             }
-            ExprKind::FPow(a) => {
-                format!("{}.pow({})", ty, self.fmt_expr(a))
+            ExprKind::FSquare(a) => {
+                format!("{}.square({})", ty, self.fmt_expr(a))
             }
             ExprKind::BitShl(a, b) => {
                 format!("{}.shl({}, {})", ty, self.fmt_expr(a), self.fmt_expr(b))

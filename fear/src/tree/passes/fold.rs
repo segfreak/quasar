@@ -75,13 +75,13 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
             }
         }
 
-        ExprKind::Pow(a) => {
+        ExprKind::Square(a) => {
             let a = fold_expr(*a, changed);
             if let ExprKind::Const(x) = &a.kind {
                 *changed = true;
                 ExprKind::Const(x * x)
             } else {
-                ExprKind::Pow(Box::new(a))
+                ExprKind::Square(Box::new(a))
             }
         }
 
@@ -156,10 +156,10 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
             log::debug!("float-folding is not implemented yet");
             ExprKind::FRem(Box::new(a), Box::new(b))
         }
-        ExprKind::FPow(a) => {
+        ExprKind::FSquare(a) => {
             let a = fold_expr(*a, changed);
             log::debug!("float-folding is not implemented yet");
-            ExprKind::FPow(Box::new(a))
+            ExprKind::FSquare(Box::new(a))
         }
 
         ExprKind::BitShl(a, b) => {

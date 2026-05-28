@@ -181,7 +181,7 @@ impl SsaRaiser {
                 dst.make_mul(block, ty, l, r)
             }
 
-            ExprKind::Pow(a) => {
+            ExprKind::Square(a) => {
                 let l = self.raise_expr(a, dst, block);
                 dst.make_mul(block, ty, l, l)
             }
@@ -228,7 +228,7 @@ impl SsaRaiser {
                 dst.make_frem(block, ty, l, r)
             }
 
-            ExprKind::FPow(a) => {
+            ExprKind::FSquare(a) => {
                 let l = self.raise_expr(a, dst, block);
                 dst.make_fmul(block, ty, l, l)
             }

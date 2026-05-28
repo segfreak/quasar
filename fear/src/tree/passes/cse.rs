@@ -276,11 +276,11 @@ fn rewrite(
             hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
         }
 
-        ExprKind::Pow(a) => {
+        ExprKind::Square(a) => {
             let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
             let new_expr = Expr {
                 ty,
-                kind: ExprKind::Pow(Box::new(a)),
+                kind: ExprKind::Square(Box::new(a)),
             };
             hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
         }
@@ -335,11 +335,11 @@ fn rewrite(
             hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
         }
 
-        ExprKind::FPow(a) => {
+        ExprKind::FSquare(a) => {
             let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
             let new_expr = Expr {
                 ty,
-                kind: ExprKind::FPow(Box::new(a)),
+                kind: ExprKind::FSquare(Box::new(a)),
             };
             hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
         }

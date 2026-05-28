@@ -171,7 +171,8 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
                         *changed = true;
                         return a;
                     }
-                    (ExprKind::Pow(x), ExprKind::Pow(y)) => {
+                    // x^2 - y^2 = (x - y) * (x + y)
+                    (ExprKind::Square(x), ExprKind::Square(y)) => {
                         *changed = true;
                         ExprKind::Mul(
                             Box::new(Expr {

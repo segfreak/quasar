@@ -78,10 +78,9 @@ fn test() {
     let isum = f.make_cast(b1, Type::Int64, CastKind::FPToSI, &fsum);
     let isum2 = f.make_add(b1, Type::Int64, &x0_64, &isum);
 
-    let _x = f.make_iconst(b1, Type::Int32, 52);
-    let x = f.make_pow(b1, Type::Int32, &_x);
+    let x = f.make_square(b1, Type::Int32, &x0);
     let _y = f.make_iconst(b1, Type::Int32, 42);
-    let y = f.make_pow(b1, Type::Int32, &_y);
+    let y = f.make_square(b1, Type::Int32, &_y);
     let z = f.make_sub(b1, Type::Int32, &x, &y);
     let z64 = f.make_cast(b1, Type::Int64, CastKind::Sext, &z);
 

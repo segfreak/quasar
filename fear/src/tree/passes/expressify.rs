@@ -23,8 +23,8 @@ fn collect_uses(expr: &Expr, uses: &mut HashMap<ValueId, usize>) {
         | ExprKind::Alloca(_)
         | ExprKind::NAlloca(_, _) => {}
 
-        ExprKind::Pow(a)
-        | ExprKind::FPow(a)
+        ExprKind::Square(a)
+        | ExprKind::FSquare(a)
         | ExprKind::Cast(_, a)
         | ExprKind::BitNeg(a)
         | ExprKind::Load(_, a) => {
@@ -228,9 +228,9 @@ fn expand_expr(
             let b = expand_expr(func, *b, cache, uses, params, changed);
             ExprKind::Rem(signed, Box::new(a), Box::new(b))
         }
-        ExprKind::Pow(a) => {
+        ExprKind::Square(a) => {
             let a = expand_expr(func, *a, cache, uses, params, changed);
-            ExprKind::Pow(Box::new(a))
+            ExprKind::Square(Box::new(a))
         }
 
         ExprKind::FAdd(a, b) => {
@@ -258,9 +258,9 @@ fn expand_expr(
             let b = expand_expr(func, *b, cache, uses, params, changed);
             ExprKind::FRem(Box::new(a), Box::new(b))
         }
-        ExprKind::FPow(a) => {
+        ExprKind::FSquare(a) => {
             let a = expand_expr(func, *a, cache, uses, params, changed);
-            ExprKind::FPow(Box::new(a))
+            ExprKind::FSquare(Box::new(a))
         }
 
         ExprKind::BitShl(a, b) => {
