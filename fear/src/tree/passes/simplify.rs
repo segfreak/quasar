@@ -171,6 +171,19 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
                         *changed = true;
                         return a;
                     }
+                    (ExprKind::Pow(x), ExprKind::Pow(y)) => {
+                        *changed = true;
+                        ExprKind::Mul(
+                            Box::new(Expr {
+                                ty: expr.ty,
+                                kind: ExprKind::Sub(Box::new(*x.clone()), Box::new(*y.clone())),
+                            }),
+                            Box::new(Expr {
+                                ty: expr.ty,
+                                kind: ExprKind::Add(Box::new(*x.clone()), Box::new(*y.clone())),
+                            }),
+                        )
+                    }
                     // (x + const y) - const z  =>  x + const (y - z)
                     (
                         ExprKind::Add(
@@ -419,6 +432,10 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
             }
         }
 
+        // ExprKind::Pow(a) => {
+        //     let a = simplify_expr(*a, changed);
+        //     ExprKind::Mul(Box::new(a.clone()), Box::new(a))
+        // }
         other => other,
     };
 

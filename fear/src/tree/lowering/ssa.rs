@@ -181,6 +181,11 @@ impl SsaRaiser {
                 dst.make_mul(block, ty, l, r)
             }
 
+            ExprKind::Pow(a) => {
+                let l = self.raise_expr(a, dst, block);
+                dst.make_mul(block, ty, l, l)
+            }
+
             ExprKind::Div(signed, a, b) => {
                 let l = self.raise_expr(a, dst, block);
                 let r = self.raise_expr(b, dst, block);
@@ -221,6 +226,11 @@ impl SsaRaiser {
                 let l = self.raise_expr(a, dst, block);
                 let r = self.raise_expr(b, dst, block);
                 dst.make_frem(block, ty, l, r)
+            }
+
+            ExprKind::FPow(a) => {
+                let l = self.raise_expr(a, dst, block);
+                dst.make_fmul(block, ty, l, l)
             }
 
             ExprKind::BitShl(a, b) => {

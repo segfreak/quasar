@@ -1,4 +1,5 @@
 use fear::ssa::CastKind;
+use fear::tree::passes::{PassKind, Pipeline};
 use fear::tree::{passes::PassManager, *};
 use fear::types::{FunctionSignature, OptLevel, Type};
 
@@ -77,13 +78,24 @@ fn test() {
     let isum = f.make_cast(b1, Type::Int64, CastKind::FPToSI, &fsum);
     let isum2 = f.make_add(b1, Type::Int64, &x0_64, &isum);
 
-    f.make_ret(b1, &isum2);
+    let _x = f.make_iconst(b1, Type::Int32, 52);
+    let x = f.make_pow(b1, Type::Int32, &_x);
+    let _y = f.make_iconst(b1, Type::Int32, 42);
+    let y = f.make_pow(b1, Type::Int32, &_y);
+    let z = f.make_sub(b1, Type::Int32, &x, &y);
+    let z64 = f.make_cast(b1, Type::Int64, CastKind::Sext, &z);
+
+    let ret = f.make_bitand(b1, Type::Int64, &isum2, &z64);
+    f.make_ret(b1, &ret);
     println!("{}", f.dump());
 
     log::debug!("before opts: {}", f.dump());
 
+    let mut pipeline = Pipeline::default_for(128, OptLevel::Default);
+    // pipeline.get_passes_mut().remove(&PassKind::ConstantFolding);
+
     let mut m = fear::ssa::Module::new("treessa");
-    let res = PassManager::optimize(&m, &mut f, OptLevel::Default, i32::MAX);
+    let res = PassManager::optimize_with_pipeline(&pipeline, &m, &mut f);
     println!("passes: {:?}", res.passes);
 
     println!("{}", f.dump());

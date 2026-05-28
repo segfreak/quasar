@@ -255,12 +255,11 @@ fn test() {
     binary::write(&m, writer).unwrap();
 
     {
-        let config = CompilerConfig {
-            backend: fear::compiler::Backend::Cranelift,
-            output_type: fear::compiler::OutputType::Object,
-            triple: target_lexicon::Triple::host(),
-            opt_level: OptLevel::Full,
-        };
+        let config = CompilerConfig::setup(
+            fear::compiler::OutputType::Object,
+            target_lexicon::Triple::host(),
+            OptLevel::None,
+        );
         let file = File::create("fear.o").unwrap();
         let writer = BufWriter::new(file);
         fear::compiler::compile_module(&m, &config, writer).expect("cannot compile module");

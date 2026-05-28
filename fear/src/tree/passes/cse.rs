@@ -15,74 +15,83 @@ pub fn cse(m: &crate::ssa::Module, func: &mut FunctionDef) -> bool {
 }
 
 fn count_expr(expr: &Expr, cnt: &mut HashMap<Expr, usize>) {
-    match &expr.kind {
-        ExprKind::Var(_) | ExprKind::Const(_) | ExprKind::FConst(_) => {}
+    // match &expr.kind {
+    //     ExprKind::Var(_) | ExprKind::Const(_) | ExprKind::FConst(_) => {}
 
-        ExprKind::Call(_, params) => {
-            *cnt.entry(expr.clone()).or_insert(0) += 1;
-            for expr in params {
-                count_expr(expr, cnt);
-            }
-        }
+    //     ExprKind::Call(_, params) => {
+    //         *cnt.entry(expr.clone()).or_insert(0) += 1;
+    //         for expr in params {
+    //             count_expr(expr, cnt);
+    //         }
+    //     }
 
-        ExprKind::BitNeg(a) => {
-            *cnt.entry(expr.clone()).or_insert(0) += 1;
-            count_expr(a, cnt);
-        }
+    //     ExprKind::BitNeg(a) => {
+    //         *cnt.entry(expr.clone()).or_insert(0) += 1;
+    //         count_expr(a, cnt);
+    //     }
 
-        ExprKind::Alloca(_) | ExprKind::NAlloca(_, _) => {}
-        ExprKind::Load(_, ptr) => {
-            *cnt.entry(expr.clone()).or_insert(0) += 1;
-            count_expr(ptr, cnt);
-        }
+    //     ExprKind::Alloca(_) | ExprKind::NAlloca(_, _) => {}
+    //     ExprKind::Load(_, ptr) => {
+    //         *cnt.entry(expr.clone()).or_insert(0) += 1;
+    //         count_expr(ptr, cnt);
+    //     }
 
-        ExprKind::Store(_, ptr, value) => {
-            *cnt.entry(expr.clone()).or_insert(0) += 1;
-            count_expr(ptr, cnt);
-            count_expr(value, cnt);
-        }
+    //     ExprKind::Store(_, ptr, value) => {
+    //         *cnt.entry(expr.clone()).or_insert(0) += 1;
+    //         count_expr(ptr, cnt);
+    //         count_expr(value, cnt);
+    //     }
 
-        ExprKind::PtrOffset(base, offset) => {
-            *cnt.entry(expr.clone()).or_insert(0) += 1;
-            count_expr(base, cnt);
-            count_expr(offset, cnt);
-        }
+    //     ExprKind::PtrOffset(base, offset) => {
+    //         *cnt.entry(expr.clone()).or_insert(0) += 1;
+    //         count_expr(base, cnt);
+    //         count_expr(offset, cnt);
+    //     }
 
-        ExprKind::ElementPtr(_ty, base, offset) => {
-            *cnt.entry(expr.clone()).or_insert(0) += 1;
-            count_expr(base, cnt);
-            count_expr(offset, cnt);
-        }
+    //     ExprKind::ElementPtr(_ty, base, offset) => {
+    //         *cnt.entry(expr.clone()).or_insert(0) += 1;
+    //         count_expr(base, cnt);
+    //         count_expr(offset, cnt);
+    //     }
 
-        ExprKind::Cast(_kind, a) => {
-            *cnt.entry(expr.clone()).or_insert(0) += 1;
+    //     ExprKind::Cast(_kind, a) => {
+    //         *cnt.entry(expr.clone()).or_insert(0) += 1;
 
-            count_expr(a, cnt);
-        }
+    //         count_expr(a, cnt);
+    //     }
 
-        ExprKind::Add(a, b)
-        | ExprKind::Sub(a, b)
-        | ExprKind::Mul(a, b)
-        | ExprKind::Div(_, a, b)
-        | ExprKind::Rem(_, a, b)
-        | ExprKind::FAdd(a, b)
-        | ExprKind::FSub(a, b)
-        | ExprKind::FMul(a, b)
-        | ExprKind::FDiv(a, b)
-        | ExprKind::FRem(a, b)
-        | ExprKind::BitShl(a, b)
-        | ExprKind::BitShr(a, b)
-        | ExprKind::ArithShr(a, b)
-        | ExprKind::BitAnd(a, b)
-        | ExprKind::BitOr(a, b)
-        | ExprKind::BitXor(a, b)
-        | ExprKind::Cmp(_, a, b)
-        | ExprKind::FCmp(_, a, b) => {
-            *cnt.entry(expr.clone()).or_insert(0) += 1;
+    //     ExprKind::Add(a, b)
+    //     | ExprKind::Sub(a, b)
+    //     | ExprKind::Mul(a, b)
+    //     | ExprKind::Div(_, a, b)
+    //     | ExprKind::Rem(_, a, b)
+    //     | ExprKind::FAdd(a, b)
+    //     | ExprKind::FSub(a, b)
+    //     | ExprKind::FMul(a, b)
+    //     | ExprKind::FDiv(a, b)
+    //     | ExprKind::FRem(a, b)
+    //     | ExprKind::BitShl(a, b)
+    //     | ExprKind::BitShr(a, b)
+    //     | ExprKind::ArithShr(a, b)
+    //     | ExprKind::BitAnd(a, b)
+    //     | ExprKind::BitOr(a, b)
+    //     | ExprKind::BitXor(a, b)
+    //     | ExprKind::Cmp(_, a, b)
+    //     | ExprKind::FCmp(_, a, b) => {
+    //         *cnt.entry(expr.clone()).or_insert(0) += 1;
 
-            count_expr(a, cnt);
-            count_expr(b, cnt);
-        }
+    //         count_expr(a, cnt);
+    //         count_expr(b, cnt);
+    //     }
+    // }
+    if !matches!(
+        expr.kind,
+        ExprKind::Var(_) | ExprKind::Const(_) | ExprKind::FConst(_)
+    ) {
+        *cnt.entry(expr.clone()).or_insert(0) += 1;
+    }
+    for expr in &expr.kind.get_uses() {
+        count_expr(expr, cnt);
     }
 }
 
@@ -267,6 +276,15 @@ fn rewrite(
             hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
         }
 
+        ExprKind::Pow(a) => {
+            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::Pow(Box::new(a)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
+        }
+
         ExprKind::FAdd(a, b) => {
             let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
             let b = rewrite(m, func, bid, *b.clone(), cnt, memo, new_values, changed);
@@ -313,6 +331,15 @@ fn rewrite(
             let new_expr = Expr {
                 ty,
                 kind: ExprKind::FRem(Box::new(a), Box::new(b)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
+        }
+
+        ExprKind::FPow(a) => {
+            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::FPow(Box::new(a)),
             };
             hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
         }

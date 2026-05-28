@@ -15,12 +15,35 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
         | ExprKind::Const(_)
         | ExprKind::FConst(_)
         | ExprKind::Alloca(_)
-        | ExprKind::NAlloca(_, _)
-        | ExprKind::Load(_, _)
-        | ExprKind::Store(_, _, _)
-        | ExprKind::PtrOffset(_, _)
-        | ExprKind::ElementPtr(_, _, _)
-        | ExprKind::Cast(_, _) => expr.kind,
+        | ExprKind::NAlloca(_, _) => expr.kind,
+
+        ExprKind::Cast(kind, a) => {
+            let a = fold_expr(*a, changed);
+            ExprKind::Cast(kind, Box::new(a))
+        }
+
+        ExprKind::Load(volatile, ptr) => {
+            let a = fold_expr(*ptr, changed);
+            ExprKind::Load(volatile, Box::new(a))
+        }
+
+        ExprKind::Store(volatile, ptr, value) => {
+            let a = fold_expr(*ptr, changed);
+            let b = fold_expr(*value, changed);
+            ExprKind::Store(volatile, Box::new(a), Box::new(b))
+        }
+
+        ExprKind::PtrOffset(base, offset) => {
+            let a = fold_expr(*base, changed);
+            let b = fold_expr(*offset, changed);
+            ExprKind::PtrOffset(Box::new(a), Box::new(b))
+        }
+
+        ExprKind::ElementPtr(ty, base, offset) => {
+            let a = fold_expr(*base, changed);
+            let b = fold_expr(*offset, changed);
+            ExprKind::ElementPtr(ty, Box::new(a), Box::new(b))
+        }
 
         ExprKind::Call(func, params) => {
             let folded: Vec<Expr> = params
@@ -49,6 +72,16 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
                 ExprKind::Const(x - y)
             } else {
                 ExprKind::Sub(Box::new(a), Box::new(b))
+            }
+        }
+
+        ExprKind::Pow(a) => {
+            let a = fold_expr(*a, changed);
+            if let ExprKind::Const(x) = &a.kind {
+                *changed = true;
+                ExprKind::Const(x * x)
+            } else {
+                ExprKind::Pow(Box::new(a))
             }
         }
 
@@ -122,6 +155,11 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
             let b = fold_expr(*b, changed);
             log::debug!("float-folding is not implemented yet");
             ExprKind::FRem(Box::new(a), Box::new(b))
+        }
+        ExprKind::FPow(a) => {
+            let a = fold_expr(*a, changed);
+            log::debug!("float-folding is not implemented yet");
+            ExprKind::FPow(Box::new(a))
         }
 
         ExprKind::BitShl(a, b) => {
