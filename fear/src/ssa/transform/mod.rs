@@ -66,7 +66,7 @@ impl PassManager {
             if let Some(def) = old_def {
                 let mut tdef = tree::FunctionDef::from(def);
                 let res = tree::passes::PassManager::optimize_with_pipeline(
-                    &tree::passes::Pipeline::default_for(opts.multilevel_tree_max_passes, lvl),
+                    &tree::passes::Pipeline::with_level(opts.multilevel_tree_max_passes, lvl),
                     m,
                     &mut tdef,
                 );

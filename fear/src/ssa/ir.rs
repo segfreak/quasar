@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::types::{CallingConvention, FloatCmp, FunctionSignature, IntCmp, Linkage, Type};
-use enum_display::EnumDisplay;
+use crate::types::{
+    CallingConvention, CastKind, FloatCmp, FunctionSignature, IntCmp, Linkage, Type,
+};
 
 pub type ValueId = u32;
 pub type InstId = u32;
@@ -30,40 +31,6 @@ pub struct Inst {
     pub operands: Vec<ValueId>,
     pub parent: BlockId,
     pub result: Option<ValueId>,
-}
-
-#[derive(Debug, EnumDisplay, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum CastKind {
-    #[display("zext")]
-    Zext,
-    #[display("sext")]
-    Sext,
-    #[display("trunc")]
-    Trunc,
-    #[display("bitcast")]
-    Bitcast,
-
-    /// Signed integer to float-point
-    #[display("s2f")]
-    SIToFP,
-    /// Unsigned integer to float-point
-    #[display("u2f")]
-    UIToFP,
-
-    /// Float-point to signed integer
-    #[display("f2s")]
-    FPToSI,
-    /// Float-point to unsigned integer
-    #[display("f2u")]
-    FPToUI,
-
-    /// promotes float precision, for example: Float32 -> Float64
-    #[display("fprom")]
-    FPromote,
-    /// truncates float precision, for example: Float64 -> Float32
-    #[display("ftrunc")]
-    FTrunc,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -161,7 +128,6 @@ impl InstKind {
             | FMul
             | FDiv
             | FRem
-            | Not
             | And
             | Or
             | Xor
@@ -177,6 +143,8 @@ impl InstKind {
 
             Cast(_) => 1,
             Ret => 1,
+
+            Not => 1,
 
             // context depended
             Call(_) | Jump(_) | JumpIf { .. } => usize::MAX,

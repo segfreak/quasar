@@ -10,17 +10,13 @@ pub fn fold(func: &mut FunctionDef) -> bool {
 
 pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
     let ty = expr.ty;
+
     let kind = match expr.kind {
         ExprKind::Var(_)
         | ExprKind::Const(_)
         | ExprKind::FConst(_)
         | ExprKind::Alloca(_)
         | ExprKind::NAlloca(_, _) => expr.kind,
-
-        ExprKind::Cast(kind, a) => {
-            let a = fold_expr(*a, changed);
-            ExprKind::Cast(kind, Box::new(a))
-        }
 
         ExprKind::Load(volatile, ptr) => {
             let a = fold_expr(*ptr, changed);
@@ -122,44 +118,73 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
                     ExprKind::Const((*x as u64 % *y as u64) as i64)
                 }
             } else {
-                ExprKind::Div(signed, Box::new(a), Box::new(b))
+                ExprKind::Rem(signed, Box::new(a), Box::new(b))
             }
         }
 
         ExprKind::FAdd(a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);
-            log::debug!("float-folding is not implemented yet");
-            ExprKind::FAdd(Box::new(a), Box::new(b))
+            if let (ExprKind::FConst(x), ExprKind::FConst(y)) = (&a.kind, &b.kind) {
+                let x = f64::from_bits(*x);
+                let y = f64::from_bits(*y);
+                ExprKind::FConst((x + y).to_bits())
+            } else {
+                ExprKind::FAdd(Box::new(a), Box::new(b))
+            }
         }
         ExprKind::FSub(a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);
-            log::debug!("float-folding is not implemented yet");
-            ExprKind::FSub(Box::new(a), Box::new(b))
+            if let (ExprKind::FConst(x), ExprKind::FConst(y)) = (&a.kind, &b.kind) {
+                let x = f64::from_bits(*x);
+                let y = f64::from_bits(*y);
+                ExprKind::FConst((x - y).to_bits())
+            } else {
+                ExprKind::FSub(Box::new(a), Box::new(b))
+            }
         }
         ExprKind::FMul(a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);
-            log::debug!("float-folding is not implemented yet");
-            ExprKind::FMul(Box::new(a), Box::new(b))
+            if let (ExprKind::FConst(x), ExprKind::FConst(y)) = (&a.kind, &b.kind) {
+                let x = f64::from_bits(*x);
+                let y = f64::from_bits(*y);
+                ExprKind::FConst((x * y).to_bits())
+            } else {
+                ExprKind::FMul(Box::new(a), Box::new(b))
+            }
         }
         ExprKind::FDiv(a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);
-            log::debug!("float-folding is not implemented yet");
-            ExprKind::FDiv(Box::new(a), Box::new(b))
+            if let (ExprKind::FConst(x), ExprKind::FConst(y)) = (&a.kind, &b.kind) {
+                let x = f64::from_bits(*x);
+                let y = f64::from_bits(*y);
+                ExprKind::FConst((x / y).to_bits())
+            } else {
+                ExprKind::FDiv(Box::new(a), Box::new(b))
+            }
         }
         ExprKind::FRem(a, b) => {
             let a = fold_expr(*a, changed);
             let b = fold_expr(*b, changed);
-            log::debug!("float-folding is not implemented yet");
-            ExprKind::FRem(Box::new(a), Box::new(b))
+            if let (ExprKind::FConst(x), ExprKind::FConst(y)) = (&a.kind, &b.kind) {
+                let x = f64::from_bits(*x);
+                let y = f64::from_bits(*y);
+                ExprKind::FConst((x % y).to_bits())
+            } else {
+                ExprKind::FRem(Box::new(a), Box::new(b))
+            }
         }
         ExprKind::FSquare(a) => {
             let a = fold_expr(*a, changed);
-            log::debug!("float-folding is not implemented yet");
-            ExprKind::FSquare(Box::new(a))
+            if let ExprKind::FConst(x) = &a.kind {
+                let x = f64::from_bits(*x);
+                ExprKind::FConst((x * x).to_bits())
+            } else {
+                ExprKind::FSquare(Box::new(a))
+            }
         }
 
         ExprKind::BitShl(a, b) => {
@@ -195,6 +220,11 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
         ExprKind::BitNeg(a) => {
             let a = fold_expr(*a, changed);
             ExprKind::BitNeg(Box::new(a))
+        }
+
+        ExprKind::Cast(kind, a) => {
+            let a = fold_expr(*a, changed);
+            ExprKind::Cast(kind, Box::new(a))
         }
 
         ExprKind::Cmp(kind, a, b) => {

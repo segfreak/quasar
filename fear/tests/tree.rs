@@ -1,7 +1,13 @@
-use fear::ssa::CastKind;
-use fear::tree::passes::{PassKind, Pipeline};
-use fear::tree::{passes::PassManager, *};
-use fear::types::{FunctionSignature, OptLevel, Type};
+use std::{fs::File, io::BufWriter};
+
+use fear::types::{CastKind, FunctionSignature, OptLevel, Type};
+use fear::{
+    compiler::CompilerConfig,
+    tree::{
+        passes::{PassManager, Pipeline},
+        *,
+    },
+};
 
 #[allow(unused)]
 #[test]
@@ -75,7 +81,8 @@ fn test() {
     let fc2 = f.make_fconst(b1, Type::Float32, 3.48f64.to_bits());
     let fsum = f.make_fadd(b1, Type::Float32, &fc, &fc2);
 
-    let isum = f.make_cast(b1, Type::Int64, CastKind::FPToSI, &fsum);
+    let _isum = f.make_cast(b1, Type::Int32, CastKind::FPToSI, &fsum);
+    let isum = f.make_cast(b1, Type::Int64, CastKind::Sext, &_isum);
     let isum2 = f.make_add(b1, Type::Int64, &x0_64, &isum);
 
     let x = f.make_square(b1, Type::Int32, &x0);
@@ -90,7 +97,7 @@ fn test() {
 
     log::debug!("before opts: {}", f.dump());
 
-    let mut pipeline = Pipeline::default_for(128, OptLevel::Default);
+    let mut pipeline = Pipeline::with_level(128, OptLevel::Default);
     // pipeline.get_passes_mut().remove(&PassKind::ConstantFolding);
 
     let mut m = fear::ssa::Module::new("treessa");
@@ -108,12 +115,23 @@ fn test() {
         );
         // defining a tree-ssa function (lowers into ssa)
         m.define_function(mfoo, f).expect("cannot define function");
-        m.optimize(OptLevel::Default, false);
+        m.optimize(OptLevel::Default, true);
         log::debug!("{}\n", m.dump());
         m.verify().expect("verify error");
         println!("{}", m.dump());
 
         fear::binary::write_to_file(&m, "treessa.bin").expect("cannot write fear binary module");
         std::fs::write("treessa.ssa", m.dump()).expect("cannot write fear text module");
+    }
+
+    {
+        let config = CompilerConfig::setup(
+            fear::compiler::OutputType::Object,
+            target_lexicon::Triple::host(),
+            OptLevel::None,
+        );
+        let file = File::create("foo.o").unwrap();
+        let writer = BufWriter::new(file);
+        fear::compiler::compile_module(&m, &config, writer).expect("cannot compile module");
     }
 }

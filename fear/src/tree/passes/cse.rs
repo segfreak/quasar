@@ -90,7 +90,7 @@ fn count_expr(expr: &Expr, cnt: &mut HashMap<Expr, usize>) {
     ) {
         *cnt.entry(expr.clone()).or_insert(0) += 1;
     }
-    for expr in &expr.kind.get_uses() {
+    for expr in &expr.kind.get_operands() {
         count_expr(expr, cnt);
     }
 }

@@ -1,4 +1,5 @@
-use crate::ssa::*;
+use crate::{ssa::*, types::CastKind};
+
 fn is_copy(inst: &Inst) -> bool {
     matches!(inst.kind, InstKind::Cast(CastKind::Bitcast))
 }

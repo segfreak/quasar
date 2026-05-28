@@ -1,3 +1,4 @@
+pub mod canonicalize;
 pub mod cse;
 pub mod dce;
 pub mod expressify;
@@ -20,6 +21,7 @@ pub enum PassKind {
     Simplify,
     StrengthReduction,
     Normalize,
+    Canonicalize,
 }
 
 #[derive(Debug, Default)]
@@ -44,23 +46,17 @@ impl Pipeline {
         }
     }
 
-    pub fn get_max_passes(&self) -> i32 {
-        self.max_passes
+    pub fn with_passes(max_passes: i32, passes: &[PassKind]) -> Self {
+        use PassKind::*;
+
+        let mut pipeline = Self::new(max_passes);
+
+        pipeline.get_passes_mut().insert(Expressify);
+        pipeline.passes.extend(passes);
+        pipeline
     }
 
-    pub fn get_passes(&self) -> &HashSet<PassKind> {
-        &self.passes
-    }
-
-    pub fn get_passes_mut(&mut self) -> &mut HashSet<PassKind> {
-        &mut self.passes
-    }
-
-    pub fn has_pass(&self, pass: PassKind) -> bool {
-        self.passes.contains(&pass)
-    }
-
-    pub fn default_for(max_passes: i32, level: OptLevel) -> Self {
+    pub fn with_level(max_passes: i32, level: OptLevel) -> Self {
         use PassKind::*;
 
         let mut pipeline = Self::new(max_passes);
@@ -76,10 +72,27 @@ impl Pipeline {
                 Simplify,
                 StrengthReduction,
                 Normalize,
+                Canonicalize,
             ]);
         }
 
         pipeline
+    }
+
+    pub fn get_max_passes(&self) -> i32 {
+        self.max_passes
+    }
+
+    pub fn get_passes(&self) -> &HashSet<PassKind> {
+        &self.passes
+    }
+
+    pub fn get_passes_mut(&mut self) -> &mut HashSet<PassKind> {
+        &mut self.passes
+    }
+
+    pub fn has_pass(&self, pass: PassKind) -> bool {
+        self.passes.contains(&pass)
     }
 }
 
@@ -135,6 +148,7 @@ impl PassManager {
             try_run_pass!(normalize::normalize, PassKind::Normalize);
             try_run_pass!(simplify::simplify, PassKind::Simplify);
             try_run_pass!(fold::fold, PassKind::ConstantFolding);
+            try_run_pass!(canonicalize::canonicalize, PassKind::Canonicalize);
             try_run_pass!(
                 strength_reduction::strength_reduction,
                 PassKind::StrengthReduction

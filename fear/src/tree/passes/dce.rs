@@ -126,7 +126,7 @@ fn mark_expr(func: &FunctionDef, expr: &Expr, used: &mut std::collections::HashS
         }
 
         _ => {
-            for expr in &expr.kind.get_uses() {
+            for expr in &expr.kind.get_operands() {
                 mark_expr(func, expr, used);
             }
         }

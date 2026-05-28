@@ -182,6 +182,7 @@ impl SsaRaiser {
             }
 
             ExprKind::Square(a) => {
+                log::warn!("bug. raising a square instruction, but this expression must be lowered from square(x) into mul(x, x)");
                 let l = self.raise_expr(a, dst, block);
                 dst.make_mul(block, ty, l, l)
             }

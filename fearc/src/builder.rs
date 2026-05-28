@@ -1,4 +1,4 @@
-use fear::types::{FloatCmp, IntCmp};
+use fear::types::{CastKind, FloatCmp, IntCmp};
 
 use crate::{types::*, *};
 

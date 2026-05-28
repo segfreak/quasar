@@ -1,5 +1,5 @@
 // algebraic simplify, algebraic reassociation
-use crate::{ssa::CastKind, tree::*};
+use crate::{tree::*, types::CastKind};
 
 pub fn simplify(func: &mut FunctionDef) -> bool {
     let mut changed = false;
