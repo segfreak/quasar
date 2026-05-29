@@ -32,10 +32,8 @@ impl SsaRaiser {
             let block = &src.blocks[id];
             let is_entry = src.get_entry() == *id;
             let did = if is_entry { dst.entry } else { dst.new_block() };
-            log::info!("entry = {}, did = {}", dst.entry == did, did);
             self.block_map.insert(*id, did);
             for p in &block.params {
-                log::info!("block {} : param {}", id, p);
                 let ty = src.values[p].ty;
                 let v = if is_entry {
                     dst.add_param(ty)
@@ -120,8 +118,6 @@ impl SsaRaiser {
         dst: &mut crate::ssa::FunctionDef,
         block: BlockId,
     ) -> ValueId {
-        log::trace!("lowering expression: {:?}", e);
-
         let ty = e.ty;
 
         match &e.kind {
