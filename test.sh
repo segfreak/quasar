@@ -1,3 +1,3 @@
 #!/bin/bash
 set -e
-./build.sh --test "$@"
+./build.sh "$@" --test
