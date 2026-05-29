@@ -16,5 +16,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Installing depenedencies
+      run: cargo install cbindgen
     - name: Run tests
       run: ./test.sh
