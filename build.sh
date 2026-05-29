@@ -7,7 +7,8 @@ INKWELL_LLVM=""
 DO_TEST=0
 DO_INSTALL=0
 INSTALL_PREFIX="/usr/local/"
-FEATURES=("libfear/binary-ir" "fear/binary-ir")
+FEAR_FEATURES=("fear/binary-ir")
+LIBFEAR_FEATURES=("libfear/binary-ir")
 CARGO_ARGS=("--release" "--no-default-features")
 
 show_help() {
@@ -82,35 +83,40 @@ echo "LLVM      : $ENABLE_LLVM"
 echo "Cranelift : $ENABLE_CRANELIFT"
 
 if [ "$ENABLE_LLVM" = "ON" ]; then
-  FEATURES+=("libfear/llvm" "fear/llvm")
+  FEAR_FEATURES+=("fear/llvm")
+  LIBFEAR_FEATURES+=("libfear/llvm")
   if [ -n "$INKWELL_LLVM" ]; then
-    FEATURES+=("inkwell/${INKWELL_LLVM}")
+    FEAR_FEATURES+=("inkwell/${INKWELL_LLVM}")
+    LIBFEAR_FEATURES+=("inkwell/${INKWELL_LLVM}")
   fi
 fi
 
 if [ "$ENABLE_CRANELIFT" = "ON" ]; then
-  FEATURES+=("libfear/cranelift" "fear/cranelift")
+  LIBFEAR_FEATURES+=("libfear/cranelift")
+  FEAR_FEATURES+=("fear/cranelift")
 fi
 
-FEATURES_STR=$(IFS=,; echo "${FEATURES[*]}")
+FEAR_FEATURES_STR=$(IFS=,; echo "${FEAR_FEATURES[*]}")
+LIBFEAR_FEATURES_STR=$(IFS=,; echo "${LIBFEAR_FEATURES[*]}")
+ALL_FEATURES_STR="${FEAR_FEATURES_STR},${LIBFEAR_FEATURES_STR}"
 
 if [ "$DO_TEST" = "1" ]; then
-  cargo test "${CARGO_ARGS[@]}" --features "$FEATURES_STR"
+  cargo test "${CARGO_ARGS[@]}" --features "$ALL_FEATURES_STR"
 else
-  cargo build "${CARGO_ARGS[@]}" --features "$FEATURES_STR"
-  ./bindings.sh
+  cargo build "${CARGO_ARGS[@]}" --features "$ALL_FEATURES_STR"
 fi
 
 if [ "$DO_INSTALL" = "1" ]; then
+  ./bindings.sh
   INC_DIR="$INSTALL_PREFIX/include"
   LIB_DIR="$INSTALL_PREFIX/lib"
   BIN_DIR="$INSTALL_PREFIX/bin"
   sudo install -d "$INC_DIR"
   sudo install -d "$LIB_DIR"
   sudo install -d "$BIN_DIR"
+  sudo cargo install --path "./fear" --root "$INSTALL_PREFIX" --features "$FEAR_FEATURES_STR"
   sudo install -m 644 "./include/fear.h" "$INC_DIR/fear.h"
   sudo install -m 644 "./include/fear.hpp" "$INC_DIR/fear.hpp"
   sudo install -m 755 "./target/release/libfear.so" "$LIB_DIR/"
   sudo install -m 644 "./target/release/libfear.a"  "$LIB_DIR/"
-  sudo cargo install --path "./fear" --root "$INSTALL_PREFIX"
 fi

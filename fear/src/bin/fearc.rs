@@ -48,9 +48,12 @@ struct Cli {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
+    let output_type = cli.output_type.unwrap_or(OutputType::Object);
     let config = CompilerConfig {
-        backend: cli.backend.unwrap_or(Backend::default()),
-        output_type: cli.output_type.unwrap_or(OutputType::Object),
+        backend: cli
+            .backend
+            .unwrap_or(Backend::select_for(output_type).unwrap_or_default()),
+        output_type,
         triple: cli.triple.unwrap_or_else(Triple::host),
         opt_level: cli.opt_level.unwrap_or(OptLevel::Default),
     };
