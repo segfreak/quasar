@@ -4,6 +4,7 @@ set -e
 ENABLE_LLVM="OFF"
 ENABLE_CRANELIFT="ON"
 INKWELL_LLVM=""
+DO_TEST=0
 FEATURES=("libfear/binary-ir" "fear/binary-ir")
 CARGO_ARGS=("--no-default-features")
 
@@ -17,6 +18,7 @@ show_help() {
   echo "      --enable-llvm=ON/OFF      Enable or disable the LLVM backend       (Default: OFF)"
   echo "      --enable-cranelift=ON/OFF Enable or disable the Cranelift backend  (Default: ON)"
   echo "      --inkwell-llvm=VERSION    Specify the inkwell feature version      (e.g., llvm22-1)"
+  echo "      --test                    Perform tests only"
   echo ""
   echo "Examples:"
   echo "  $0 --enable-llvm=ON --inkwell-llvm=llvm22-1"
@@ -35,6 +37,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --enable-cranelift=*)
       ENABLE_CRANELIFT="${1#*=}"
+      shift
+      ;;
+    --test)
+      DO_TEST=1
       shift
       ;;
     -h|--help|-?)
@@ -64,6 +70,9 @@ fi
 
 FEATURES_STR=$(IFS=,; echo "${FEATURES[*]}")
 
-cargo build "${CARGO_ARGS[@]}" --features "$FEATURES_STR"
-
-./bindings.sh
+if [ "$DO_TEST" = "1" ]; then
+  cargo test "${CARGO_ARGS[@]}" --features "$FEATURES_STR"
+else
+  cargo build "${CARGO_ARGS[@]}" --features "$FEATURES_STR"
+  ./bindings.sh
+fi
