@@ -1,11 +1,31 @@
 use std::str::FromStr;
 use std::{fs::File, path::PathBuf};
 
+use clap::builder::styling::{AnsiColor, Effects};
+use clap::builder::Styles;
 use clap::*;
 use fear::{compiler::*, ssa::Module, types::OptLevel};
 use target_lexicon::Triple;
 
-#[derive(Parser)]
+fn styles() -> Styles {
+    Styles::styled()
+        .header(AnsiColor::BrightBlue.on_default() | Effects::BOLD)
+        .usage(AnsiColor::BrightGreen.on_default() | Effects::BOLD)
+        .literal(AnsiColor::BrightCyan.on_default())
+        .placeholder(AnsiColor::BrightMagenta.on_default())
+}
+
+#[derive(Parser, Debug)]
+#[command(
+    name = "fearc",
+    author,
+    version,
+    about = "Fear binary-module compiler driver",
+    long_about = "Compile Fear Binary IR modules into machine code.",
+    styles = styles(),
+    propagate_version = true,
+    arg_required_else_help = true,
+)]
 struct Cli {
     #[arg()]
     input: String,
