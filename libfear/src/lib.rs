@@ -148,7 +148,6 @@ pub unsafe extern "C" fn fearDumpToFile(m: *mut FearModule, fd: c_int) {
 
 /// Serializes the module into the compiler's native binary format and outputs it to a file descriptor.
 #[unsafe(no_mangle)]
-#[cfg(feature = "binary-ir")]
 pub unsafe extern "C" fn fearBinaryDumpToFile(m: *mut FearModule, fd: c_int) {
     let m = as_module(m);
     let file = unsafe { std::fs::File::from_raw_fd(fd) };

@@ -10,7 +10,6 @@ pub unsafe extern "C" fn fearModuleCreate(name: *const c_char) -> *mut FearModul
 }
 
 /// Deserializes a complete `Module` structure from an input file descriptor. Returns null on error.
-#[cfg(feature = "binary-ir")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearReadBinaryFromFile(fd: c_int) -> *mut FearModule {
     let file = unsafe { std::fs::File::from_raw_fd(fd) };

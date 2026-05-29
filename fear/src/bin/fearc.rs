@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     let config = CompilerConfig {
-        backend: cli.backend.unwrap_or(Backend::Cranelift),
+        backend: cli.backend.unwrap_or(Backend::default()),
         output_type: cli.output_type.unwrap_or(OutputType::Object),
         triple: cli.triple.unwrap_or_else(Triple::host),
         opt_level: cli.opt_level.unwrap_or(OptLevel::Default),

@@ -148,6 +148,7 @@ impl From<FearLinkage> for Linkage {
     }
 }
 
+#[allow(unreachable_patterns, unused)]
 impl From<FearBackend> for Backend {
     fn from(t: FearBackend) -> Self {
         match t {
@@ -164,6 +165,7 @@ impl From<FearBackend> for Backend {
     }
 }
 
+#[allow(unreachable_patterns, unused)]
 impl From<Backend> for FearBackend {
     fn from(t: Backend) -> Self {
         match t {

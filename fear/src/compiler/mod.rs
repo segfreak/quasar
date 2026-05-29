@@ -23,11 +23,11 @@ pub enum OutputType {
 /// Backend kind
 #[derive(Debug, EnumDisplay, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Backend {
-    #[default]
     #[cfg(feature = "cranelift")]
     #[display("cranelift")]
     Cranelift,
     #[display("fear")]
+    #[default]
     Fear,
     #[cfg(feature = "llvm")]
     #[display("llvm")]
@@ -136,7 +136,7 @@ pub struct CompilerConfig {
 impl Default for CompilerConfig {
     fn default() -> Self {
         Self {
-            backend: Backend::Cranelift,
+            backend: Backend::default(),
             output_type: OutputType::Object,
             triple: Triple::host(),
             opt_level: OptLevel::Default,
