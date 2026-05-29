@@ -652,8 +652,8 @@ struct Function
     /**
      * @brief Configures the target calling convention for the function.
      */
-    void setCallingConvention(FuncId id, CallConv cc)
-    { fearFunctionSetCC(parent_->getRaw(), id, detail::into(cc)); }
+    void setCallingConvention(CallConv cc)
+    { fearFunctionSetCC(parent_->getRaw(), getId(), detail::into(cc)); }
 
     const Module *getParent() { return parent_; }
     FuncId        getId() const { return id_; }
