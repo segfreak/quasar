@@ -1,6 +1,6 @@
 NOTES
-  - You need to install wild-linker using
-    $ sudo binstall wild-linker
+  - You need to install depenedencies
+    $ cargo install cbindgen
 
 EXAMPLES
   - Building with LLVM 22.1 (with installation)
