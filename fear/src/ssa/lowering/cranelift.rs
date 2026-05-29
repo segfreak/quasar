@@ -7,7 +7,9 @@ use cranelift_module::{Linkage as CLinkage, Module};
 use cranelift_object::{ObjectBuilder, ObjectModule};
 
 use crate::ssa::*;
-use crate::types::{CallingConvention, FloatCmp, FunctionSignature, IntCmp, Linkage, Type};
+use crate::types::{
+    CallingConvention, CastKind, FloatCmp, FunctionSignature, IntCmp, Linkage, Type,
+};
 
 use std::collections::HashMap;
 

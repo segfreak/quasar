@@ -1,6 +1,6 @@
 use crate::{
-    ssa::{CastKind, FuncId},
-    types::{FloatCmp, IntCmp, Type},
+    ssa::FuncId,
+    types::{CastKind, FloatCmp, IntCmp, Type},
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -34,12 +34,14 @@ pub enum ExprKind {
     Mul(Box<Expr>, Box<Expr>),
     Div(bool, Box<Expr>, Box<Expr>),
     Rem(bool, Box<Expr>, Box<Expr>),
+    Square(Box<Expr>),
 
     FAdd(Box<Expr>, Box<Expr>),
     FSub(Box<Expr>, Box<Expr>),
     FMul(Box<Expr>, Box<Expr>),
     FDiv(Box<Expr>, Box<Expr>),
     FRem(Box<Expr>, Box<Expr>),
+    FSquare(Box<Expr>),
 
     BitShl(Box<Expr>, Box<Expr>),
     BitShr(Box<Expr>, Box<Expr>),
@@ -79,8 +81,8 @@ impl From<ValueId> for ExprKind {
 }
 
 impl ExprKind {
-    pub fn get_uses(&self) -> Vec<Expr> {
-        match self {
+    pub fn get_operands(&self) -> Vec<Expr> {
+        let tmp = match self {
             Self::Var(_) => vec![],
             Self::Const(_) | Self::FConst(_) => vec![],
 
@@ -110,7 +112,11 @@ impl ExprKind {
                 vec![a.as_ref().clone(), b.as_ref().clone()]
             }
 
-            Self::BitNeg(v) | Self::Cast(_, v) | Self::Load(_, v) => {
+            Self::Square(v)
+            | Self::FSquare(v)
+            | Self::BitNeg(v)
+            | Self::Cast(_, v)
+            | Self::Load(_, v) => {
                 vec![v.as_ref().clone()]
             }
 
@@ -122,7 +128,18 @@ impl ExprKind {
 
             Self::Alloca(_) => vec![],
             Self::NAlloca(_, _) => vec![],
-        }
+        };
+
+        log::trace!(
+            "count of expression '{}' operands = {}",
+            FunctionDef::fmt_expr(&Expr {
+                ty: Type::Void,
+                kind: self.clone()
+            },),
+            tmp.len()
+        );
+
+        tmp
     }
 
     pub fn is_volatile(&self) -> bool {
@@ -132,12 +149,28 @@ impl ExprKind {
         }
     }
 
+    pub fn has_side_effects(&self) -> bool {
+        self.is_call() || self.is_store() || self.is_volatile()
+    }
+
     pub fn is_call(&self) -> bool {
         matches!(self, Self::Call(_, _))
     }
 
     pub fn is_memory(&self) -> bool {
-        matches!(self, Self::Load(_, _) | Self::Store(_, _, _))
+        self.is_load() || self.is_store()
+    }
+
+    pub fn is_load(&self) -> bool {
+        matches!(self, Self::Load(_, _))
+    }
+
+    pub fn is_store(&self) -> bool {
+        matches!(self, Self::Store(_, _, _))
+    }
+
+    pub fn can_eliminate(&self) -> bool {
+        !self.has_side_effects()
     }
 
     fn cast_cost(kind: CastKind) -> u32 {
@@ -172,12 +205,14 @@ impl ExprKind {
             Self::FAdd(a, b) | Self::FSub(a, b) | Self::FMul(a, b) => {
                 4 + a.get_cost() + b.get_cost()
             }
+            Self::FSquare(a) => 4 + a.get_cost(),
 
             Self::FDiv(a, b) => 13 + a.get_cost() + b.get_cost(),
             Self::FRem(a, b) => 15 + a.get_cost() + b.get_cost(),
 
             Self::BitNeg(a) => 1 + a.get_cost(),
 
+            Self::Square(a) => 3 + a.get_cost(),
             Self::Mul(a, b) => 3 + a.get_cost() + b.get_cost(),
             Self::Div(_, a, b) => 25 + a.get_cost() + b.get_cost(),
             Self::Rem(_, a, b) => 25 + a.get_cost() + b.get_cost(),
@@ -331,8 +366,12 @@ impl FunctionDef {
     }
 
     pub fn get_entry_param_exprs(&self) -> Vec<&Expr> {
-        let entry_block = self.blocks.get(&self.entry).unwrap();
-        entry_block
+        self.get_block_param_exprs(self.get_entry())
+    }
+
+    pub fn get_block_param_exprs(&self, block: BlockId) -> Vec<&Expr> {
+        let block = self.blocks.get(&block).unwrap();
+        block
             .params
             .iter()
             .map(|vid| self.values.get(vid).unwrap())
@@ -441,6 +480,16 @@ impl FunctionDef {
         )
     }
 
+    pub fn make_square(&mut self, block: BlockId, ty: Type, value: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::Square(Box::new(value.clone())),
+            },
+        )
+    }
+
     pub fn make_div(
         &mut self,
         block: BlockId,
@@ -521,6 +570,16 @@ impl FunctionDef {
             Expr {
                 ty,
                 kind: ExprKind::FRem(Box::new(left.clone()), Box::new(right.clone())),
+            },
+        )
+    }
+
+    pub fn make_fsquare(&mut self, block: BlockId, ty: Type, value: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FSquare(Box::new(value.clone())),
             },
         )
     }

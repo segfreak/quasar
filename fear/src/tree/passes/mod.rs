@@ -1,3 +1,4 @@
+pub mod canonicalize;
 pub mod cse;
 pub mod dce;
 pub mod expressify;
@@ -5,6 +6,8 @@ pub mod fold;
 pub mod normalize;
 pub mod simplify;
 pub mod strength_reduction;
+
+use std::collections::HashSet;
 
 use crate::tree::*;
 use crate::types::OptLevel;
@@ -18,6 +21,7 @@ pub enum PassKind {
     Simplify,
     StrengthReduction,
     Normalize,
+    Canonicalize,
 }
 
 #[derive(Debug, Default)]
@@ -28,14 +32,77 @@ pub struct PassResult {
 
 pub struct PassManager;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Pipeline {
+    max_passes: i32,
+    passes: HashSet<PassKind>,
+}
+
+impl Pipeline {
+    pub fn new(max_passes: i32) -> Self {
+        Self {
+            max_passes,
+            passes: HashSet::new(),
+        }
+    }
+
+    pub fn with_passes(max_passes: i32, passes: &[PassKind]) -> Self {
+        use PassKind::*;
+
+        let mut pipeline = Self::new(max_passes);
+
+        pipeline.get_passes_mut().insert(Expressify);
+        pipeline.passes.extend(passes);
+        pipeline
+    }
+
+    pub fn with_level(max_passes: i32, level: OptLevel) -> Self {
+        use PassKind::*;
+
+        let mut pipeline = Self::new(max_passes);
+
+        pipeline.get_passes_mut().insert(Expressify);
+
+        if level <= OptLevel::Default {
+            pipeline.passes.extend(vec![
+                CommonSubexpressionElimination,
+                DeadCodeElimination,
+                Expressify,
+                ConstantFolding,
+                Simplify,
+                StrengthReduction,
+                Normalize,
+                Canonicalize,
+            ]);
+        }
+
+        pipeline
+    }
+
+    pub fn get_max_passes(&self) -> i32 {
+        self.max_passes
+    }
+
+    pub fn get_passes(&self) -> &HashSet<PassKind> {
+        &self.passes
+    }
+
+    pub fn get_passes_mut(&mut self) -> &mut HashSet<PassKind> {
+        &mut self.passes
+    }
+
+    pub fn has_pass(&self, pass: PassKind) -> bool {
+        self.passes.contains(&pass)
+    }
+}
+
 impl PassManager {
-    pub fn optimize(
+    pub fn optimize_with_pipeline(
+        pipeline: &Pipeline,
         // fear::ssa module (because fear::tree lowers into fear::ssa)
         m: &crate::ssa::Module,
         // treessa function def, can call only fear function that declared or defined on 'm'
         f: &mut FunctionDef,
-        level: OptLevel,
-        max_passes: i32,
     ) -> PassResult {
         let mut result = PassResult::default();
 
@@ -63,19 +130,31 @@ impl PassManager {
                 };
             }
 
-            run_pass!(expressify::expressify, PassKind::Expressify);
-
-            if level >= OptLevel::Default {
-                run_pass!(normalize::normalize, PassKind::Normalize);
-                run_pass!(simplify::simplify, PassKind::Simplify);
-                run_pass!(fold::fold, PassKind::ConstantFolding);
-                run_pass!(
-                    strength_reduction::strength_reduction,
-                    PassKind::StrengthReduction
-                );
-                run_pass!(m, cse::cse, PassKind::CommonSubexpressionElimination);
-                run_pass!(dce::dce, PassKind::DeadCodeElimination);
+            macro_rules! try_run_pass {
+                ($pass:expr, $kind:expr) => {
+                    if pipeline.has_pass($kind) {
+                        run_pass!($pass, $kind)
+                    }
+                };
+                ($module:expr, $pass:expr, $kind:expr) => {
+                    if pipeline.has_pass($kind) {
+                        run_pass!($module, $pass, $kind)
+                    }
+                };
             }
+
+            try_run_pass!(expressify::expressify, PassKind::Expressify);
+
+            try_run_pass!(normalize::normalize, PassKind::Normalize);
+            try_run_pass!(simplify::simplify, PassKind::Simplify);
+            try_run_pass!(fold::fold, PassKind::ConstantFolding);
+            try_run_pass!(canonicalize::canonicalize, PassKind::Canonicalize);
+            try_run_pass!(
+                strength_reduction::strength_reduction,
+                PassKind::StrengthReduction
+            );
+            try_run_pass!(m, cse::cse, PassKind::CommonSubexpressionElimination);
+            try_run_pass!(dce::dce, PassKind::DeadCodeElimination);
 
             result.passes.extend(run);
             counter += 1;
@@ -90,7 +169,7 @@ impl PassManager {
                 );
             }
             let changed = f.dirty_hash() != before_hash;
-            if !changed || counter >= max_passes {
+            if !changed || counter >= pipeline.max_passes {
                 break;
             }
 

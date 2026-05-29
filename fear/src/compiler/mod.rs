@@ -1,32 +1,88 @@
 use crate::ssa::Module;
 use crate::types::OptLevel;
 use clap::ValueEnum;
+use enum_display::EnumDisplay;
 use std::io::Write;
 use target_lexicon::Triple;
 
 #[cfg(feature = "llvm")]
 use inkwell::OptimizationLevel;
 
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Debug, EnumDisplay, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum OutputType {
+    #[cfg(feature = "llvm")]
+    #[display("llvm-ir")]
     LlvmIr,
+    #[display("assembly")]
     Assembly,
     #[default]
+    #[display("object")]
     Object,
 }
 
 /// Backend kind
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Debug, EnumDisplay, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Backend {
     #[default]
+    #[cfg(feature = "cranelift")]
+    #[display("cranelift")]
     Cranelift,
+    #[display("fear")]
     Fear,
+    #[cfg(feature = "llvm")]
+    #[display("llvm")]
     Llvm,
+}
+
+impl Backend {
+    pub fn select_for(output_type: OutputType) -> Option<Self> {
+        match output_type {
+            #[cfg(feature = "llvm")]
+            OutputType::LlvmIr => Some(Self::Llvm),
+
+            OutputType::Assembly => {
+                #[cfg(feature = "llvm")]
+                {
+                    Some(Self::Llvm)
+                }
+                #[cfg(not(feature = "llvm"))]
+                {
+                    None
+                }
+            }
+
+            OutputType::Object => {
+                #[cfg(feature = "cranelift")]
+                {
+                    Some(Self::Cranelift)
+                }
+                #[cfg(all(not(feature = "cranelift"), feature = "llvm"))]
+                {
+                    Some(Self::Llvm)
+                }
+                #[cfg(all(not(feature = "cranelift"), not(feature = "llvm")))]
+                {
+                    None
+                }
+            }
+        }
+    }
+
+    pub fn supported_output_types(&self) -> &[OutputType] {
+        match self {
+            #[cfg(feature = "llvm")]
+            Self::Llvm => &[OutputType::LlvmIr, OutputType::Assembly, OutputType::Object],
+            #[cfg(feature = "cranelift")]
+            Self::Cranelift => &[OutputType::Object],
+            Self::Fear => &[],
+        }
+    }
 }
 
 impl OutputType {
     pub fn extenstion(&self) -> &'static str {
         match self {
+            #[cfg(feature = "llvm")]
             Self::LlvmIr => "ll",
             Self::Assembly => "s",
             Self::Object => "o",
@@ -56,6 +112,19 @@ impl From<OptLevel> for cranelift::codegen::settings::OptLevel {
     }
 }
 
+pub fn has_backend(backend: Backend) -> bool {
+    match backend {
+        #[cfg(feature = "llvm")]
+        Backend::Llvm => crate::ssa::lowering::has_llvm(),
+        #[cfg(feature = "cranelift")]
+        Backend::Cranelift => crate::ssa::lowering::has_cranelift(),
+        Backend::Fear => {
+            /* not yet implemented */
+            false
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CompilerConfig {
     pub backend: Backend,
@@ -75,13 +144,47 @@ impl Default for CompilerConfig {
     }
 }
 
+impl CompilerConfig {
+    pub fn setup(output_type: OutputType, triple: Triple, opt_level: OptLevel) -> Self {
+        let error_msg = format!("cannot select backend for {}", output_type);
+        let backend = Backend::select_for(output_type).expect(&error_msg);
+        Self {
+            backend,
+            output_type,
+            triple,
+            opt_level,
+        }
+    }
+
+    pub(crate) fn is_valid(&self) -> bool {
+        let output_is_supported = self
+            .backend
+            .supported_output_types()
+            .contains(&self.output_type);
+        if !output_is_supported {
+            log::error!(
+                "output type {} is unsupported by {} backend",
+                self.output_type,
+                self.backend
+            );
+        }
+
+        output_is_supported
+    }
+}
+
+#[allow(unused)]
 pub fn compile_module<W: Write>(
     module: &Module,
     config: &CompilerConfig,
     mut writer: W,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    if !config.is_valid() {
+        log::error!("compiling using invalid compiler-config");
+    }
+
     match (config.backend, config.output_type) {
-        #[allow(unused)]
+        #[cfg(feature = "llvm")]
         (Backend::Llvm, ty) => {
             #[cfg(feature = "llvm")]
             {
@@ -137,6 +240,7 @@ pub fn compile_module<W: Write>(
             }
         }
 
+        #[cfg(feature = "cranelift")]
         (Backend::Cranelift, OutputType::Object) => {
             #[cfg(feature = "cranelift")]
             {

@@ -1,4 +1,4 @@
-#include <fearc.h>
+#include <fear.h>
 #include <stdio.h>
 
 void
@@ -47,7 +47,7 @@ main ()
   fprintf (stderr, "preopt\n");
   fearDumpToFile (m, fileno (stderr));
 
-  unsigned total_passes = fearModuleOptimize (m);
+  unsigned total_passes = fearModuleOptimize (m, FearOptFull);
 
   fprintf (stderr, "postopt (%d passes)\n", total_passes);
   fearDumpToFile (m, fileno (stderr));
@@ -65,7 +65,7 @@ main ()
 
   if (fearHasBackend (FearBackendLlvm))
   {
-    fearEmitAssembly (m, FearBackendLlvm, FearOptLevelFull, 1);
+    fearEmitAssembly (m, FearBackendLlvm, FearOptFull, 1);
   }
 
   if (fearHasBackend (FearBackendCranelift))
@@ -73,7 +73,7 @@ main ()
     fprintf (stderr, "=> ex.o\n");
 
     FILE *exf_obj = fopen ("ex.o", "w");
-    fearEmitObject (m, FearBackendCranelift, FearOptLevelFull,
+    fearEmitObject (m, FearBackendCranelift, FearOptFull,
                     fileno (exf_obj));
     fclose (exf_obj);
   }

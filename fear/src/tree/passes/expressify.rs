@@ -23,7 +23,11 @@ fn collect_uses(expr: &Expr, uses: &mut HashMap<ValueId, usize>) {
         | ExprKind::Alloca(_)
         | ExprKind::NAlloca(_, _) => {}
 
-        ExprKind::Cast(_, a) | ExprKind::BitNeg(a) | ExprKind::Load(_, a) => {
+        ExprKind::Square(a)
+        | ExprKind::FSquare(a)
+        | ExprKind::Cast(_, a)
+        | ExprKind::BitNeg(a)
+        | ExprKind::Load(_, a) => {
             collect_uses(a, uses);
         }
 
@@ -132,9 +136,8 @@ fn expand_value(
         return e.clone();
     }
 
-    let expr = func.values[&vid].clone();
-    let result = expand_expr(func, expr, cache, uses, params, changed);
-
+    let expr = func.values.get(&vid).unwrap();
+    let result = expand_expr(func, expr.clone(), cache, uses, params, changed);
     cache.insert(vid, result.clone());
     result
 }
@@ -225,6 +228,10 @@ fn expand_expr(
             let b = expand_expr(func, *b, cache, uses, params, changed);
             ExprKind::Rem(signed, Box::new(a), Box::new(b))
         }
+        ExprKind::Square(a) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            ExprKind::Square(Box::new(a))
+        }
 
         ExprKind::FAdd(a, b) => {
             let a = expand_expr(func, *a, cache, uses, params, changed);
@@ -250,6 +257,10 @@ fn expand_expr(
             let a = expand_expr(func, *a, cache, uses, params, changed);
             let b = expand_expr(func, *b, cache, uses, params, changed);
             ExprKind::FRem(Box::new(a), Box::new(b))
+        }
+        ExprKind::FSquare(a) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            ExprKind::FSquare(Box::new(a))
         }
 
         ExprKind::BitShl(a, b) => {

@@ -151,9 +151,27 @@ impl From<FearLinkage> for Linkage {
 impl From<FearBackend> for Backend {
     fn from(t: FearBackend) -> Self {
         match t {
+            #[cfg(feature = "cranelift")]
             FearBackend::FearBackendCranelift => Backend::Cranelift,
-            FearBackend::FearBackendSelf => Backend::Fear,
+            #[cfg(feature = "llvm")]
             FearBackend::FearBackendLlvm => Backend::Llvm,
+            FearBackend::FearBackendSelf => Backend::Fear,
+            _ => {
+                log::warn!("unsupported backend, fallback into Backend::Fear");
+                Backend::Fear
+            }
+        }
+    }
+}
+
+impl From<Backend> for FearBackend {
+    fn from(t: Backend) -> Self {
+        match t {
+            #[cfg(feature = "cranelift")]
+            Backend::Cranelift => FearBackend::FearBackendCranelift,
+            #[cfg(feature = "llvm")]
+            Backend::Llvm => FearBackend::FearBackendLlvm,
+            Backend::Fear => FearBackend::FearBackendSelf,
         }
     }
 }

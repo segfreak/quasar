@@ -7,7 +7,7 @@ edition = "2024"
 crate-type = ["rlib"]
 
 [features]
-default = ["llvm", "inkwell/llvm22-1", "cranelift", "binary-ir"]
+default = ["cranelift", "binary-ir"]
 serde = ["dep:serde", "target-lexicon/serde"]
 binary-ir = ["serde", "dep:bincode", "dep:zstd"]
 llvm = ["dep:inkwell"]

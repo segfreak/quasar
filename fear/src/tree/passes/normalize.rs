@@ -88,18 +88,32 @@ fn normalize_expr(expr: Expr, changed: &mut bool) -> Expr {
             ExprKind::Sub(Box::new(a), Box::new(b))
         }
 
+        ExprKind::Square(a) => {
+            let a = normalize_expr(*a, changed);
+            ExprKind::Square(Box::new(a))
+        }
+
+        ExprKind::FSquare(a) => {
+            let a = normalize_expr(*a, changed);
+            ExprKind::FSquare(Box::new(a))
+        }
+
         ExprKind::Mul(a, b) => {
             let a = normalize_expr(*a, changed);
             let b = normalize_expr(*b, changed);
 
-            match (&a.kind, &b.kind) {
-                (ExprKind::Const(_), _) => {
-                    *changed = true;
+            if a == b {
+                ExprKind::Square(Box::new(a))
+            } else {
+                match (&a.kind, &b.kind) {
+                    (ExprKind::Const(_), _) => {
+                        *changed = true;
 
-                    ExprKind::Mul(Box::new(b), Box::new(a))
+                        ExprKind::Mul(Box::new(b), Box::new(a))
+                    }
+
+                    _ => ExprKind::Mul(Box::new(a), Box::new(b)),
                 }
-
-                _ => ExprKind::Mul(Box::new(a), Box::new(b)),
             }
         }
 

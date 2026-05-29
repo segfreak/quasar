@@ -1,5 +1,5 @@
 // algebraic simplify, algebraic reassociation
-use crate::{ssa::CastKind, tree::*};
+use crate::{tree::*, types::CastKind};
 
 pub fn simplify(func: &mut FunctionDef) -> bool {
     let mut changed = false;
@@ -170,6 +170,20 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
                     (_, ExprKind::Const(0)) => {
                         *changed = true;
                         return a;
+                    }
+                    // x^2 - y^2 = (x - y) * (x + y)
+                    (ExprKind::Square(x), ExprKind::Square(y)) => {
+                        *changed = true;
+                        ExprKind::Mul(
+                            Box::new(Expr {
+                                ty: expr.ty,
+                                kind: ExprKind::Sub(Box::new(*x.clone()), Box::new(*y.clone())),
+                            }),
+                            Box::new(Expr {
+                                ty: expr.ty,
+                                kind: ExprKind::Add(Box::new(*x.clone()), Box::new(*y.clone())),
+                            }),
+                        )
                     }
                     // (x + const y) - const z  =>  x + const (y - z)
                     (
@@ -419,6 +433,10 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
             }
         }
 
+        // ExprKind::Pow(a) => {
+        //     let a = simplify_expr(*a, changed);
+        //     ExprKind::Mul(Box::new(a.clone()), Box::new(a))
+        // }
         other => other,
     };
 

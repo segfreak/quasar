@@ -32,10 +32,8 @@ impl SsaRaiser {
             let block = &src.blocks[id];
             let is_entry = src.get_entry() == *id;
             let did = if is_entry { dst.entry } else { dst.new_block() };
-            log::info!("entry = {}, did = {}", dst.entry == did, did);
             self.block_map.insert(*id, did);
             for p in &block.params {
-                log::info!("block {} : param {}", id, p);
                 let ty = src.values[p].ty;
                 let v = if is_entry {
                     dst.add_param(ty)
@@ -181,6 +179,12 @@ impl SsaRaiser {
                 dst.make_mul(block, ty, l, r)
             }
 
+            ExprKind::Square(a) => {
+                log::warn!("bug. raising a square instruction, but this expression must be lowered from square(x) into mul(x, x)");
+                let l = self.raise_expr(a, dst, block);
+                dst.make_mul(block, ty, l, l)
+            }
+
             ExprKind::Div(signed, a, b) => {
                 let l = self.raise_expr(a, dst, block);
                 let r = self.raise_expr(b, dst, block);
@@ -221,6 +225,11 @@ impl SsaRaiser {
                 let l = self.raise_expr(a, dst, block);
                 let r = self.raise_expr(b, dst, block);
                 dst.make_frem(block, ty, l, r)
+            }
+
+            ExprKind::FSquare(a) => {
+                let l = self.raise_expr(a, dst, block);
+                dst.make_fmul(block, ty, l, l)
             }
 
             ExprKind::BitShl(a, b) => {

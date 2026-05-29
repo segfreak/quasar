@@ -1,5 +1,5 @@
-#include "fearc.h"
 #include <fcntl.h>
+#include <fear.h>
 #include <stdio.h>
 #include <unistd.h>
 
