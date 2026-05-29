@@ -3,9 +3,8 @@ NOTES
     $ sudo binstall wild-linker
 
 EXAMPLES
-  - Building with LLVM 22.1
-    $ ./build.sh --enable-llvm=ON --inkwell-llvm=llvm22-1 --release
-    $ sudo sh install.sh /usr/                                    # install library system-wide
+  - Building with LLVM 22.1 (with installation)
+    $ ./build.sh --enable-llvm=ON --inkwell-llvm=llvm22-1 --release --install --prefix "/usr/local/"
 
 FEATURES
 
