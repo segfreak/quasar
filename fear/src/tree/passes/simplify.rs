@@ -19,39 +19,23 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
             ExprKind::Call(func, simplified)
         }
 
-        // (x * const y) + (x * const y1)  => x * const (y + y1)
+        // (x * y) + (x2 * z) if x == x2  =>  x * (y + z)
         ExprKind::Add(
             box Expr {
-                kind:
-                    ExprKind::Mul(
-                        box x,
-                        box Expr {
-                            kind: ExprKind::Const(y),
-                            ..
-                        },
-                    ),
+                kind: ExprKind::Mul(box x, box y),
                 ..
             },
             box Expr {
-                kind:
-                    ExprKind::Mul(
-                        box x2,
-                        box Expr {
-                            kind: ExprKind::Const(y2),
-                            ..
-                        },
-                    ),
+                kind: ExprKind::Mul(box x2, box z),
                 ..
             },
         ) if x == x2 => {
-            let x = simplify_expr(x, changed);
-
             *changed = true;
             ExprKind::Mul(
                 Box::new(x),
                 Box::new(Expr {
                     ty: expr.ty,
-                    kind: ExprKind::Const(y + y2),
+                    kind: ExprKind::Add(Box::new(y), Box::new(z)),
                 }),
             )
         }
@@ -61,51 +45,10 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
             let b = simplify_expr(*b, changed);
 
             match (&a.kind, &b.kind) {
-                // add(mul(x, const y), x) => x * (const y + 1)
-                (
-                    ExprKind::Mul(
-                        box x1,
-                        box Expr {
-                            kind: ExprKind::Const(y),
-                            ..
-                        },
-                    ),
-                    _,
-                ) if x1 == &b => {
-                    *changed = true;
-                    ExprKind::Mul(
-                        Box::new(x1.clone()),
-                        Box::new(Expr {
-                            ty: expr.ty,
-                            kind: ExprKind::Const(y + 1),
-                        }),
-                    )
-                }
-                (
-                    _,
-                    ExprKind::Mul(
-                        box x1,
-                        box Expr {
-                            kind: ExprKind::Const(y),
-                            ..
-                        },
-                    ),
-                ) if x1 == &a => {
-                    *changed = true;
-                    ExprKind::Mul(
-                        Box::new(x1.clone()),
-                        Box::new(Expr {
-                            ty: expr.ty,
-                            kind: ExprKind::Const(y + 1),
-                        }),
-                    )
-                }
-
                 (_, ExprKind::BitNeg(y)) => {
                     *changed = true;
                     ExprKind::Sub(Box::new(a), Box::new(*y.clone()))
                 }
-
                 (ExprKind::Const(0), _) | (_, ExprKind::Const(0)) => {
                     *changed = true;
                     let result = if matches!(a.kind, ExprKind::Const(0)) {
@@ -115,43 +58,59 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
                     };
                     return result;
                 }
-                // (x + const y) + const z  =>  x + const (y + z)
-                (
-                    ExprKind::Add(
-                        box x,
-                        box Expr {
-                            kind: ExprKind::Const(y),
-                            ..
-                        },
-                    ),
-                    ExprKind::Const(z),
-                ) => {
+                // add(mul(x, y), x) => x * (y + 1)
+                (ExprKind::Mul(box x1, box y), _) if x1 == &b => {
                     *changed = true;
-                    ExprKind::Add(
-                        Box::new(x.clone()),
+                    ExprKind::Mul(
+                        Box::new(x1.clone()),
                         Box::new(Expr {
                             ty: expr.ty,
-                            kind: ExprKind::Const(y + z),
+                            kind: ExprKind::Add(
+                                Box::new(y.clone()),
+                                Box::new(Expr {
+                                    ty: expr.ty,
+                                    kind: ExprKind::Const(1),
+                                }),
+                            ),
                         }),
                     )
                 }
-                // (x - const y) + const z  =>  x - const (y - z)
-                (
-                    ExprKind::Sub(
-                        box x,
-                        box Expr {
-                            kind: ExprKind::Const(y),
-                            ..
-                        },
-                    ),
-                    ExprKind::Const(z),
-                ) => {
+                // add(x, mul(x, y)) => x * (y + 1)
+                (_, ExprKind::Mul(box x1, box y)) if x1 == &a => {
+                    *changed = true;
+                    ExprKind::Mul(
+                        Box::new(x1.clone()),
+                        Box::new(Expr {
+                            ty: expr.ty,
+                            kind: ExprKind::Add(
+                                Box::new(y.clone()),
+                                Box::new(Expr {
+                                    ty: expr.ty,
+                                    kind: ExprKind::Const(1),
+                                }),
+                            ),
+                        }),
+                    )
+                }
+                // (x + y) + z  =>  x + (y + z)
+                (ExprKind::Add(box x, box y), _) => {
+                    *changed = true;
+                    ExprKind::Add(
+                        Box::new(x.clone()),
+                        Box::new(Expr {
+                            ty: expr.ty,
+                            kind: ExprKind::Add(Box::new(y.clone()), Box::new(b)),
+                        }),
+                    )
+                }
+                // (x - y) + z  =>  x - (y - z)
+                (ExprKind::Sub(box x, box y), _) => {
                     *changed = true;
                     ExprKind::Sub(
                         Box::new(x.clone()),
                         Box::new(Expr {
                             ty: expr.ty,
-                            kind: ExprKind::Const(y - z),
+                            kind: ExprKind::Sub(Box::new(y.clone()), Box::new(b)),
                         }),
                     )
                 }
@@ -185,44 +144,25 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
                             }),
                         )
                     }
-                    // (x + const y) - const z  =>  x + const (y - z)
-                    (
-                        ExprKind::Add(
-                            box x,
-                            box Expr {
-                                kind: ExprKind::Const(y),
-                                ..
-                            },
-                        ),
-                        ExprKind::Const(z),
-                    ) => {
+                    // (x + y) - z  =>  x + (y - z)
+                    (ExprKind::Add(box x, box y), _) => {
                         *changed = true;
                         ExprKind::Add(
                             Box::new(x.clone()),
                             Box::new(Expr {
                                 ty: expr.ty,
-                                kind: ExprKind::Const(y - z),
+                                kind: ExprKind::Sub(Box::new(y.clone()), Box::new(b)),
                             }),
                         )
                     }
-
-                    // (x - const y) - const z  =>  x - const (y + z)
-                    (
-                        ExprKind::Sub(
-                            box x,
-                            box Expr {
-                                kind: ExprKind::Const(y),
-                                ..
-                            },
-                        ),
-                        ExprKind::Const(z),
-                    ) => {
+                    // (x - y) - z  =>  x - (y + z)
+                    (ExprKind::Sub(box x, box y), _) => {
                         *changed = true;
                         ExprKind::Sub(
                             Box::new(x.clone()),
                             Box::new(Expr {
                                 ty: expr.ty,
-                                kind: ExprKind::Const(y + z),
+                                kind: ExprKind::Add(Box::new(y.clone()), Box::new(b)),
                             }),
                         )
                     }
@@ -430,6 +370,33 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
                 a.kind
             } else {
                 ExprKind::Cast(kind, Box::new(a))
+            }
+        }
+
+        ExprKind::BitXor(a, b) => {
+            let a = simplify_expr(*a, changed);
+            let b = simplify_expr(*b, changed);
+
+            if a == b {
+                *changed = true;
+                return Expr {
+                    ty: expr.ty,
+                    kind: ExprKind::Const(0),
+                };
+            }
+
+            match (&a.kind, &b.kind) {
+                // (x ^ y) ^ z if x == z => y
+                (ExprKind::BitXor(box x, box y), _) if x == &b => {
+                    *changed = true;
+                    return y.clone();
+                }
+                // (x ^ y) ^ z if y == z => x
+                (ExprKind::BitXor(box x, box y), _) if y == &b => {
+                    *changed = true;
+                    return x.clone();
+                }
+                _ => ExprKind::BitXor(Box::new(a), Box::new(b)),
             }
         }
 

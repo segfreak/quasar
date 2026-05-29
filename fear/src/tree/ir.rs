@@ -82,7 +82,7 @@ impl From<ValueId> for ExprKind {
 
 impl ExprKind {
     pub fn get_operands(&self) -> Vec<Expr> {
-        let tmp = match self {
+        match self {
             Self::Var(_) => vec![],
             Self::Const(_) | Self::FConst(_) => vec![],
 
@@ -128,18 +128,7 @@ impl ExprKind {
 
             Self::Alloca(_) => vec![],
             Self::NAlloca(_, _) => vec![],
-        };
-
-        log::trace!(
-            "count of expression '{}' operands = {}",
-            FunctionDef::fmt_expr(&Expr {
-                ty: Type::Void,
-                kind: self.clone()
-            },),
-            tmp.len()
-        );
-
-        tmp
+        }
     }
 
     pub fn is_volatile(&self) -> bool {
