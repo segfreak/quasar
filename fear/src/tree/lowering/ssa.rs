@@ -118,6 +118,8 @@ impl SsaRaiser {
         dst: &mut crate::ssa::FunctionDef,
         block: BlockId,
     ) -> ValueId {
+        log::trace!("lowering expression: {:?}", e);
+
         let ty = e.ty;
 
         match &e.kind {
