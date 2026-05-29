@@ -8,7 +8,7 @@ DO_TEST=0
 DO_INSTALL=0
 INSTALL_PREFIX="/usr/local/"
 FEATURES=("libfear/binary-ir" "fear/binary-ir")
-CARGO_ARGS=("--no-default-features")
+CARGO_ARGS=("--release" "--no-default-features")
 
 show_help() {
   echo "Usage: $0 [OPTIONS] [-- CARGO_ARGUMENTS]"

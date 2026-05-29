@@ -166,10 +166,31 @@ int fearEmitAssembly(struct FearModule *m,
 void fearDumpToFile(struct FearModule *m, int fd);
 
 /**
+ * Writes a readable, plain-text representation of the module's IR into a C String.
+ * Needs to free()
+ */
+char *fearDumpToString(struct FearModule *m);
+
+/**
+ * Frees rust-side allocated string
+ */
+void fearStringDispose(char *s);
+
+/**
  * Serializes the module into the compiler's native binary format and outputs it to a file descriptor.
  */
 void fearBinaryDumpToFile(struct FearModule *m,
                           int fd);
+
+/**
+ * Serializes the module into the compiler's native binary format and outputs it to a sized buffer.
+ */
+uint8_t *fearBinaryDumpToBuffer(struct FearModule *m, uintptr_t *out_size);
+
+/**
+ * Frees rust-side allocated buffer
+ */
+void fearBufferDispose(uint8_t *ptr, uintptr_t size);
 
 /**
  * Creates a new basic block inside the function to build branches or loops.

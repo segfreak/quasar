@@ -7,7 +7,7 @@ pub mod types;
 
 use types::*;
 
-use std::ffi::c_int;
+use std::ffi::{c_int, CString};
 use std::io::Write;
 use std::os::fd::FromRawFd;
 use std::os::raw::c_char;
@@ -146,6 +146,28 @@ pub unsafe extern "C" fn fearDumpToFile(m: *mut FearModule, fd: c_int) {
     std::mem::forget(file);
 }
 
+/// Writes a readable, plain-text representation of the module's IR into a C String.
+/// Needs to free()
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearDumpToString(m: *mut FearModule) -> *mut c_char {
+    let m = as_module(m);
+    let s = m.dump();
+    match CString::new(s) {
+        Ok(c_str) => c_str.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+/// Frees rust-side allocated string
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearStringDispose(s: *mut c_char) {
+    if !s.is_null() {
+        unsafe {
+            let _ = CString::from_raw(s);
+        }
+    }
+}
+
 /// Serializes the module into the compiler's native binary format and outputs it to a file descriptor.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearBinaryDumpToFile(m: *mut FearModule, fd: c_int) {
@@ -154,5 +176,41 @@ pub unsafe extern "C" fn fearBinaryDumpToFile(m: *mut FearModule, fd: c_int) {
     if let Err(e) = binary::write(m, file) {
         log::error!("cannot write binary module into fd({})", fd);
         log::error!("{}", e);
+    }
+}
+
+/// Serializes the module into the compiler's native binary format and outputs it to a sized buffer.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearBinaryDumpToBuffer(
+    m: *mut FearModule,
+    out_size: *mut usize,
+) -> *mut u8 {
+    let m = as_module(m);
+    let mut buf = Vec::new();
+
+    if let Err(e) = binary::write(m, &mut buf) {
+        log::error!("cannot write binary module into buffer: {}", e);
+        unsafe {
+            *out_size = 0;
+        }
+        return std::ptr::null_mut();
+    }
+
+    unsafe {
+        *out_size = buf.len();
+    }
+    let mut boxed_slice = buf.into_boxed_slice();
+    let ptr = boxed_slice.as_mut_ptr();
+    std::mem::forget(boxed_slice);
+    ptr
+}
+
+/// Frees rust-side allocated buffer
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearBufferDispose(ptr: *mut u8, size: usize) {
+    if !ptr.is_null() {
+        unsafe {
+            let _ = Vec::from_raw_parts(ptr, size, size);
+        }
     }
 }
