@@ -62,8 +62,8 @@ fn test_def() -> FunctionDef {
     let fcmp = f.make_fcmp(entry, FloatCmp::OLt, &fc1, &fc2);
 
     // div/rem
-    let div = f.make_div(entry, Type::Int32, true, &x, &c2);
-    let rem = f.make_rem(entry, Type::Int32, true, &x, &c2);
+    let div = f.make_div(entry, Type::Int32, false, &x, &c2);
+    let rem = f.make_rem(entry, Type::Int32, false, &x, &c2);
 
     // unary bit ops
     let neg = f.make_bitneg(entry, Type::Int32, &x);

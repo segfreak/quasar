@@ -230,7 +230,12 @@ impl FunctionDef {
                 if val.ty.is_void() {
                     out.push_str(&format!("    {}\n", Self::fmt_expr(val)));
                 } else {
-                    out.push_str(&format!("    (set %{} {})\n", v, Self::fmt_expr(val)));
+                    out.push_str(&format!(
+                        "    (def {} %{} {})\n",
+                        val.ty,
+                        v,
+                        Self::fmt_expr(val)
+                    ));
                 }
             }
 

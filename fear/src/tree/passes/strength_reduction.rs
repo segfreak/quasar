@@ -113,6 +113,30 @@ pub fn reduce_expr(expr: Expr, changed: &mut bool) -> Expr {
             }
         }
 
+        ExprKind::Rem(signed, a, b) if !signed => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+
+            match &b.kind {
+                // rem => shifts
+                ExprKind::Const(y) if is_power_of_two(*y) => {
+                    *changed = true;
+                    let mask = y - 1;
+                    return Expr {
+                        ty,
+                        kind: ExprKind::BitAnd(
+                            Box::new(a),
+                            Box::new(Expr {
+                                ty: b.ty,
+                                kind: ExprKind::Const(mask),
+                            }),
+                        ),
+                    };
+                }
+                _ => ExprKind::Rem(signed, Box::new(a), Box::new(b)),
+            }
+        }
+
         other => other,
     };
 
