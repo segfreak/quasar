@@ -387,6 +387,25 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
             }
         }
 
+        ExprKind::BitOr(a, b) => {
+            let a = simplify_expr(*a, changed);
+            let b = simplify_expr(*b, changed);
+
+            match (&a.kind, &b.kind) {
+                // x | 0 => x
+                (ExprKind::Const(0), a) | (a, ExprKind::Const(0)) => {
+                    *changed = true;
+                    a.clone()
+                }
+                // x | x => x
+                (a, b) | (b, a) if a == b => {
+                    *changed = true;
+                    a.clone()
+                }
+                _ => ExprKind::BitOr(Box::new(a), Box::new(b)),
+            }
+        }
+
         ExprKind::BitXor(a, b) => {
             let a = simplify_expr(*a, changed);
             let b = simplify_expr(*b, changed);
