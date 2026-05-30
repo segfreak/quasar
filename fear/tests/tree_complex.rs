@@ -91,7 +91,7 @@ pub fn complex() {
 
     let mut f = test_def();
 
-    log::debug!("before opts: {}", f.dump());
+    log::debug!("before opts:\n{}", f.dump());
 
     let pipeline = Pipeline::with_level(128, OptLevel::Default);
 
