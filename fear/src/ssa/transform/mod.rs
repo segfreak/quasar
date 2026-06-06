@@ -14,6 +14,7 @@ pub mod dse;
 pub mod gvn;
 pub mod strength_reduction;
 pub mod tre;
+pub mod selfcmpfold;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PassKind {
@@ -27,6 +28,7 @@ pub enum PassKind {
     AlgebraicSimplify,
     GlobalValueNumbering,
     CFGSimplify,
+    SelfComparisonFolding,
 }
 
 #[derive(Debug, Default)]
@@ -115,6 +117,7 @@ impl PassManager {
                 run_pass!(dse::dse, PassKind::DeadStoreElimination);
                 run_pass!(tre::tre, PassKind::TailRecursionElimination);
                 run_pass!(dce::dce, PassKind::DeadCodeElimination);
+                run_pass!(selfcmpfold::selfcmpfold, PassKind::SelfComparisonFolding);
                 run_pass!(cfg_simplify::cfg_simplify, PassKind::CFGSimplify);
             }
 
