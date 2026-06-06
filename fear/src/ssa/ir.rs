@@ -231,12 +231,12 @@ pub struct FunctionDef {
     pub insts: HashMap<InstId, Inst>,
     pub values: HashMap<ValueId, Value>,
 
+    pub entry: BlockId,
+    pub params: Vec<ValueId>,
+
     next_block: BlockId,
     next_inst: InstId,
     next_value: ValueId,
-
-    pub entry: BlockId,
-    pub params: Vec<ValueId>,
 }
 
 impl FunctionDef {

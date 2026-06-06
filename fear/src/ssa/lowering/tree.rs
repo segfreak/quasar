@@ -103,7 +103,9 @@ impl TreeSsaRaiser {
             ssa::InstKind::IConst(c) => {
                 dst.make_iconst(block, src.get_type(inst.result.unwrap()), *c)
             }
-            ssa::InstKind::FConst(bits) => dst.make_fconst(block, src.get_type(inst.result.unwrap()), *bits),
+            ssa::InstKind::FConst(bits) => {
+                dst.make_fconst(block, src.get_type(inst.result.unwrap()), *bits)
+            }
 
             ssa::InstKind::Add => {
                 dst.make_add(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))

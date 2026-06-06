@@ -6,6 +6,9 @@ edition = "2024"
 [lib]
 crate-type = ["rlib"]
 
+[[bin]]
+name = "fearc"
+
 [features]
 default = ["binary-ir"]
 serde = ["dep:serde", "target-lexicon/serde"]

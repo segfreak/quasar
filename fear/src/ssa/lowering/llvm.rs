@@ -1,11 +1,11 @@
 use inkwell::{
+    AddressSpace, FloatPredicate, IntPredicate, OptimizationLevel,
     builder::Builder,
     context::Context,
     module::Module,
     targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple},
     types::{AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum, FloatType, FunctionType, IntType},
     values::{BasicValue, BasicValueEnum, FloatValue, FunctionValue, IntValue, PhiValue},
-    AddressSpace, FloatPredicate, IntPredicate, OptimizationLevel,
 };
 
 use std::collections::HashMap;

@@ -64,9 +64,8 @@ pub enum FearLinkage {
 pub enum FearBackend {
     /// default backend
     FearBackendCranelift,
-    /// not yet implemented
-    FearBackendSelf,
     FearBackendLlvm,
+    FearBackendDummy,
 }
 
 /// Integer compare predicate
@@ -156,10 +155,9 @@ impl From<FearBackend> for Backend {
             FearBackend::FearBackendCranelift => Backend::Cranelift,
             #[cfg(feature = "llvm")]
             FearBackend::FearBackendLlvm => Backend::Llvm,
-            FearBackend::FearBackendSelf => Backend::Fear,
             _ => {
-                log::warn!("unsupported backend, fallback into Backend::Fear");
-                Backend::Fear
+                log::warn!("unsupported backend, fallback into Backend::Dummy");
+                Backend::Dummy
             }
         }
     }
@@ -173,7 +171,7 @@ impl From<Backend> for FearBackend {
             Backend::Cranelift => FearBackend::FearBackendCranelift,
             #[cfg(feature = "llvm")]
             Backend::Llvm => FearBackend::FearBackendLlvm,
-            Backend::Fear => FearBackend::FearBackendSelf,
+            Backend::Dummy => FearBackend::FearBackendDummy,
         }
     }
 }

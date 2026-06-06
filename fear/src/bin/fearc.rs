@@ -1,8 +1,8 @@
 use std::str::FromStr;
 use std::{fs::File, path::PathBuf};
 
-use clap::builder::styling::{AnsiColor, Effects};
 use clap::builder::Styles;
+use clap::builder::styling::{AnsiColor, Effects};
 use clap::*;
 use fear::{compiler::*, ssa::Module, types::OptLevel};
 use target_lexicon::Triple;
@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = CompilerConfig {
         backend: cli
             .backend
-            .unwrap_or(Backend::select_for(output_type).unwrap_or_default()),
+            .unwrap_or(Backend::select_for(output_type).unwrap_or(Backend::Dummy)),
         output_type,
         triple: cli.triple.unwrap_or_else(Triple::host),
         opt_level: cli.opt_level.unwrap_or(OptLevel::Default),

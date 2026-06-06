@@ -7,7 +7,7 @@ pub mod types;
 
 use types::*;
 
-use std::ffi::{c_int, CString};
+use std::ffi::{CString, c_int};
 use std::io::Write;
 use std::os::fd::FromRawFd;
 use std::os::raw::c_char;
@@ -66,7 +66,7 @@ pub unsafe extern "C" fn fearSelectBackend() -> FearBackend {
     } else if fearHasBackend(FearBackend::FearBackendCranelift) {
         FearBackend::FearBackendCranelift
     } else {
-        FearBackend::FearBackendSelf
+        FearBackend::FearBackendDummy
     };
 
     if !fearHasBackend(t) {
@@ -82,7 +82,7 @@ pub unsafe extern "C" fn fearSelectBackend() -> FearBackend {
 /// Check by fearHasBackend()
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearSelectBackendForObject() -> FearBackend {
-    FearBackend::from(Backend::select_for(OutputType::Object).unwrap_or(Backend::Fear))
+    FearBackend::from(Backend::select_for(OutputType::Object).unwrap_or(Backend::Dummy))
 }
 
 /// Compiles a `FearModule` into a native machine object file via target backend, streaming to a raw file descriptor.

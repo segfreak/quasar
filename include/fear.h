@@ -16,11 +16,8 @@ typedef enum FearBackend {
    * default backend
    */
   FearBackendCranelift,
-  /**
-   * not yet implemented
-   */
-  FearBackendSelf,
   FearBackendLlvm,
+  FearBackendDummy,
 } FearBackend;
 
 /**

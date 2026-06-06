@@ -114,9 +114,10 @@ if [ "$DO_INSTALL" = "1" ]; then
   sudo install -d "$INC_DIR"
   sudo install -d "$LIB_DIR"
   sudo install -d "$BIN_DIR"
-  sudo cargo install --path "./fear" --root "$INSTALL_PREFIX" --features "$FEAR_FEATURES_STR"
+  # sudo cargo install --path "./fear" --root "$INSTALL_PREFIX" --features "$FEAR_FEATURES_STR"
   sudo install -m 644 "./include/fear.h" "$INC_DIR/fear.h"
   sudo install -m 644 "./include/fear.hpp" "$INC_DIR/fear.hpp"
+  sudo install -m 755 "./target/release/fearc"      "$BIN_DIR/"
   sudo install -m 755 "./target/release/libfear.so" "$LIB_DIR/"
   sudo install -m 644 "./target/release/libfear.a"  "$LIB_DIR/"
 fi

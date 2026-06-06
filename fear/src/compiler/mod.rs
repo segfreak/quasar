@@ -21,20 +21,34 @@ pub enum OutputType {
 }
 
 /// Backend kind
-#[derive(Debug, EnumDisplay, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Debug, EnumDisplay, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Backend {
+    #[display("dummy")]
+    Dummy,
     #[cfg(feature = "cranelift")]
     #[display("cranelift")]
     Cranelift,
-    #[display("fear")]
-    #[default]
-    Fear,
     #[cfg(feature = "llvm")]
     #[display("llvm")]
     Llvm,
 }
 
 impl Backend {
+    #[allow(unreachable_code)]
+    pub fn first_available() -> Self {
+        #[cfg(feature = "cranelift")]
+        {
+            return Backend::Cranelift;
+        }
+
+        #[cfg(feature = "llvm")]
+        {
+            return Backend::Llvm;
+        }
+
+        Backend::Dummy
+    }
+
     pub fn select_for(output_type: OutputType) -> Option<Self> {
         match output_type {
             #[cfg(feature = "llvm")]
@@ -74,7 +88,7 @@ impl Backend {
             Self::Llvm => &[OutputType::LlvmIr, OutputType::Assembly, OutputType::Object],
             #[cfg(feature = "cranelift")]
             Self::Cranelift => &[OutputType::Object],
-            Self::Fear => &[],
+            Self::Dummy => &[],
         }
     }
 }
@@ -118,8 +132,8 @@ pub fn has_backend(backend: Backend) -> bool {
         Backend::Llvm => crate::ssa::lowering::has_llvm(),
         #[cfg(feature = "cranelift")]
         Backend::Cranelift => crate::ssa::lowering::has_cranelift(),
-        Backend::Fear => {
-            /* not yet implemented */
+        Backend::Dummy => {
+            /* dummy */
             false
         }
     }
@@ -136,7 +150,7 @@ pub struct CompilerConfig {
 impl Default for CompilerConfig {
     fn default() -> Self {
         Self {
-            backend: Backend::default(),
+            backend: Backend::select_for(OutputType::Object).unwrap_or(Backend::Dummy),
             output_type: OutputType::Object,
             triple: Triple::host(),
             opt_level: OptLevel::Default,
