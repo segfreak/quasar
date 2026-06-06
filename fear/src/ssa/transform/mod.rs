@@ -52,6 +52,7 @@ pub struct PassManagerOpts {
 
 impl PassManager {
     pub fn run_function(opts: &PassManagerOpts, m: &mut Module, f: FuncId) -> PassResult {
+        log::trace!("running optimiser with options: {:?}", opts);
         let mut result = PassResult::default();
 
         if opts.multilevel
@@ -98,7 +99,7 @@ impl PassManager {
                 };
             }
 
-            if opts.level <= OptLevel::Default {
+            if opts.level >= OptLevel::Default {
                 run_pass!(constfold::constfold, PassKind::ConstantFolding);
                 run_pass!(
                     algebraic_simplify::algebraic_simplify,
@@ -163,6 +164,10 @@ impl PassManager {
 }
 
 impl Module {
+    pub fn optimize_with_options(&mut self, opts: PassManagerOpts) -> HashMap<FuncId, PassResult> {
+        PassManager::run_module(&opts, self)
+    }
+
     pub fn optimize(&mut self, level: OptLevel, multilevel: bool) -> HashMap<FuncId, PassResult> {
         let opts = PassManagerOpts {
             level,
@@ -170,6 +175,6 @@ impl Module {
             multilevel_tree_max_passes: 128,
             multilevel_tree_level: None,
         };
-        PassManager::run_module(&opts, self)
+        self.optimize_with_options(opts)
     }
 }

@@ -126,7 +126,7 @@ bool fearHasBackend(enum FearBackend backend);
 /**
  * Initialising logging system
  */
-int32_t fearInitialiseLogging(void);
+int32_t fearInitLogging(void);
 
 /**
  * Select any backend

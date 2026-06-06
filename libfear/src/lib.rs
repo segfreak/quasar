@@ -7,7 +7,7 @@ pub mod types;
 
 use types::*;
 
-use std::ffi::{CString, c_int};
+use std::ffi::{c_int, CString};
 use std::io::Write;
 use std::os::fd::FromRawFd;
 use std::os::raw::c_char;
@@ -53,7 +53,7 @@ pub unsafe extern "C" fn fearHasBackend(backend: FearBackend) -> bool {
 
 /// Initialising logging system
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearInitialiseLogging() -> i32 {
+pub unsafe extern "C" fn fearInitLogging() -> i32 {
     pretty_env_logger::try_init().is_err() as i32
 }
 

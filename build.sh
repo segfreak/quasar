@@ -9,7 +9,7 @@ DO_INSTALL=0
 INSTALL_PREFIX="/usr/local/"
 FEAR_FEATURES=("fear/binary-ir")
 LIBFEAR_FEATURES=("libfear/binary-ir")
-CARGO_ARGS=("--release" "--no-default-features")
+CARGO_ARGS=("--no-default-features")
 
 show_help() {
   echo "Usage: $0 [OPTIONS] [-- CARGO_ARGUMENTS]"
@@ -21,6 +21,8 @@ show_help() {
   echo "      --enable-llvm=ON/OFF      Enable or disable the LLVM backend       (Default: OFF)"
   echo "      --enable-cranelift=ON/OFF Enable or disable the Cranelift backend  (Default: ON)"
   echo "      --inkwell-llvm=VERSION    Specify the inkwell feature version      (e.g., llvm22-1)"
+  echo "      --with-llvm=VERSION       Enable LLVM backend and specify
+                                                    the inkwell feature version  (e.g., llvm22-1)"
   echo "      --prefix=PATH             Installation prefix path"
   echo "      --install                 Run installation script after build"
   echo "      --test                    Run tests only"
@@ -37,6 +39,11 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --inkwell-llvm=*)
+      INKWELL_LLVM=$(echo "${1#*=}" | tr '[:upper:]' '[:lower:]')
+      shift
+      ;;
+    --with-llvm=*)
+      ENABLE_LLVM="ON"
       INKWELL_LLVM=$(echo "${1#*=}" | tr '[:upper:]' '[:lower:]')
       shift
       ;;
@@ -58,6 +65,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --install)
       DO_INSTALL=1
+      CARGO_ARGS+=("--release")
       shift
       ;;
     --test)

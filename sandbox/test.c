@@ -3,13 +3,13 @@
 #include <stdio.h>
 #include <unistd.h>
 
-void test_diamond(FearModule *m)
+void test_diamond(FearModule* m)
 {
     FearType   params[] = {FearInt32, FearInt32, FearInt32};
     FearFuncId fid = fearDeclareFunction(m, "diamond", params, 3,
                                          FearInt32, FearLinkageExternal);
 
-    FearFunctionDef *f     = fearDefinitionCreate();
+    FearFunctionDef* f     = fearDefinitionCreate();
     FearBlockId      entry = fearGetEntryBlock(f);
 
     FearBlockId      thenb = fearCreateBlock(f);
@@ -38,13 +38,13 @@ void test_diamond(FearModule *m)
     fearDefineFunction(m, fid, f);
 }
 
-void test_if_else_chain(FearModule *m)
+void test_if_else_chain(FearModule* m)
 {
     FearType   params[] = {FearInt32, FearInt32, FearInt32};
     FearFuncId fid = fearDeclareFunction(m, "if_else_chain", params, 3,
                                          FearInt32, FearLinkageExternal);
 
-    FearFunctionDef *f      = fearDefinitionCreate();
+    FearFunctionDef* f      = fearDefinitionCreate();
     FearBlockId      entry  = fearGetEntryBlock(f);
 
     FearValueId      a      = fearCreateFuncParam(f, FearInt32);
@@ -84,13 +84,13 @@ void test_if_else_chain(FearModule *m)
     fearDefineFunction(m, fid, f);
 }
 
-void test_early_return(FearModule *m)
+void test_early_return(FearModule* m)
 {
     FearType   params[] = {FearInt32, FearInt32, FearInt32};
     FearFuncId fid = fearDeclareFunction(m, "early_return", params, 3,
                                          FearInt32, FearLinkageExternal);
 
-    FearFunctionDef *f     = fearDefinitionCreate();
+    FearFunctionDef* f     = fearDefinitionCreate();
     FearBlockId      entry = fearGetEntryBlock(f);
 
     FearValueId      a     = fearCreateFuncParam(f, FearInt32);
@@ -118,13 +118,13 @@ void test_early_return(FearModule *m)
     fearDefineFunction(m, fid, f);
 }
 
-void test_cross_phi(FearModule *m)
+void test_cross_phi(FearModule* m)
 {
     FearType   params[] = {FearInt32, FearInt32, FearInt32};
     FearFuncId fid = fearDeclareFunction(m, "cross_phi", params, 3,
                                          FearInt32, FearLinkageExternal);
 
-    FearFunctionDef *f     = fearDefinitionCreate();
+    FearFunctionDef* f     = fearDefinitionCreate();
     FearBlockId      entry = fearGetEntryBlock(f);
 
     FearValueId      a     = fearCreateFuncParam(f, FearInt32);
@@ -154,13 +154,13 @@ void test_cross_phi(FearModule *m)
     fearDefineFunction(m, fid, f);
 }
 
-void test_big_cfg_stress(FearModule *m)
+void test_big_cfg_stress(FearModule* m)
 {
     FearType   params[] = {FearInt32, FearInt32, FearInt32};
     FearFuncId fid = fearDeclareFunction(m, "big_cfg_stress", params, 3,
                                          FearInt32, FearLinkageExternal);
 
-    FearFunctionDef *f     = fearDefinitionCreate();
+    FearFunctionDef* f     = fearDefinitionCreate();
     FearBlockId      entry = fearGetEntryBlock(f);
 
     FearValueId      a     = fearCreateFuncParam(f, FearInt32);
@@ -190,7 +190,7 @@ void test_big_cfg_stress(FearModule *m)
     FearValueId x1   = fearCreateBlockParam(f, m1, FearInt32);
     FearValueId tmp1 = fearCreateAdd(f, m1, FearInt32, x1, a);
     FearValueId tmp2 =
-        fearCreateSub(f, m1, FearInt32, tmp1, a); // dead after CSE
+        fearCreateSub(f, m1, FearInt32, tmp1, a);  // dead after CSE
 
     FearValueId cond2 =
         fearCreateIntCompare(f, m1, FearIntCmpGt, tmp2, zero);
@@ -204,7 +204,7 @@ void test_big_cfg_stress(FearModule *m)
         f, m2, FearInt32, x2, fearCreateIntConst(f, m2, FearInt32, 2));
     FearValueId tmp4 =
         fearCreateDiv(f, m2, FearInt32, tmp3,
-                      fearCreateIntConst(f, m2, FearInt32, 2)); // cancels
+                      fearCreateIntConst(f, m2, FearInt32, 2));  // cancels
 
     FearValueId cond3 =
         fearCreateIntCompare(f, m2, FearIntCmpGt, tmp4, zero);
@@ -221,14 +221,14 @@ void test_big_cfg_stress(FearModule *m)
     fearDefineFunction(m, fid, f);
 }
 
-void test_memory_stack_heavy(FearModule *m)
+void test_memory_stack_heavy(FearModule* m)
 {
     FearType   params[] = {FearInt32, FearInt32, FearInt32};
     FearFuncId fid =
         fearDeclareFunction(m, "memory_stack_heavy", params, 3, FearInt32,
                             FearLinkageExternal);
 
-    FearFunctionDef *f       = fearDefinitionCreate();
+    FearFunctionDef* f       = fearDefinitionCreate();
     FearBlockId      entry   = fearGetEntryBlock(f);
 
     FearValueId      zero32  = fearCreateIntConst(f, entry, FearInt32, 0);
@@ -269,7 +269,7 @@ void test_memory_stack_heavy(FearModule *m)
 
     // redundant math
     FearValueId t1 = fearCreateAdd(f, body, FearInt32, b, c);
-    FearValueId t2 = fearCreateSub(f, body, FearInt32, t1, c); // == b
+    FearValueId t2 = fearCreateSub(f, body, FearInt32, t1, c);  // == b
 
     // store to array
     fearCreateStore(f, body, elem_ptr, t2);
@@ -299,14 +299,14 @@ void test_memory_stack_heavy(FearModule *m)
     fearDefineFunction(m, fid, f);
 }
 
-void test_algebraic_simplification(FearModule *m)
+void test_algebraic_simplification(FearModule* m)
 {
     FearType   params[] = {FearInt32, FearInt32, FearInt32};
     FearFuncId fid =
         fearDeclareFunction(m, "algebraic_simplification", params, 3,
                             FearInt32, FearLinkageExternal);
 
-    FearFunctionDef *f     = fearDefinitionCreate();
+    FearFunctionDef* f     = fearDefinitionCreate();
     FearBlockId      entry = fearGetEntryBlock(f);
 
     FearValueId      a     = fearCreateFuncParam(f, FearInt32);
@@ -341,9 +341,9 @@ void test_algebraic_simplification(FearModule *m)
 
 int main()
 {
-    fearInitialiseLogging();
+    fearInitLogging();
 
-    struct FearModule *mod = fearModuleCreate("faz");
+    struct FearModule* mod = fearModuleCreate("faz");
     if (!mod)
     {
         fprintf(stderr, "cannot create module\n");
@@ -373,7 +373,7 @@ int main()
         fearHasBackend(backend))
     {
         fprintf(stderr, "=> test.o\n");
-        FILE *f = fopen("test.o", "w");
+        FILE* f = fopen("test.o", "w");
         fearEmitObject(mod, backend, FearOptFull, fileno(f));
         fclose(f);
     }

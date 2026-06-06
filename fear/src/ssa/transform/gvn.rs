@@ -192,6 +192,10 @@ fn collect_gvn(
                         repl.insert(result, canonical);
                         let vn = ctx.vn_of(canonical, func);
                         ctx.assign_vn(result, vn);
+                    } else {
+                        // Same instruction, assign same value number
+                        let vn = ctx.vn_of(result, func);
+                        ctx.assign_vn(result, vn);
                     }
                 } else {
                     let vn = ctx.fresh_vn();

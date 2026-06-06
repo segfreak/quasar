@@ -63,7 +63,7 @@ impl Pipeline {
 
         pipeline.get_passes_mut().insert(Expressify);
 
-        if level <= OptLevel::Default {
+        if level >= OptLevel::Default {
             pipeline.passes.extend(vec![
                 CommonSubexpressionElimination,
                 DeadCodeElimination,
