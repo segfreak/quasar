@@ -13,9 +13,9 @@ int main()
 
     auto   foo = Function::declare(&m, "foo", {}, Type::Int32);
     FunctionDef f{};
-    auto        slot = f.stack_alloca(Type::Int32);
-    f.call(bar.getId(), Type::Void, std::vector<ValueId>{slot});
-    auto undef = f.load(Type::Int32, slot);
+    auto        slot  = f.stack_alloca(Type::Int32);
+    // f.call(bar.getId(), Type::Void, std::vector<ValueId>{slot});
+    auto        undef = f.load(Type::Int32, slot);
     f.ret(undef);
     foo.define(f);
 

@@ -534,7 +534,17 @@ fn compile_inst(
         }
 
         InstKind::Undef => {
-            unimplemented!("cranelift: undef");
+            let result_id = inst.result.unwrap();
+            let dst_ty = def.get_type_of(result_id);
+            let cl_ty = map_type(dst_ty);
+            let size = cl_ty.bytes();
+            let slot = fx.create_sized_stack_slot(StackSlotData::new(
+                StackSlotKind::ExplicitSlot,
+                size,
+                0,
+            ));
+            let val = fx.ins().stack_load(cl_ty, slot, 0);
+            values.insert(result_id, val);
         }
     }
 }
