@@ -139,6 +139,7 @@ impl FunctionDef {
                     }
                 )
             }
+            ExprKind::Undef => format!("({}.undef)", ty),
         }
     }
 

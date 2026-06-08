@@ -108,6 +108,8 @@ pub enum InstKind {
     },
     /// ret {value}
     Ret,
+
+    Undef,
 }
 
 impl InstKind {
@@ -116,6 +118,7 @@ impl InstKind {
 
         match self {
             IConst(_) | FConst(_) => 0,
+            Undef => 0,
 
             // binary instructions
             Add
@@ -153,6 +156,8 @@ impl InstKind {
 
     pub fn get_cost(&self) -> u8 {
         match self {
+            Self::Undef => 0,
+
             // constants (free)
             Self::IConst(_) | Self::FConst(_) => 0,
 
@@ -526,6 +531,10 @@ impl FunctionDef {
     /// Make float constant value
     pub fn make_float_const(&mut self, block: BlockId, ty: Type, x: f64) -> ValueId {
         self.append_inst(block, InstKind::FConst(x.to_bits()), ty, vec![])
+    }
+
+    pub fn make_undef(&mut self, block: BlockId, ty: Type) -> ValueId {
+        self.append_inst(block, InstKind::Undef, ty, vec![])
     }
 
     fn make_unary(&mut self, block: BlockId, kind: InstKind, ty: Type, value: ValueId) -> ValueId {

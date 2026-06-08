@@ -152,6 +152,8 @@ fn rewrite(
         | ExprKind::Alloca(_)
         | ExprKind::NAlloca(_, _) => expr,
 
+        ExprKind::Undef => expr,
+
         ExprKind::Cast(kind, a) => {
             let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
             let new_expr = Expr {

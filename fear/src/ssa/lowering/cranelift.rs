@@ -532,6 +532,10 @@ fn compile_inst(
                 fx.ins().return_(&[v]);
             }
         }
+
+        InstKind::Undef => {
+            unimplemented!("cranelift: undef");
+        }
     }
 }
 

@@ -298,6 +298,8 @@ impl SsaRaiser {
                 let l = self.raise_expr(a, dst, block);
                 dst.make_cast(block, *kind, ty, l)
             }
+
+            ExprKind::Undef => dst.make_undef(block, ty),
         }
     }
 }

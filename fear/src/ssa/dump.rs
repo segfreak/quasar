@@ -127,6 +127,8 @@ impl FunctionDef {
                     format!("ret {} %{}", self.get_type_of(op), op)
                 }
             }
+
+            InstKind::Undef => "undef".into(),
         }
     }
 

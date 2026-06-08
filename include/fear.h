@@ -215,6 +215,22 @@ FearValueId fearCreateIntConst(struct FearFunctionDef *f,
                                int64_t val);
 
 /**
+ * Generates an float constant value from raw bits inside a target basic block.
+ */
+FearValueId fearCreateFloatConstFromBits(struct FearFunctionDef *f,
+                                         FearBlockId parent,
+                                         enum FearType ty,
+                                         uint64_t val);
+
+/**
+ * Generates an float constant value inside a target basic block.
+ */
+FearValueId fearCreateFloatConst(struct FearFunctionDef *f,
+                                 FearBlockId parent,
+                                 enum FearType ty,
+                                 double val);
+
+/**
  * Emits an instruction to allocate stack space for a local variable of the specified type.
  */
 FearValueId fearCreateAlloca(struct FearFunctionDef *f, FearBlockId parent, enum FearType ty);
@@ -358,46 +374,46 @@ FearValueId fearCreateFloatRem(struct FearFunctionDef *f,
                                FearValueId a,
                                FearValueId b);
 
-FearValueId fearCreateBitwiseNot(struct FearFunctionDef *f,
-                                 FearBlockId parent,
-                                 enum FearType ty,
-                                 FearValueId v);
+FearValueId fearCreateBitNot(struct FearFunctionDef *f,
+                             FearBlockId parent,
+                             enum FearType ty,
+                             FearValueId v);
 
-FearValueId fearCreateBitwiseAnd(struct FearFunctionDef *f,
-                                 FearBlockId parent,
-                                 enum FearType ty,
-                                 FearValueId a,
-                                 FearValueId b);
+FearValueId fearCreateBitAnd(struct FearFunctionDef *f,
+                             FearBlockId parent,
+                             enum FearType ty,
+                             FearValueId a,
+                             FearValueId b);
 
-FearValueId fearCreateBitwiseOr(struct FearFunctionDef *f,
-                                FearBlockId parent,
-                                enum FearType ty,
-                                FearValueId a,
-                                FearValueId b);
+FearValueId fearCreateBitOr(struct FearFunctionDef *f,
+                            FearBlockId parent,
+                            enum FearType ty,
+                            FearValueId a,
+                            FearValueId b);
 
-FearValueId fearCreateBitwiseXor(struct FearFunctionDef *f,
-                                 FearBlockId parent,
-                                 enum FearType ty,
-                                 FearValueId a,
-                                 FearValueId b);
+FearValueId fearCreateBitXor(struct FearFunctionDef *f,
+                             FearBlockId parent,
+                             enum FearType ty,
+                             FearValueId a,
+                             FearValueId b);
 
-FearValueId fearCreateLogicalShiftLeft(struct FearFunctionDef *f,
-                                       FearBlockId parent,
-                                       enum FearType ty,
-                                       FearValueId a,
-                                       FearValueId b);
+FearValueId fearCreateShl(struct FearFunctionDef *f,
+                          FearBlockId parent,
+                          enum FearType ty,
+                          FearValueId a,
+                          FearValueId b);
 
-FearValueId fearCreateLogicalShiftRight(struct FearFunctionDef *f,
-                                        FearBlockId parent,
-                                        enum FearType ty,
-                                        FearValueId a,
-                                        FearValueId b);
+FearValueId fearCreateShr(struct FearFunctionDef *f,
+                          FearBlockId parent,
+                          enum FearType ty,
+                          FearValueId a,
+                          FearValueId b);
 
-FearValueId fearCreateArithShiftRight(struct FearFunctionDef *f,
-                                      FearBlockId parent,
-                                      enum FearType ty,
-                                      FearValueId a,
-                                      FearValueId b);
+FearValueId fearCreateArithShr(struct FearFunctionDef *f,
+                               FearBlockId parent,
+                               enum FearType ty,
+                               FearValueId a,
+                               FearValueId b);
 
 /**
  * Terminates a block with an unconditional jump to another basic block, passing arguments to its block parameters.

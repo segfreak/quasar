@@ -576,6 +576,22 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 self.values.insert(inst.result.unwrap(), result);
             }
 
+            InstKind::Undef => {
+                let dst_ty = def.get_type_of(inst.result.unwrap());
+                let ty: BasicTypeEnum<'_> = self.map_type(dst_ty);
+                use inkwell::types::BasicTypeEnum::*;
+                let undef = match ty {
+                    ArrayType(t) => t.get_undef().into(),
+                    FloatType(t) => t.get_undef().into(),
+                    IntType(t) => t.get_undef().into(),
+                    PointerType(t) => t.get_undef().into(),
+                    StructType(t) => t.get_undef().into(),
+                    VectorType(t) => t.get_undef().into(),
+                    ScalableVectorType(t) => t.get_undef().into(),
+                };
+                self.values.insert(inst.result.unwrap(), undef);
+            }
+
             InstKind::Jump(target) => {
                 let target_bb = self.blocks[target];
                 self.builder.build_unconditional_branch(target_bb).unwrap();
@@ -787,7 +803,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
     }
 
     fn get_float_or_const(&self, def: &FunctionDef, v: ValueId) -> FloatValue<'ctx> {
-        if let Some(c) = def.get_float_onst(v) {
+        if let Some(c) = def.get_float_const(v) {
             let ty = self.map_float_type(def.get_type_of(v));
             ty.const_float(c)
         } else {

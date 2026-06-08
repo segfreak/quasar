@@ -72,6 +72,8 @@ pub enum ExprKind {
     ),
 
     Call(/* using fear modules */ crate::ssa::FuncId, Vec<Expr>),
+
+    Undef,
 }
 
 impl From<ValueId> for ExprKind {
@@ -128,6 +130,7 @@ impl ExprKind {
 
             Self::Alloca(_) => vec![],
             Self::NAlloca(_, _) => vec![],
+            Self::Undef => vec![],
         }
     }
 
@@ -182,6 +185,7 @@ impl ExprKind {
     pub fn get_cost(&self) -> u32 {
         match self {
             Self::Var(_) | Self::Const(_) | Self::FConst(_) => 0,
+            Self::Undef => 0,
 
             Self::Add(a, b) | Self::Sub(a, b) => 1 + a.get_cost() + b.get_cost(),
             Self::BitShl(a, b)
@@ -397,6 +401,16 @@ impl FunctionDef {
             ty,
             kind: ExprKind::Var(vid),
         }
+    }
+
+    pub fn make_undef(&mut self, block: BlockId, ty: Type) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::Undef,
+            },
+        )
     }
 
     pub fn make_call(&mut self, block: BlockId, ty: Type, func: FuncId, params: Vec<Expr>) -> Expr {

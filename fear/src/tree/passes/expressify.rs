@@ -23,6 +23,8 @@ fn collect_uses(expr: &Expr, uses: &mut HashMap<ValueId, usize>) {
         | ExprKind::Alloca(_)
         | ExprKind::NAlloca(_, _) => {}
 
+        ExprKind::Undef => {}
+
         ExprKind::Square(a)
         | ExprKind::FSquare(a)
         | ExprKind::Cast(_, a)
@@ -161,6 +163,8 @@ fn expand_expr(
                 ExprKind::Var(v)
             }
         }
+
+        ExprKind::Undef => expr.kind,
 
         ExprKind::Alloca(ty) => ExprKind::Alloca(ty),
         ExprKind::NAlloca(ty, cnt) => ExprKind::NAlloca(ty, cnt),

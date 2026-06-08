@@ -18,6 +18,8 @@ pub fn canonicalize_expr(expr: Expr, changed: &mut bool) -> Expr {
         | ExprKind::Alloca(_)
         | ExprKind::NAlloca(_, _) => expr.kind,
 
+        ExprKind::Undef => expr.kind,
+
         ExprKind::Load(volatile, ptr) => {
             let a = canonicalize_expr(*ptr, changed);
             ExprKind::Load(volatile, Box::new(a))

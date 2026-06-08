@@ -117,6 +117,22 @@ impl From<FearType> for Type {
     }
 }
 
+impl From<Type> for FearType {
+    fn from(t: Type) -> Self {
+        match t {
+            Type::Void => FearType::FearVoid,
+            Type::Int1 => FearType::FearBool,
+            Type::Int8 => FearType::FearInt8,
+            Type::Int16 => FearType::FearInt16,
+            Type::Int32 => FearType::FearInt32,
+            Type::Int64 => FearType::FearInt64,
+            Type::Float32 => FearType::FearFloat32,
+            Type::Float64 => FearType::FearFloat64,
+            Type::Pointer => FearType::FearPointer,
+        }
+    }
+}
+
 impl From<FearOptLevel> for OptLevel {
     fn from(t: FearOptLevel) -> Self {
         match t {

@@ -19,6 +19,8 @@ fn normalize_expr(expr: Expr, changed: &mut bool) -> Expr {
         | ExprKind::Alloca(_)
         | ExprKind::NAlloca(_, _) => expr.kind,
 
+        ExprKind::Undef => expr.kind,
+
         ExprKind::Cast(kind, a) => {
             let a = normalize_expr(*a, changed);
             ExprKind::Cast(kind, Box::new(a))

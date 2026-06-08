@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -10,6 +11,12 @@
 
 namespace fear
 {
+
+/**
+ * @brief Initializes logging.
+ */
+inline void initLogging()
+{ fearInitLogging(); }
 
 // Forward declarations
 struct Module;
@@ -422,38 +429,38 @@ struct FunctionDef
     // Bitwise and Shifts
     ValueId bnot(Type ty, ValueId v)
     {
-        return fearCreateBitwiseNot(getRaw(), getCurrentBlock(),
-                                    detail::into(ty), v);
+        return fearCreateBitNot(getRaw(), getCurrentBlock(),
+                                detail::into(ty), v);
     }
     ValueId band(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateBitwiseAnd(getRaw(), getCurrentBlock(),
-                                    detail::into(ty), a, b);
+        return fearCreateBitAnd(getRaw(), getCurrentBlock(),
+                                detail::into(ty), a, b);
     }
     ValueId bor(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateBitwiseOr(getRaw(), getCurrentBlock(),
-                                   detail::into(ty), a, b);
+        return fearCreateBitOr(getRaw(), getCurrentBlock(),
+                               detail::into(ty), a, b);
     }
     ValueId bxor(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateBitwiseXor(getRaw(), getCurrentBlock(),
-                                    detail::into(ty), a, b);
+        return fearCreateBitXor(getRaw(), getCurrentBlock(),
+                                detail::into(ty), a, b);
     }
     ValueId shl(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateLogicalShiftLeft(getRaw(), getCurrentBlock(),
-                                          detail::into(ty), a, b);
+        return fearCreateShl(getRaw(), getCurrentBlock(), detail::into(ty),
+                             a, b);
     }
     ValueId shr(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateLogicalShiftRight(getRaw(), getCurrentBlock(),
-                                           detail::into(ty), a, b);
+        return fearCreateShr(getRaw(), getCurrentBlock(), detail::into(ty),
+                             a, b);
     }
     ValueId ashr(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateArithShiftRight(getRaw(), getCurrentBlock(),
-                                         detail::into(ty), a, b);
+        return fearCreateArithShr(getRaw(), getCurrentBlock(),
+                                  detail::into(ty), a, b);
     }
 
     // Control Flow / Termigators
@@ -476,6 +483,17 @@ struct FunctionDef
 
     void ret(ValueId v) { fearCreateRet(getRaw(), getCurrentBlock(), v); }
     void ret() { fearCreateRetVoid(getRaw(), getCurrentBlock()); }
+
+    std::optional<ValueId> call(FuncId func, Type ret,
+                                std::vector<ValueId> params)
+    {
+        auto tmp = fearCreateCall(getRaw(), getCurrentBlock(),
+                                  static_cast<FearFuncId>(func),
+                                  detail::into(ret), params.data(),
+                                  static_cast<uint32_t>(params.size()));
+        if (ret == Type::Void) { return std::nullopt; }
+        return tmp;
+    }
 
    private:
     RawFuncDef* raw_;

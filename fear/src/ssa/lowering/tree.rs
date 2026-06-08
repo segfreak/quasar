@@ -199,8 +199,10 @@ impl TreeSsaRaiser {
 
             ssa::InstKind::Cast(kind) => dst.make_cast(block, ty, *kind, &self.v(ops[0], dst)),
 
+            ssa::InstKind::Undef => dst.make_undef(block, ty),
+
             ssa::InstKind::Ret | ssa::InstKind::Jump(_) | ssa::InstKind::JumpIf { .. } => {
-                todo!("{:?} has no fear equivalent", inst.kind)
+                todo!("{:?} must be handled by raise_terminator", inst.kind)
             }
         }
     }
