@@ -120,7 +120,7 @@ fn make_key(
     }
 
     let result = inst.result?;
-    let result_ty = func.get_type(result);
+    let result_ty = func.get_type_of(result);
 
     let resolved_ops: Vec<ValueId> = inst.operands.iter().map(|&v| resolve(v, repl)).collect();
     let ops = canonicalize(&inst.kind, resolved_ops);
@@ -128,7 +128,7 @@ fn make_key(
     let args: Vec<(VN, Type)> = ops
         .into_iter()
         .map(|v| {
-            let ty = func.get_type(v);
+            let ty = func.get_type_of(v);
             let vn = ctx.vn_of(v, func);
             (vn, ty)
         })
@@ -227,10 +227,10 @@ fn apply_replacements(func: &mut FunctionDef, repl: &HashMap<ValueId, ValueId>) 
         log::trace!(
             "replacing %{}:{} ({:?}) -> %{}:{} ({:?})",
             result,
-            func.get_type(result),
+            func.get_type_of(result),
             func.get_value_def_in(result).unwrap(),
             canonical,
-            func.get_type(canonical),
+            func.get_type_of(canonical),
             func.get_value_def_in(canonical).unwrap(),
         );
         func.replace_uses(result, canonical);

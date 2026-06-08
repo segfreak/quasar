@@ -5,7 +5,7 @@ use crate::{types::*, *};
 /// Creates a new basic block inside the function to build branches or loops.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearCreateBlock(f: *mut FearFunctionDef) -> FearBlockId {
-    as_def(f).new_block()
+    as_def(f).create_block()
 }
 
 /// Adds a top-level input parameter to the function declaration.
@@ -32,7 +32,29 @@ pub unsafe extern "C" fn fearCreateIntConst(
     ty: FearType,
     val: i64,
 ) -> FearValueId {
-    as_def(f).make_iconst(parent, ty.into(), val)
+    as_def(f).make_int_const(parent, ty.into(), val)
+}
+
+/// Generates an float constant value from raw bits inside a target basic block.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearCreateFloatConstFromBits(
+    f: *mut FearFunctionDef,
+    parent: FearBlockId,
+    ty: FearType,
+    val: u64,
+) -> FearValueId {
+    as_def(f).make_float_const_from_bits(parent, ty.into(), val)
+}
+
+/// Generates an float constant value inside a target basic block.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearCreateFloatConst(
+    f: *mut FearFunctionDef,
+    parent: FearBlockId,
+    ty: FearType,
+    val: f64,
+) -> FearValueId {
+    as_def(f).make_float_const(parent, ty.into(), val)
 }
 
 /// Emits an instruction to allocate stack space for a local variable of the specified type.
@@ -144,7 +166,7 @@ pub unsafe extern "C" fn fearCreateAdd(
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_add(parent, ty.into(), a, b)
+    as_def(f).make_int_add(parent, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
@@ -155,7 +177,7 @@ pub unsafe extern "C" fn fearCreateSub(
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_sub(parent, ty.into(), a, b)
+    as_def(f).make_int_sub(parent, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
@@ -166,7 +188,7 @@ pub unsafe extern "C" fn fearCreateMul(
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_mul(parent, ty.into(), a, b)
+    as_def(f).make_int_mul(parent, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
@@ -177,7 +199,7 @@ pub unsafe extern "C" fn fearCreateDiv(
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_div(parent, true, ty.into(), a, b)
+    as_def(f).make_int_div(parent, true, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
@@ -188,7 +210,7 @@ pub unsafe extern "C" fn fearCreateUnsignedDiv(
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_div(parent, false, ty.into(), a, b)
+    as_def(f).make_int_div(parent, false, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
@@ -199,7 +221,7 @@ pub unsafe extern "C" fn fearCreateRem(
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_rem(parent, true, ty.into(), a, b)
+    as_def(f).make_int_rem(parent, true, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
@@ -210,7 +232,7 @@ pub unsafe extern "C" fn fearCreateUnsignedRem(
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_rem(parent, false, ty.into(), a, b)
+    as_def(f).make_int_rem(parent, false, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
@@ -221,7 +243,7 @@ pub unsafe extern "C" fn fearCreateFloatAdd(
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_fadd(parent, ty.into(), a, b)
+    as_def(f).make_float_add(parent, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
@@ -232,7 +254,7 @@ pub unsafe extern "C" fn fearCreateFloatSub(
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_fsub(parent, ty.into(), a, b)
+    as_def(f).make_float_sub(parent, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
@@ -243,7 +265,7 @@ pub unsafe extern "C" fn fearCreateFloatMul(
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_fmul(parent, ty.into(), a, b)
+    as_def(f).make_float_mul(parent, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
@@ -254,7 +276,7 @@ pub unsafe extern "C" fn fearCreateFloatDiv(
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_fdiv(parent, ty.into(), a, b)
+    as_def(f).make_float_div(parent, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
@@ -265,54 +287,54 @@ pub unsafe extern "C" fn fearCreateFloatRem(
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_frem(parent, ty.into(), a, b)
+    as_def(f).make_float_rem(parent, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearCreateBitwiseNot(
+pub unsafe extern "C" fn fearCreateBitNot(
     f: *mut FearFunctionDef,
     parent: FearBlockId,
     ty: FearType,
     v: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_not(parent, ty.into(), v)
+    as_def(f).make_bitnot(parent, ty.into(), v)
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearCreateBitwiseAnd(
+pub unsafe extern "C" fn fearCreateBitAnd(
     f: *mut FearFunctionDef,
     parent: FearBlockId,
     ty: FearType,
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_and(parent, ty.into(), a, b)
+    as_def(f).make_bitand(parent, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearCreateBitwiseOr(
+pub unsafe extern "C" fn fearCreateBitOr(
     f: *mut FearFunctionDef,
     parent: FearBlockId,
     ty: FearType,
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_or(parent, ty.into(), a, b)
+    as_def(f).make_bitor(parent, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearCreateBitwiseXor(
+pub unsafe extern "C" fn fearCreateBitXor(
     f: *mut FearFunctionDef,
     parent: FearBlockId,
     ty: FearType,
     a: FearValueId,
     b: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_xor(parent, ty.into(), a, b)
+    as_def(f).make_bitxor(parent, ty.into(), a, b)
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearCreateLogicalShiftLeft(
+pub unsafe extern "C" fn fearCreateShl(
     f: *mut FearFunctionDef,
     parent: FearBlockId,
     ty: FearType,
@@ -323,7 +345,7 @@ pub unsafe extern "C" fn fearCreateLogicalShiftLeft(
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearCreateLogicalShiftRight(
+pub unsafe extern "C" fn fearCreateShr(
     f: *mut FearFunctionDef,
     parent: FearBlockId,
     ty: FearType,
@@ -334,7 +356,7 @@ pub unsafe extern "C" fn fearCreateLogicalShiftRight(
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearCreateArithShiftRight(
+pub unsafe extern "C" fn fearCreateArithShr(
     f: *mut FearFunctionDef,
     parent: FearBlockId,
     ty: FearType,
@@ -365,7 +387,7 @@ pub unsafe extern "C" fn fearCreateIntCompare(
     lhs: FearValueId,
     rhs: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_cmp(parent, IntCmp::from(pred), lhs, rhs)
+    as_def(f).make_int_cmp(parent, IntCmp::from(pred), lhs, rhs)
 }
 
 /// Compares two floatpoint values
@@ -377,7 +399,7 @@ pub unsafe extern "C" fn fearCreateFloatCompare(
     lhs: FearValueId,
     rhs: FearValueId,
 ) -> FearValueId {
-    as_def(f).make_fcmp(parent, FloatCmp::from(pred), lhs, rhs)
+    as_def(f).make_float_cmp(parent, FloatCmp::from(pred), lhs, rhs)
 }
 
 /// Emits an instruction to zero-extend an integer to a wider integer type.

@@ -5,6 +5,8 @@ int main()
 {
     using namespace fear;
 
+		fearInitLogging();
+
     Module      m("hello");
     auto        foo = Function::declare(&m, "foo", {}, Type::Int32);
     FunctionDef f{};

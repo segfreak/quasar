@@ -1,11 +1,11 @@
 use crate::ssa::*;
 
 fn is_zero(func: &FunctionDef, v: ValueId) -> bool {
-    func.get_iconst(v) == Some(0)
+    func.get_int_const(v) == Some(0)
 }
 
 fn is_one(func: &FunctionDef, v: ValueId) -> bool {
-    func.get_iconst(v) == Some(1)
+    func.get_int_const(v) == Some(1)
 }
 
 pub fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
@@ -36,7 +36,7 @@ pub fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
             }
 
             if a == b {
-                let zero = func.make_iconst(inst.parent, func.get_type(a), 0);
+                let zero = func.make_int_const(inst.parent, func.get_type_of(a), 0);
                 return replace(func, inst, id, zero);
             }
         }
@@ -45,7 +45,7 @@ pub fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
             let (a, b) = bin(inst);
 
             if is_zero(func, a) || is_zero(func, b) {
-                let zero = func.make_iconst(inst.parent, func.get_type(a), 0);
+                let zero = func.make_int_const(inst.parent, func.get_type_of(a), 0);
                 return replace(func, inst, id, zero);
             }
 
@@ -62,7 +62,7 @@ pub fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
             let (a, b) = bin(inst);
 
             if is_zero(func, a) || is_zero(func, b) {
-                let zero = func.make_iconst(inst.parent, func.get_type(a), 0);
+                let zero = func.make_int_const(inst.parent, func.get_type_of(a), 0);
                 return replace(func, inst, id, zero);
             }
 

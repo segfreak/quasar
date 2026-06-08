@@ -79,12 +79,11 @@ pub fn tre(module: &mut Module, fid: FuncId) -> bool {
         .get_definition_mut()
         .unwrap();
 
-    let loop_header = def.new_block();
-
+    let loop_header = def.create_block();
     let loop_header_params: Vec<ValueId> = entry_params
         .iter()
         .map(|&p| {
-            let ty = def.values[&p].ty;
+            let ty = def.get_type_of(p);
             def.add_block_param(loop_header, ty)
         })
         .collect();

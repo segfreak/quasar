@@ -10,6 +10,8 @@ INSTALL_PREFIX="/usr/local/"
 FEAR_FEATURES=("fear/binary-ir")
 LIBFEAR_FEATURES=("libfear/binary-ir")
 CARGO_ARGS=("--no-default-features")
+RELEASE=0
+TARGET_SUBDIR="debug"
 
 show_help() {
   echo "Usage: $0 [OPTIONS] [-- CARGO_ARGUMENTS]"
@@ -26,6 +28,7 @@ show_help() {
   echo "      --prefix=PATH             Installation prefix path"
   echo "      --install                 Run installation script after build"
   echo "      --test                    Run tests only"
+  echo "      --release                 Release build"
   echo ""
   echo "Examples:"
   echo "  $0 --enable-llvm=ON --inkwell-llvm=llvm22-1"
@@ -65,11 +68,15 @@ while [[ $# -gt 0 ]]; do
       ;;
     --install)
       DO_INSTALL=1
-      CARGO_ARGS+=("--release")
+      # CARGO_ARGS+=("--release")
       shift
       ;;
     --test)
       DO_TEST=1
+      shift
+      ;;
+    --release)
+      RELEASE=1
       shift
       ;;
     -h|--help|-?)
@@ -86,6 +93,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [ "$RELEASE" = 1 ]; then
+  CARGO_ARGS+=("--release")
+  TARGET_SUBDIR="release"
+fi
 
 echo "LLVM      : $ENABLE_LLVM"
 echo "Cranelift : $ENABLE_CRANELIFT"
@@ -125,7 +137,7 @@ if [ "$DO_INSTALL" = "1" ]; then
   # sudo cargo install --path "./fear" --root "$INSTALL_PREFIX" --features "$FEAR_FEATURES_STR"
   sudo install -m 644 "./include/fear.h" "$INC_DIR/fear.h"
   sudo install -m 644 "./include/fear.hpp" "$INC_DIR/fear.hpp"
-  sudo install -m 755 "./target/release/fearc"      "$BIN_DIR/"
-  sudo install -m 755 "./target/release/libfear.so" "$LIB_DIR/"
-  sudo install -m 644 "./target/release/libfear.a"  "$LIB_DIR/"
+  sudo install -m 755 "./target/$TARGET_SUBDIR/fearc"      "$BIN_DIR/"
+  sudo install -m 755 "./target/$TARGET_SUBDIR/libfear.so" "$LIB_DIR/"
+  sudo install -m 644 "./target/$TARGET_SUBDIR/libfear.a"  "$LIB_DIR/"
 fi

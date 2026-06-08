@@ -204,13 +204,13 @@ impl CraneliftLowerer {
             }
             let cl_block = blocks[&bid];
             for &param in &block.params {
-                let ty = def.get_type(param);
+                let ty = def.get_type_of(param);
                 let cl_val = fx.append_block_param(cl_block, map_type(ty));
                 values.insert(param, cl_val);
             }
         }
 
-        let order: Vec<BlockId> = def.reverse_post_order();
+        let order: Vec<BlockId> = def.compute_rpo();
 
         for &bid in &order {
             if bid != entry {
@@ -260,8 +260,8 @@ fn get_or_const(
     values: &HashMap<ValueId, cranelift::prelude::Value>,
     fx: &mut FunctionBuilder,
 ) -> cranelift::prelude::Value {
-    if let Some(c) = def.get_iconst(v) {
-        let ty = map_type(def.get_type(v));
+    if let Some(c) = def.get_int_const(v) {
+        let ty = map_type(def.get_type_of(v));
         fx.ins().iconst(ty, c)
     } else {
         *values
@@ -276,8 +276,8 @@ fn get_float_or_const(
     values: &HashMap<ValueId, cranelift::prelude::Value>,
     fx: &mut FunctionBuilder,
 ) -> cranelift::prelude::Value {
-    if let Some(f) = def.get_fconst(v) {
-        match def.get_type(v) {
+    if let Some(f) = def.get_float_const(v) {
+        match def.get_type_of(v) {
             Type::Float32 => fx.ins().f32const(f as f32),
             Type::Float64 => fx.ins().f64const(f),
             _ => panic!("fconst on non-float type"),
@@ -315,13 +315,13 @@ fn compile_inst(
 
     match &inst.kind {
         InstKind::IConst(x) => {
-            let ty = map_type(def.get_type(inst.result.unwrap()));
+            let ty = map_type(def.get_type_of(inst.result.unwrap()));
             let val = fx.ins().iconst(ty, *x);
             values.insert(inst.result.unwrap(), val);
         }
 
         InstKind::FConst(bits) => {
-            let ty = def.get_type(inst.result.unwrap());
+            let ty = def.get_type_of(inst.result.unwrap());
             let val = match ty {
                 Type::Float32 => fx.ins().f32const(f32::from_bits(*bits as u32)),
                 Type::Float64 => fx.ins().f64const(f64::from_bits(*bits)),
@@ -402,7 +402,7 @@ fn compile_inst(
 
         InstKind::Load { volatile } => {
             let ptr = get(inst.operands[0], values);
-            let result_ty = map_type(def.get_type(inst.result.unwrap()));
+            let result_ty = map_type(def.get_type_of(inst.result.unwrap()));
             let mut flags = MemFlags::new();
             if !volatile {
                 flags.set_notrap();
@@ -482,8 +482,8 @@ fn compile_inst(
 
         InstKind::Cast(kind) => {
             let src = get(inst.operands[0], values);
-            let src_ty = def.get_type(inst.operands[0]);
-            let dst_ty = def.get_type(inst.result.unwrap());
+            let src_ty = def.get_type_of(inst.operands[0]);
+            let dst_ty = def.get_type_of(inst.result.unwrap());
             let result = lower_cast(*kind, src, src_ty, dst_ty, fx);
             values.insert(inst.result.unwrap(), result);
         }

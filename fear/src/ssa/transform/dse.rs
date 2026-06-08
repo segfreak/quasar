@@ -62,8 +62,8 @@ fn elementptr_not_alias(func: &FunctionDef, a: ValueId, b: ValueId) -> bool {
     }
 
     match (
-        func.get_iconst(inst_a.operands[1]),
-        func.get_iconst(inst_b.operands[1]),
+        func.get_int_const(inst_a.operands[1]),
+        func.get_int_const(inst_b.operands[1]),
     ) {
         (Some(ca), Some(cb)) => ca != cb,
         _ => false,
@@ -107,7 +107,7 @@ fn kill(live: &mut Option<HashSet<ValueId>>, ptr: ValueId) {
 fn global_dse(m: &mut Module, f: FuncId) -> bool {
     let func_ro = m.get_function(f).unwrap().get_definition().unwrap();
 
-    let blocks: Vec<BlockId> = func_ro.reverse_post_order();
+    let blocks: Vec<BlockId> = func_ro.compute_rpo();
 
     let mut live_in: HashMap<BlockId, Option<HashSet<ValueId>>> =
         blocks.iter().map(|&b| (b, Some(HashSet::new()))).collect();

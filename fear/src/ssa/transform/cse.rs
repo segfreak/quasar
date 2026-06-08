@@ -44,12 +44,12 @@ pub fn cse(m: &mut Module, f: FuncId) -> bool {
             continue;
         }
 
-        let ty = func.get_type(result);
+        let ty = func.get_type_of(result);
 
         let ops: Vec<(ValueId, Type)> = inst
             .operands
             .iter()
-            .map(|&v| (v, func.get_type(v)))
+            .map(|&v| (v, func.get_type_of(v)))
             .collect();
 
         let key = InstKey {
@@ -63,10 +63,10 @@ pub fn cse(m: &mut Module, f: FuncId) -> bool {
                 log::trace!(
                     "replacing %{}:{} (B{}) -> %{}:{} (B{})",
                     result,
-                    func.get_type(result),
+                    func.get_type_of(result),
                     func.get_value_def_in(result).unwrap(),
                     existing,
-                    func.get_type(existing),
+                    func.get_type_of(existing),
                     func.get_value_def_in(existing).unwrap(),
                 );
                 func.replace_uses(result, existing);

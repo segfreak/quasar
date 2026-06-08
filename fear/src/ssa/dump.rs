@@ -10,16 +10,19 @@ impl FunctionDef {
     }
 
     fn fmt_inst(&self, module: &Module, inst: &Inst) -> String {
-        let result_ty = inst.result.map(|v| self.get_type(v)).unwrap_or(Type::Void);
+        let result_ty = inst
+            .result
+            .map(|v| self.get_type_of(v))
+            .unwrap_or(Type::Void);
         match &inst.kind {
             InstKind::IConst(x) => {
                 let val = inst.result.unwrap();
-                let ty = self.get_type(val);
+                let ty = self.get_type_of(val);
                 format!("const {} {}", ty, x)
             }
             InstKind::FConst(x) => {
                 let val = inst.result.unwrap();
-                let ty = self.get_type(val);
+                let ty = self.get_type_of(val);
                 format!("const {} {}", ty, f64::from_bits(*x))
             }
             InstKind::Add => format!("add %{}, %{}", inst.operands[0], inst.operands[1]),
@@ -121,7 +124,7 @@ impl FunctionDef {
                     "ret void".to_string()
                 } else {
                     let op = inst.operands[0];
-                    format!("ret {} %{}", self.get_type(op), op)
+                    format!("ret {} %{}", self.get_type_of(op), op)
                 }
             }
         }
@@ -131,7 +134,7 @@ impl FunctionDef {
         let mut s = String::new();
         let m = Module::new("_anonymous_");
 
-        let blocks = self.reverse_post_order();
+        let blocks = self.compute_rpo();
         for bid in &blocks {
             let block = &self.blocks[bid];
             let is_entry = self.entry == *bid;
@@ -204,7 +207,7 @@ impl Module {
             };
 
             let params = def
-                .params
+                .get_params()
                 .iter()
                 .map(|p| format!("%{}: {}", p, def.values[p].ty))
                 .collect::<Vec<_>>()
@@ -215,7 +218,7 @@ impl Module {
                 func.calling_convention, func.linkage, func.name, params, func.signature.returns
             ));
 
-            let blocks = def.reverse_post_order();
+            let blocks = def.compute_rpo();
             for bid in &blocks {
                 let block = &def.blocks[bid];
                 let is_entry = def.entry == *bid;

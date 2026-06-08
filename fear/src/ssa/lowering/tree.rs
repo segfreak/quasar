@@ -28,7 +28,7 @@ impl TreeSsaRaiser {
     }
 
     pub fn raise_function(&mut self, src: &ssa::FunctionDef, dst: &mut FunctionDef) {
-        let rpo = src.reverse_post_order();
+        let rpo = src.compute_rpo();
 
         for &bid in &rpo {
             let block = &src.blocks[&bid];
@@ -94,17 +94,17 @@ impl TreeSsaRaiser {
     ) -> Expr {
         let ops = &inst.operands;
         let ty = if let Some(r) = inst.result {
-            src.get_type(r)
+            src.get_type_of(r)
         } else {
             Type::Void
         };
 
         match &inst.kind {
             ssa::InstKind::IConst(c) => {
-                dst.make_iconst(block, src.get_type(inst.result.unwrap()), *c)
+                dst.make_iconst(block, src.get_type_of(inst.result.unwrap()), *c)
             }
             ssa::InstKind::FConst(bits) => {
-                dst.make_fconst(block, src.get_type(inst.result.unwrap()), *bits)
+                dst.make_fconst(block, src.get_type_of(inst.result.unwrap()), *bits)
             }
 
             ssa::InstKind::Add => {

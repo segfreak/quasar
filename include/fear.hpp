@@ -67,7 +67,7 @@ enum class CallConv
  */
 enum class Backend
 {
-    Fear,
+    Dummy,
     Cranelift,
     Llvm,
 };
@@ -89,24 +89,24 @@ inline FearType into(Type ty)
 {
     switch (ty)
     {
-    case Type::Void:
-        return FearVoid;
-    case Type::Bool:
-        return FearBool;
-    case Type::Int8:
-        return FearInt8;
-    case Type::Int16:
-        return FearInt16;
-    case Type::Int32:
-        return FearInt32;
-    case Type::Int64:
-        return FearInt64;
-    case Type::Float32:
-        return FearFloat32;
-    case Type::Float64:
-        return FearFloat64;
-    case Type::Pointer:
-        return FearPointer;
+        case Type::Void:
+            return FearVoid;
+        case Type::Bool:
+            return FearBool;
+        case Type::Int8:
+            return FearInt8;
+        case Type::Int16:
+            return FearInt16;
+        case Type::Int32:
+            return FearInt32;
+        case Type::Int64:
+            return FearInt64;
+        case Type::Float32:
+            return FearFloat32;
+        case Type::Float64:
+            return FearFloat64;
+        case Type::Pointer:
+            return FearPointer;
     }
     throw std::runtime_error("Unknown Fear Type");
 }
@@ -115,12 +115,12 @@ inline FearLinkage into(Linkage linkage)
 {
     switch (linkage)
     {
-    case Linkage::External:
-        return FearLinkageExternal;
-    case Linkage::Internal:
-        return FearLinkageInternal;
-    case Linkage::Weak:
-        return FearLinkageWeak;
+        case Linkage::External:
+            return FearLinkageExternal;
+        case Linkage::Internal:
+            return FearLinkageInternal;
+        case Linkage::Weak:
+            return FearLinkageWeak;
     }
     throw std::runtime_error("Unknown Fear Linkage");
 }
@@ -129,12 +129,12 @@ inline FearOptLevel into(OptLevel level)
 {
     switch (level)
     {
-    case OptLevel::None:
-        return FearOptNone;
-    case OptLevel::Default:
-        return FearOptDefault;
-    case OptLevel::Full:
-        return FearOptFull;
+        case OptLevel::None:
+            return FearOptNone;
+        case OptLevel::Default:
+            return FearOptDefault;
+        case OptLevel::Full:
+            return FearOptFull;
     }
     throw std::runtime_error("Unknown Fear OptLevel");
 }
@@ -143,12 +143,12 @@ inline FearCallConv into(CallConv cc)
 {
     switch (cc)
     {
-    case CallConv::C:
-        return FearCallConvC;
-    case CallConv::SysV:
-        return FearCallConvSysV;
-    case CallConv::MsAbi:
-        return FearCallConvMsAbi;
+        case CallConv::C:
+            return FearCallConvC;
+        case CallConv::SysV:
+            return FearCallConvSysV;
+        case CallConv::MsAbi:
+            return FearCallConvMsAbi;
     }
     throw std::runtime_error("Unknown Fear CallConv");
 }
@@ -157,12 +157,12 @@ inline FearBackend into(Backend backend)
 {
     switch (backend)
     {
-    case Backend::Fear:
-        return FearBackendSelf;
-    case Backend::Cranelift:
-        return FearBackendCranelift;
-    case Backend::Llvm:
-        return FearBackendLlvm;
+        case Backend::Dummy:
+            return FearBackendDummy;
+        case Backend::Cranelift:
+            return FearBackendCranelift;
+        case Backend::Llvm:
+            return FearBackendLlvm;
     }
     throw std::runtime_error("Unknown Fear Backend");
 }
@@ -174,24 +174,24 @@ inline Type from(FearType ty)
 {
     switch (ty)
     {
-    case FearVoid:
-        return Type::Void;
-    case FearBool:
-        return Type::Bool;
-    case FearInt8:
-        return Type::Int8;
-    case FearInt16:
-        return Type::Int16;
-    case FearInt32:
-        return Type::Int32;
-    case FearInt64:
-        return Type::Int64;
-    case FearFloat32:
-        return Type::Float32;
-    case FearFloat64:
-        return Type::Float64;
-    case FearPointer:
-        return Type::Pointer;
+        case FearVoid:
+            return Type::Void;
+        case FearBool:
+            return Type::Bool;
+        case FearInt8:
+            return Type::Int8;
+        case FearInt16:
+            return Type::Int16;
+        case FearInt32:
+            return Type::Int32;
+        case FearInt64:
+            return Type::Int64;
+        case FearFloat32:
+            return Type::Float32;
+        case FearFloat64:
+            return Type::Float64;
+        case FearPointer:
+            return Type::Pointer;
     }
     throw std::runtime_error("Unknown FearType");
 }
@@ -200,12 +200,12 @@ inline Linkage from(FearLinkage linkage)
 {
     switch (linkage)
     {
-    case FearLinkageExternal:
-        return Linkage::External;
-    case FearLinkageInternal:
-        return Linkage::Internal;
-    case FearLinkageWeak:
-        return Linkage::Weak;
+        case FearLinkageExternal:
+            return Linkage::External;
+        case FearLinkageInternal:
+            return Linkage::Internal;
+        case FearLinkageWeak:
+            return Linkage::Weak;
     }
     throw std::runtime_error("Unknown FearLinkage");
 }
@@ -214,12 +214,12 @@ inline OptLevel from(FearOptLevel level)
 {
     switch (level)
     {
-    case FearOptNone:
-        return OptLevel::None;
-    case FearOptDefault:
-        return OptLevel::Default;
-    case FearOptFull:
-        return OptLevel::Full;
+        case FearOptNone:
+            return OptLevel::None;
+        case FearOptDefault:
+            return OptLevel::Default;
+        case FearOptFull:
+            return OptLevel::Full;
     }
     throw std::runtime_error("Unknown FearOptLevel");
 }
@@ -228,12 +228,12 @@ inline CallConv from(FearCallConv cc)
 {
     switch (cc)
     {
-    case FearCallConvC:
-        return CallConv::C;
-    case FearCallConvSysV:
-        return CallConv::SysV;
-    case FearCallConvMsAbi:
-        return CallConv::MsAbi;
+        case FearCallConvC:
+            return CallConv::C;
+        case FearCallConvSysV:
+            return CallConv::SysV;
+        case FearCallConvMsAbi:
+            return CallConv::MsAbi;
     }
     throw std::runtime_error("Unknown FearCallConv");
 }
@@ -242,16 +242,16 @@ inline Backend from(FearBackend backend)
 {
     switch (backend)
     {
-    case FearBackendSelf:
-        return Backend::Fear;
-    case FearBackendCranelift:
-        return Backend::Cranelift;
-    case FearBackendLlvm:
-        return Backend::Llvm;
+        case FearBackendDummy:
+            return Backend::Dummy;
+        case FearBackendCranelift:
+            return Backend::Cranelift;
+        case FearBackendLlvm:
+            return Backend::Llvm;
     }
     throw std::runtime_error("Unknown FearBackend");
 }
-} // namespace detail
+}  // namespace detail
 
 /**
  * @brief Selects the default host-native backend for target object
@@ -285,25 +285,23 @@ struct FunctionDef
 
     ~FunctionDef()
     {
-        if (raw_)
-            fearDefinitionDispose(raw_);
+        if (raw_) fearDefinitionDispose(raw_);
     }
 
     // Deleted copy semantics to maintain unique ownership
-    FunctionDef(const FunctionDef &)            = delete;
-    FunctionDef &operator=(const FunctionDef &) = delete;
+    FunctionDef(const FunctionDef&)            = delete;
+    FunctionDef& operator=(const FunctionDef&) = delete;
 
     // Move semantics
-    FunctionDef(FunctionDef &&other) noexcept
+    FunctionDef(FunctionDef&& other) noexcept
         : raw_(other.raw_), currentBlock_(other.currentBlock_)
     { other.raw_ = nullptr; }
 
-    FunctionDef &operator=(FunctionDef &&other) noexcept
+    FunctionDef& operator=(FunctionDef&& other) noexcept
     {
         if (this != &other)
         {
-            if (raw_)
-                fearDefinitionDispose(raw_);
+            if (raw_) fearDefinitionDispose(raw_);
             raw_          = other.raw_;
             currentBlock_ = other.currentBlock_;
             other.raw_    = nullptr;
@@ -311,7 +309,7 @@ struct FunctionDef
         return *this;
     }
 
-    RawFuncDef *getRaw() const { return raw_; }
+    RawFuncDef* getRaw() const { return raw_; }
     BlockId     getCurrentBlock() const { return currentBlock_; }
 
     // Block management
@@ -459,15 +457,15 @@ struct FunctionDef
     }
 
     // Control Flow / Termigators
-    void jmp(BlockId target, const std::vector<ValueId> &params = {})
+    void jmp(BlockId target, const std::vector<ValueId>& params = {})
     {
         fearCreateJump(getRaw(), getCurrentBlock(), target, params.data(),
                        static_cast<uint32_t>(params.size()));
     }
 
     void jmpif(ValueId cond, BlockId true_block,
-               const std::vector<ValueId> &true_args, BlockId false_block,
-               const std::vector<ValueId> &false_args)
+               const std::vector<ValueId>& true_args, BlockId false_block,
+               const std::vector<ValueId>& false_args)
     {
         fearCreateCondJump(getRaw(), getCurrentBlock(), cond, true_block,
                            true_args.data(),
@@ -479,8 +477,8 @@ struct FunctionDef
     void ret(ValueId v) { fearCreateRet(getRaw(), getCurrentBlock(), v); }
     void ret() { fearCreateRetVoid(getRaw(), getCurrentBlock()); }
 
-  private:
-    RawFuncDef *raw_;
+   private:
+    RawFuncDef* raw_;
     BlockId     currentBlock_;
 };
 
@@ -513,45 +511,40 @@ struct Module
 
     ~Module()
     {
-        if (raw_)
-            fearModuleDispose(raw_);
+        if (raw_) fearModuleDispose(raw_);
     }
 
     // Deleted copy semantics
-    Module(const Module &)            = delete;
-    Module &operator=(const Module &) = delete;
+    Module(const Module&)            = delete;
+    Module& operator=(const Module&) = delete;
 
     // Move semantics
-    Module(Module &&other) noexcept : raw_(other.raw_)
+    Module(Module&& other) noexcept : raw_(other.raw_)
     { other.raw_ = nullptr; }
 
-    Module &operator=(Module &&other) noexcept
+    Module& operator=(Module&& other) noexcept
     {
         if (this != &other)
         {
-            if (raw_)
-                fearModuleDispose(raw_);
+            if (raw_) fearModuleDispose(raw_);
             raw_       = other.raw_;
             other.raw_ = nullptr;
         }
         return *this;
     }
 
-    RawModule *getRaw() const { return raw_; }
+    RawModule* getRaw() const { return raw_; }
 
     /**
      * @brief Declares a function signature inside the module.
      */
     FuncId declareFunction(std::string_view         name,
-                           const std::vector<Type> &params, Type returns,
+                           const std::vector<Type>& params, Type returns,
                            Linkage linkage = Linkage::External)
     {
         std::vector<FearType> raw_params;
         raw_params.reserve(params.size());
-        for (auto ty : params)
-        {
-            raw_params.push_back(detail::into(ty));
-        }
+        for (auto ty : params) { raw_params.push_back(detail::into(ty)); }
 
         std::string nt_name(name);
 
@@ -565,7 +558,7 @@ struct Module
      * @brief Attaches a compiled function definition body to a previously
      * declared function ID.
      */
-    void defineFunction(FuncId id, const FunctionDef &def)
+    void defineFunction(FuncId id, const FunctionDef& def)
     { fearDefineFunction(getRaw(), id, def.getRaw()); }
 
     /**
@@ -583,9 +576,8 @@ struct Module
      */
     std::string dumpToString()
     {
-        char *raw = fearDumpToString(getRaw());
-        if (!raw)
-            return "";
+        char* raw = fearDumpToString(getRaw());
+        if (!raw) return "";
         std::string out{raw};
         fearStringDispose(raw);
         return out;
@@ -600,9 +592,8 @@ struct Module
     std::vector<uint8_t> binaryDumpToBuffer()
     {
         size_t   size = 0;
-        uint8_t *raw  = fearBinaryDumpToBuffer(getRaw(), &size);
-        if (!raw)
-            return {};
+        uint8_t* raw  = fearBinaryDumpToBuffer(getRaw(), &size);
+        if (!raw) return {};
         std::vector<uint8_t> out{raw, raw + size};
         fearBufferDispose(raw, size);
         return out;
@@ -619,8 +610,8 @@ struct Module
                               detail::into(opt), fd);
     }
 
-  private:
-    RawModule *raw_;
+   private:
+    RawModule* raw_;
 };
 
 /**
@@ -628,14 +619,14 @@ struct Module
  */
 struct Function
 {
-    Function(Module *parent, FuncId id) : parent_(parent), id_(id) {}
+    Function(Module* parent, FuncId id) : parent_(parent), id_(id) {}
 
     /**
      * @brief Helper to declare a new function and return its high-level
      * wrapper object.
      */
-    static Function declare(Module *m, std::string_view name,
-                            const std::vector<Type> &params, Type returns,
+    static Function declare(Module* m, std::string_view name,
+                            const std::vector<Type>& params, Type returns,
                             Linkage linkage = Linkage::External)
     {
         FuncId id = m->declareFunction(name, params, returns, linkage);
@@ -646,7 +637,7 @@ struct Function
      * @brief Defines the function body using the provided FunctionDef
      * builder.
      */
-    void define(const FunctionDef &def)
+    void define(const FunctionDef& def)
     { parent_->defineFunction(getId(), def); }
 
     /**
@@ -655,12 +646,12 @@ struct Function
     void setCallingConvention(CallConv cc)
     { fearFunctionSetCC(parent_->getRaw(), getId(), detail::into(cc)); }
 
-    const Module *getParent() { return parent_; }
+    const Module* getParent() { return parent_; }
     FuncId        getId() const { return id_; }
 
-  private:
-    Module *parent_;
+   private:
+    Module* parent_;
     FuncId  id_;
 };
 
-} // namespace fear
+}  // namespace fear

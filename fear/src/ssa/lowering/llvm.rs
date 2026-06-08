@@ -1,11 +1,11 @@
 use inkwell::{
-    AddressSpace, FloatPredicate, IntPredicate, OptimizationLevel,
     builder::Builder,
     context::Context,
     module::Module,
     targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple},
     types::{AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum, FloatType, FunctionType, IntType},
     values::{BasicValue, BasicValueEnum, FloatValue, FunctionValue, IntValue, PhiValue},
+    AddressSpace, FloatPredicate, IntPredicate, OptimizationLevel,
 };
 
 use std::collections::HashMap;
@@ -248,7 +248,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
 
         self.build_phi_nodes(def);
 
-        let block_ids: Vec<BlockId> = def.reverse_post_order();
+        let block_ids: Vec<BlockId> = def.compute_rpo();
         for bid in block_ids {
             self.compile_block(m, def, bid);
         }
@@ -290,7 +290,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
             self.builder.position_at_end(llvm_bb);
 
             for &param in &block.params {
-                let ty = def.get_type(param);
+                let ty = def.get_type_of(param);
                 let llvm_ty = self.map_type(ty);
                 let phi = self.builder.build_phi(llvm_ty, "param").unwrap();
                 self.phis.insert(param, phi);
@@ -382,13 +382,13 @@ impl<'ctx> LlvmLowerer<'ctx> {
         );
         match &inst.kind {
             InstKind::IConst(x) => {
-                let ty = def.get_type(inst.result.unwrap());
+                let ty = def.get_type_of(inst.result.unwrap());
                 let val = self.map_int_type(ty).const_int(*x as u64, true);
                 self.values.insert(inst.result.unwrap(), val.into());
             }
 
             InstKind::FConst(bits) => {
-                let ty = def.get_type(inst.result.unwrap());
+                let ty = def.get_type_of(inst.result.unwrap());
                 let val: BasicValueEnum = match ty {
                     Type::Float32 => {
                         let f = f32::from_bits(*bits as u32);
@@ -510,7 +510,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
 
             InstKind::Load { volatile } => {
                 let ptr_val = self.get(inst.operands[0]).into_pointer_value();
-                let result_ty = def.get_type(inst.result.unwrap());
+                let result_ty = def.get_type_of(inst.result.unwrap());
                 let llvm_ty = self.map_type(result_ty);
                 let load = self.builder.build_load(llvm_ty, ptr_val, "load").unwrap();
                 load.as_instruction_value()
@@ -571,7 +571,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
 
             InstKind::Cast(kind) => {
                 let src_val = self.get(inst.operands[0]);
-                let dst_ty = def.get_type(inst.result.unwrap());
+                let dst_ty = def.get_type_of(inst.result.unwrap());
                 let result = self.lower_cast(*kind, src_val, dst_ty);
                 self.values.insert(inst.result.unwrap(), result);
             }
@@ -769,8 +769,8 @@ impl<'ctx> LlvmLowerer<'ctx> {
     }
 
     fn get_or_const(&self, def: &FunctionDef, v: ValueId) -> BasicValueEnum<'ctx> {
-        if let Some(c) = def.get_iconst(v) {
-            let ty = self.map_int_type(def.get_type(v));
+        if let Some(c) = def.get_int_const(v) {
+            let ty = self.map_int_type(def.get_type_of(v));
             ty.const_int(c as u64, true).into()
         } else {
             self.get(v)
@@ -778,8 +778,8 @@ impl<'ctx> LlvmLowerer<'ctx> {
     }
 
     fn get_int_or_const(&self, def: &FunctionDef, v: ValueId) -> IntValue<'ctx> {
-        if let Some(c) = def.get_iconst(v) {
-            let ty = self.map_int_type(def.get_type(v));
+        if let Some(c) = def.get_int_const(v) {
+            let ty = self.map_int_type(def.get_type_of(v));
             ty.const_int(c as u64, true)
         } else {
             self.get(v).into_int_value()
@@ -787,8 +787,8 @@ impl<'ctx> LlvmLowerer<'ctx> {
     }
 
     fn get_float_or_const(&self, def: &FunctionDef, v: ValueId) -> FloatValue<'ctx> {
-        if let Some(c) = def.get_fconst(v) {
-            let ty = self.map_float_type(def.get_type(v));
+        if let Some(c) = def.get_float_onst(v) {
+            let ty = self.map_float_type(def.get_type_of(v));
             ty.const_float(c)
         } else {
             self.get(v).into_float_value()

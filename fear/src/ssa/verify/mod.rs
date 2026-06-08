@@ -90,32 +90,16 @@ impl Module {
             }
         }
 
-        if errs.is_empty() { Ok(()) } else { Err(errs) }
+        if errs.is_empty() {
+            Ok(())
+        } else {
+            Err(errs)
+        }
     }
 
-    fn verify_function(&self, id: FuncId, fun: &Function) -> Result<(), VerifyError> {
+    fn verify_function(&self, _id: FuncId, fun: &Function) -> Result<(), VerifyError> {
         let sig = fun.signature.clone();
         let f = fun.get_definition().unwrap();
-
-        // entry block verify
-        let entry = &f.blocks[&f.entry];
-
-        if entry.params != f.params {
-            log::error!(
-                "{}: entry.params = {:?}, f.params = {:?}",
-                fun.name,
-                entry.params,
-                f.params
-            );
-            return Err(VerifyError::BadEntryParams(id));
-        }
-        if entry.params.len() != sig.params.len() {
-            return Err(VerifyError::FuncArgCountMismatch(
-                id,
-                sig.params.len(),
-                entry.params.len(),
-            ));
-        }
 
         // block verify
         for (bid, block) in &f.blocks {
@@ -192,7 +176,7 @@ impl Module {
 
                         // non-void function must have exactly one operand
                         (false, 1) => {
-                            let ret_ty = f.get_type(inst.operands[0]);
+                            let ret_ty = f.get_type_of(inst.operands[0]);
                             if ret_ty != sret_ty {
                                 return Err(VerifyError::RetTypeMismatch(*id, sret_ty, ret_ty));
                             }
@@ -219,10 +203,10 @@ impl Module {
 
                     // type checking
                     for (i, &op) in inst.operands.iter().enumerate() {
-                        let op_ty = f.get_type(op);
+                        let op_ty = f.get_type_of(op);
 
                         let param_id = target_block.params[i];
-                        let param_ty = f.get_type(param_id);
+                        let param_ty = f.get_type_of(param_id);
 
                         if op_ty != param_ty {
                             return Err(VerifyError::JumpTypeMismatch(target, i, param_ty, op_ty));
@@ -247,7 +231,7 @@ impl Module {
                         .ok_or(VerifyError::InvalidJumpTarget(else_block))?;
 
                     let cond_val = inst.operands[0];
-                    let cond_ty = f.get_type(cond_val);
+                    let cond_ty = f.get_type_of(cond_val);
                     if cond_ty != Type::Int1 {
                         return Err(VerifyError::TypeMismatch {
                             expected: Type::Int1,
@@ -267,9 +251,9 @@ impl Module {
                     }
 
                     for (i, &op) in ops.1.iter().enumerate() {
-                        let op_ty = f.get_type(op);
+                        let op_ty = f.get_type_of(op);
                         let param_id = then_target.params[i];
-                        let param_ty = f.get_type(param_id);
+                        let param_ty = f.get_type_of(param_id);
 
                         if op_ty != param_ty {
                             return Err(VerifyError::JumpTypeMismatch(
@@ -279,9 +263,9 @@ impl Module {
                     }
 
                     for (i, &op) in ops.2.iter().enumerate() {
-                        let op_ty = f.get_type(op);
+                        let op_ty = f.get_type_of(op);
                         let param_id = else_target.params[i];
-                        let param_ty = f.get_type(param_id);
+                        let param_ty = f.get_type_of(param_id);
 
                         if op_ty != param_ty {
                             return Err(VerifyError::JumpTypeMismatch(
@@ -293,7 +277,7 @@ impl Module {
 
                 InstKind::Store { .. } | InstKind::Load { .. } => {
                     let expected = Type::Pointer;
-                    let actual = f.get_type(inst.operands[0]);
+                    let actual = f.get_type_of(inst.operands[0]);
                     if expected != actual {
                         return Err(VerifyError::TypeMismatch {
                             expected,
@@ -315,7 +299,7 @@ impl Module {
                     }
 
                     for (i, &op) in inst.operands.iter().enumerate() {
-                        let op_ty = f.get_type(op);
+                        let op_ty = f.get_type_of(op);
 
                         let param_ty = func.signature.params[i];
 
@@ -332,7 +316,7 @@ impl Module {
 
                     let vbase = inst.operands[0];
 
-                    let basety = f.get_type(vbase);
+                    let basety = f.get_type_of(vbase);
                     if basety != Type::Pointer {
                         return Err(VerifyError::TypeMismatch {
                             expected: Type::Pointer,

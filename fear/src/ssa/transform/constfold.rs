@@ -1,6 +1,23 @@
-use crate::types::IntCmp;
-
 use crate::ssa::*;
+
+pub(super) fn eval_icmp(kind: crate::types::IntCmp, a: i64, b: i64) -> i64 {
+    use crate::types::IntCmp;
+    let result = match kind {
+        IntCmp::Eq => a == b,
+        IntCmp::Ne => a != b,
+        IntCmp::Lt => a < b,
+        IntCmp::Le => a <= b,
+        IntCmp::Gt => a > b,
+        IntCmp::Ge => a >= b,
+        // Unsigned: reinterpret as u64.
+        IntCmp::ULt => (a as u64) < (b as u64),
+        IntCmp::ULe => (a as u64) <= (b as u64),
+        IntCmp::UGt => (a as u64) > (b as u64),
+        IntCmp::UGe => (a as u64) >= (b as u64),
+    };
+    result as i64
+}
+
 pub fn constfold(m: &mut Module, f: FuncId) -> bool {
     let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
 
@@ -22,7 +39,11 @@ pub fn constfold(m: &mut Module, f: FuncId) -> bool {
         // let block = inst.parent;
 
         // Try to read operands as constants
-        let c: Vec<Option<i64>> = inst.operands.iter().map(|&v| func.get_iconst(v)).collect();
+        let c: Vec<Option<i64>> = inst
+            .operands
+            .iter()
+            .map(|&v| func.get_int_const(v))
+            .collect();
 
         let folded = match inst.kind {
             InstKind::Add => match (c[0], c[1]) {
@@ -61,7 +82,7 @@ pub fn constfold(m: &mut Module, f: FuncId) -> bool {
             },
             InstKind::LShl => match (c[0], c[1]) {
                 (Some(a), Some(b)) => {
-                    let ty = func.get_type(inst.operands[0]);
+                    let ty = func.get_type_of(inst.operands[0]);
                     let bit_width = ty.get_size() * 8;
 
                     let lhs = a as u64;
@@ -77,7 +98,7 @@ pub fn constfold(m: &mut Module, f: FuncId) -> bool {
             },
             InstKind::LShr => match (c[0], c[1]) {
                 (Some(a), Some(b)) => {
-                    let ty = func.get_type(inst.operands[0]);
+                    let ty = func.get_type_of(inst.operands[0]);
                     let bit_width = ty.get_size() * 8;
 
                     let lhs = a as u64;
@@ -93,7 +114,7 @@ pub fn constfold(m: &mut Module, f: FuncId) -> bool {
             },
             InstKind::AShr => match (c[0], c[1]) {
                 (Some(a), Some(b)) => {
-                    let ty = func.get_type(inst.operands[0]);
+                    let ty = func.get_type_of(inst.operands[0]);
                     let bit_width = ty.get_size() * 8;
                     if b < 0 {
                         None
@@ -111,27 +132,13 @@ pub fn constfold(m: &mut Module, f: FuncId) -> bool {
                 _ => None,
             },
             InstKind::Cmp(kind) => match (c[0], c[1]) {
-                (Some(a), Some(b)) => {
-                    let r = match kind {
-                        IntCmp::Eq => a == b,
-                        IntCmp::Ne => a != b,
-                        IntCmp::Lt => a < b,
-                        IntCmp::Le => a <= b,
-                        IntCmp::Gt => a > b,
-                        IntCmp::Ge => a >= b,
-                        IntCmp::ULt => (a as u64) < (b as u64),
-                        IntCmp::ULe => (a as u64) <= (b as u64),
-                        IntCmp::UGt => (a as u64) > (b as u64),
-                        IntCmp::UGe => (a as u64) >= (b as u64),
-                    };
-                    Some(r as i64)
-                }
+                (Some(a), Some(b)) => Some(eval_icmp(kind, a, b)),
                 _ => None,
             },
             _ => None,
         };
 
-        // let ty = inst.result.map(|r| func.get_type(r)).unwrap_or(Type::I32);
+        // let ty = inst.result.map(|r| func.get_type_of(r)).unwrap_or(Type::I32);
         // if let Some(val) = folded {
         //     let new_const = func.make_iconst(block, ty, val);
         //     func.replace_value(result, new_const);

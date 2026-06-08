@@ -2,115 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use crate::ssa::*;
 
-type DomSet = HashSet<BlockId>;
-
 pub struct Dominance {
-    pub dom: HashMap<BlockId, DomSet>,
     pub idom: HashMap<BlockId, BlockId>,
-}
-
-impl Dominance {
-    pub fn build(func: &FunctionDef) -> Self {
-        compute_dominance(func)
-    }
-}
-
-fn intersect(a: &DomSet, b: &DomSet) -> DomSet {
-    a.intersection(b).copied().collect()
-}
-
-fn compute_dominance(func: &FunctionDef) -> Dominance {
-    let mut dom: HashMap<BlockId, DomSet> = HashMap::new();
-
-    let blocks: Vec<BlockId> = func.blocks.keys().copied().collect();
-    let entry = func.entry;
-
-    let all: DomSet = blocks.iter().copied().collect();
-
-    for &b in &blocks {
-        dom.insert(b, all.clone());
-    }
-
-    dom.insert(entry, {
-        let mut s = HashSet::new();
-        s.insert(entry);
-        s
-    });
-
-    let mut changed = true;
-
-    while changed {
-        changed = false;
-
-        for &b in &blocks {
-            if b == entry {
-                continue;
-            }
-
-            let preds = &func.blocks[&b].preds;
-
-            if preds.is_empty() {
-                continue;
-            }
-
-            let mut new_dom = all.clone();
-
-            for &p in preds {
-                if let Some(pd) = dom.get(&p) {
-                    new_dom = intersect(&new_dom, pd);
-                }
-            }
-
-            new_dom.insert(b);
-
-            if new_dom != dom[&b] {
-                dom.insert(b, new_dom);
-                changed = true;
-            }
-        }
-    }
-
-    let idom = compute_idom(&dom, &blocks, entry);
-
-    Dominance { dom, idom }
-}
-
-fn compute_idom(
-    dom: &HashMap<BlockId, DomSet>,
-    blocks: &[BlockId],
-    entry: BlockId,
-) -> HashMap<BlockId, BlockId> {
-    let mut idom = HashMap::new();
-
-    for &b in blocks {
-        if b == entry {
-            continue;
-        }
-
-        let doms = &dom[&b];
-
-        let candidates: Vec<BlockId> = doms.iter().copied().filter(|x| *x != b).collect();
-
-        if candidates.is_empty() {
-            continue;
-        }
-
-        let mut best = candidates[0];
-
-        for &c in &candidates {
-            if dominates(dom, best, c) {
-                best = c;
-            }
-        }
-
-        idom.insert(b, best);
-    }
-
-    idom
-}
-
-fn dominates(dom: &HashMap<BlockId, DomSet>, a: BlockId, b: BlockId) -> bool {
-    dom[&b].contains(&a)
 }
 
 pub struct DomTree {
@@ -119,16 +12,173 @@ pub struct DomTree {
 }
 
 impl DomTree {
-    pub fn build(idom: &HashMap<BlockId, BlockId>) -> DomTree {
-        let mut children: HashMap<BlockId, Vec<BlockId>> = HashMap::new();
+    pub fn build(idom: &HashMap<BlockId, BlockId>) -> Self {
+        let mut children = HashMap::<BlockId, Vec<BlockId>>::new();
 
-        for (&b, &p) in idom {
-            children.entry(p).or_default().push(b);
+        for (&block, &parent) in idom {
+            children.entry(parent).or_default().push(block);
         }
 
-        DomTree {
+        Self {
             idom: idom.clone(),
             children,
         }
     }
+}
+
+impl Dominance {
+    pub fn build(func: &FunctionDef) -> Self {
+        Self {
+            idom: compute_idom(func),
+        }
+    }
+}
+
+fn intersect(
+    mut a: BlockId,
+    mut b: BlockId,
+    rpo_index: &HashMap<BlockId, usize>,
+    idom: &HashMap<BlockId, BlockId>,
+) -> BlockId {
+    while a != b {
+        while rpo_index[&a] > rpo_index[&b] {
+            a = idom[&a];
+        }
+
+        while rpo_index[&b] > rpo_index[&a] {
+            b = idom[&b];
+        }
+    }
+
+    a
+}
+
+pub fn compute_idom(func: &FunctionDef) -> HashMap<BlockId, BlockId> {
+    let rpo = func.compute_rpo();
+
+    let mut rpo_index = HashMap::<BlockId, usize>::new();
+
+    for (idx, &block) in rpo.iter().enumerate() {
+        rpo_index.insert(block, idx);
+    }
+
+    let start = func.entry;
+
+    let mut idom = HashMap::<BlockId, BlockId>::new();
+    idom.insert(start, start);
+
+    let mut changed = true;
+
+    while changed {
+        changed = false;
+
+        for &block in rpo.iter().skip(1) {
+            let preds = &func.blocks[&block].preds;
+
+            let mut new_idom = None;
+
+            for &pred in preds {
+                if idom.contains_key(&pred) {
+                    new_idom = Some(pred);
+                    break;
+                }
+            }
+
+            let mut new_idom = match new_idom {
+                Some(v) => v,
+                None => continue,
+            };
+
+            for &pred in preds {
+                if pred == new_idom {
+                    continue;
+                }
+
+                if !idom.contains_key(&pred) {
+                    continue;
+                }
+
+                new_idom = intersect(pred, new_idom, &rpo_index, &idom);
+            }
+
+            let update = match idom.get(&block) {
+                Some(old) => *old != new_idom,
+                None => true,
+            };
+
+            if update {
+                idom.insert(block, new_idom);
+                changed = true;
+            }
+        }
+    }
+
+    idom.remove(&start);
+
+    idom
+}
+
+pub fn dominates(
+    a: BlockId,
+    mut b: BlockId,
+    idom: &HashMap<BlockId, BlockId>,
+    entry: BlockId,
+) -> bool {
+    if a == b {
+        return true;
+    }
+
+    while b != entry {
+        let parent = match idom.get(&b) {
+            Some(v) => *v,
+            None => break,
+        };
+
+        if parent == a {
+            return true;
+        }
+
+        b = parent;
+    }
+
+    false
+}
+
+pub fn compute_df(
+    func: &FunctionDef,
+    idom: &HashMap<BlockId, BlockId>,
+) -> HashMap<BlockId, HashSet<BlockId>> {
+    let mut df = HashMap::<BlockId, HashSet<BlockId>>::new();
+
+    for &block in func.blocks.keys() {
+        df.insert(block, HashSet::new());
+    }
+
+    for (&block, bb) in &func.blocks {
+        if bb.preds.len() < 2 {
+            continue;
+        }
+
+        let idom_block = match idom.get(&block) {
+            Some(v) => *v,
+            None => continue,
+        };
+
+        for &pred in &bb.preds {
+            let mut runner = pred;
+
+            while runner != idom_block {
+                df.entry(runner).or_default().insert(block);
+
+                let next = match idom.get(&runner) {
+                    Some(v) => *v,
+                    None => break,
+                };
+
+                runner = next;
+            }
+        }
+    }
+
+    df
 }
