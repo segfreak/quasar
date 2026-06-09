@@ -1,3 +1,5 @@
+-include make.conf
+
 PREFIX ?= /usr/local
 
 LLVM         ?= OFF
