@@ -12,12 +12,9 @@
  * Fear backend type
  */
 typedef enum FearBackend {
-  /**
-   * default backend
-   */
+  FearBackendDummy,
   FearBackendCranelift,
   FearBackendLlvm,
-  FearBackendDummy,
 } FearBackend;
 
 /**

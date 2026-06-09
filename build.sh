@@ -120,6 +120,8 @@ FEAR_FEATURES_STR=$(IFS=,; echo "${FEAR_FEATURES[*]}")
 LIBFEAR_FEATURES_STR=$(IFS=,; echo "${LIBFEAR_FEATURES[*]}")
 ALL_FEATURES_STR="${FEAR_FEATURES_STR},${LIBFEAR_FEATURES_STR}"
 
+printf "build-features: $ALL_FEATURES_STR\n"
+
 if [ "$DO_TEST" = "1" ]; then
   cargo test "${CARGO_ARGS[@]}" --features "$ALL_FEATURES_STR"
 else

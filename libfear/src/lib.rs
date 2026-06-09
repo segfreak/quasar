@@ -82,7 +82,13 @@ pub unsafe extern "C" fn fearSelectBackend() -> FearBackend {
 /// Check by fearHasBackend()
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearSelectBackendForObject() -> FearBackend {
-    FearBackend::from(Backend::select_for(OutputType::Object).unwrap_or(Backend::Dummy))
+    if let Some(backend) = Backend::select_for(OutputType::Object) {
+        FearBackend::from(backend)
+    } else {
+        log::warn!("cannot select backend for object");
+        log::warn!("using dummy backend as fallback");
+        FearBackend::FearBackendDummy
+    }
 }
 
 /// Compiles a `FearModule` into a native machine object file via target backend, streaming to a raw file descriptor.

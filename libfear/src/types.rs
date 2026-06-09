@@ -62,10 +62,9 @@ pub enum FearLinkage {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub enum FearBackend {
-    /// default backend
+    FearBackendDummy,
     FearBackendCranelift,
     FearBackendLlvm,
-    FearBackendDummy,
 }
 
 /// Integer compare predicate

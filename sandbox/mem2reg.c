@@ -5,6 +5,8 @@
 
 int main(void)
 {
+    fearInitLogging();
+
     FearModule*   m        = fearModuleCreate("mem2reg_stress");
 
     enum FearType params[] = {FearBool, FearBool, FearBool};
@@ -109,6 +111,16 @@ int main(void)
     char* after = fearDumpToString(m);
     printf("%s\n", after);
     fearStringDispose(after);
+
+    FearBackend backend;
+    if ((backend = fearSelectBackendForObject()) &&
+        fearHasBackend(backend))
+    {
+        fprintf(stderr, "=> foobarbaz.o\n");
+        FILE* exf_obj = fopen("foobarbaz.o", "w");
+        fearEmitObject(m, backend, FearOptFull, fileno(exf_obj));
+        fclose(exf_obj);
+    }
 
     fearModuleDispose(m);
 
