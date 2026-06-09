@@ -10,7 +10,6 @@ int main()
     Module m("hello");
 
     auto   bar = Function::declare(&m, "bar", {Type::Pointer}, Type::Void);
-
     auto   foo = Function::declare(&m, "foo", {}, Type::Int32);
     FunctionDef f{};
     auto        slot  = f.stack_alloca(Type::Int32);

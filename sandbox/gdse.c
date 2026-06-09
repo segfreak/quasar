@@ -4,6 +4,8 @@
 
 int main()
 {
+    fearInitLogging();
+
     FearModule*      m   = fearModuleCreate("global_dse");
 
     enum FearType    i32 = FearInt32;

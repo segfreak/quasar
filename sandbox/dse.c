@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <fear.h>
+#include <stdio.h>
 
 int main()
 {
@@ -31,11 +32,19 @@ int main()
 
     fearDefineFunction(m, f, def);
 
+    printf("Before optimization:\n");
+    char* before = fearDumpToString(m);
+    printf("%s\n", before);
+    fearStringDispose(before);
+
     fearModuleOptimize(m, FearOptFull);
 
-    fearModuleVerify(m);
+    printf("After optimization:\n");
+    char* after = fearDumpToString(m);
+    printf("%s\n", after);
+    fearStringDispose(after);
 
-    fearDumpToFile(m, 0);
+    fearModuleVerify(m);
 
     fearModuleDispose(m);
     fearDefinitionDispose(def);

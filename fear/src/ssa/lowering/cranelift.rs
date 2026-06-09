@@ -34,11 +34,19 @@ fn map_type(ty: Type) -> types::Type {
     }
 }
 
-fn map_linkage(l: &Linkage) -> CLinkage {
-    match l {
-        Linkage::External => CLinkage::Export,
-        Linkage::Internal => CLinkage::Local,
-        Linkage::Weak => CLinkage::Preemptible,
+fn map_linkage(func: &crate::ssa::Function) -> CLinkage {
+    match (&func.linkage, func.get_definition().is_some()) {
+        (Linkage::External, true) => CLinkage::Export,
+        (Linkage::External, false) => CLinkage::Import,
+
+        (Linkage::Internal, true) => CLinkage::Local,
+        (Linkage::Internal, false) => {
+            log::warn!("undefined internal function");
+            CLinkage::Import
+        }
+
+        (Linkage::Weak, true) => CLinkage::Preemptible,
+        (Linkage::Weak, false) => CLinkage::Import,
     }
 }
 
@@ -150,7 +158,7 @@ impl CraneliftLowerer {
         let sig = self.make_signature(func.calling_convention, &func.signature);
         let cl_fid = self
             .module
-            .declare_function(&func.name, map_linkage(&func.linkage), &sig)
+            .declare_function(&func.name, map_linkage(func), &sig)
             .unwrap();
         self.functions.insert(fid, cl_fid);
     }

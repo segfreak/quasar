@@ -76,7 +76,7 @@ fn collect_promotable(func: &FunctionDef) -> Vec<ValueId> {
 
             match &using_inst.kind {
                 InstKind::Load { volatile: false } => u.index == 0,
-                InstKind::Store { volatile: false } => u.index == 1,
+                InstKind::Store { volatile: false } => u.index == 0,
                 _ => false,
             }
         });

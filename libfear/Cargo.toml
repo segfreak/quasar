@@ -8,7 +8,7 @@ crate-type = ["cdylib", "staticlib"]
 name = "fear"
 
 [features]
-default = ["binary-ir"]
+default = ["cranelift", "binary-ir"]
 llvm = ["fear/llvm"]
 cranelift = ["fear/cranelift"]
 binary-ir = ["fear/binary-ir"]
