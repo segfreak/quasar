@@ -19,4 +19,4 @@ jobs:
     - name: Installing depenedencies
       run: cargo install cbindgen
     - name: Run tests
-      run: ./test.sh
+      run: ./test.sh --release
