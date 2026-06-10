@@ -70,12 +70,15 @@ impl PassManager {
 
             if let Some(def) = old_def {
                 let mut tdef = tree::FunctionDef::from(def);
+                let before = tdef.get_cost();
                 let res = tree::passes::PassManager::optimize_with_pipeline(
                     &tree::passes::Pipeline::with_level(opts.multilevel_tree_max_passes, lvl),
                     m,
                     &mut tdef,
                 );
-                log::debug!("tree optimizer performed {} passes", res.passes.len());
+                let after = tdef.get_cost();
+                log::debug!("tree optimiser performed {} passes ({lvl:?})", res.passes.len());
+                log::debug!("is profitable: {}", before > after);
                 let new_def = FunctionDef::from(tdef);
                 if let Some(func) = m.get_function_mut(f)
                     && let Some(def_ref) = func.get_definition_mut()

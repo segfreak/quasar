@@ -64,7 +64,7 @@ int main()
     printf("%s\n", before);
     fearStringDispose(before);
 
-    fearModuleOptimize(m, FearOptFull);
+    fearModuleOptimizeMultilevel(m, FearOptFull);
 
     printf("After optimization:\n");
     char* after = fearDumpToString(m);
