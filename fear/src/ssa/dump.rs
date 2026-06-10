@@ -14,249 +14,98 @@ impl FunctionDef {
             .result
             .map(|v| self.get_type_of(v))
             .unwrap_or(Type::Void);
-
         match &inst.kind {
             InstKind::IConst(x) => {
-                format!(
-                    "const.{:<6} {:<12} # hex: 0x{:X}, bits: 0b{:b}",
-                    ty, x, x, x
-                )
+                format!("const.{} {} \t# hex: 0x{:X}, bits: 0b{:b}", ty, x, x, x)
             }
-
             InstKind::FConst(x) => {
                 format!(
-                    "const.{:<6} {:<12} # hex: 0x{:X}, bits: 0b{:b}",
+                    "const.{} {} \t# hex: 0x{:X}, bits: 0b{:b}",
                     ty,
                     f64::from_bits(*x),
                     x,
                     x
                 )
             }
+            InstKind::Add => format!("add.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::Sub => format!("sub.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::Mul => format!("mul.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::Div { signed } => format!(
+                "{}div.{} %{}, %{}",
+                if !*signed { "u" } else { "s" },
+                ty,
+                inst.operands[0],
+                inst.operands[1]
+            ),
+            InstKind::Rem { signed } => format!(
+                "{}rem.{} %{}, %{}",
+                if !*signed { "u" } else { "s" },
+                ty,
+                inst.operands[0],
+                inst.operands[1]
+            ),
+            InstKind::FAdd => format!("add.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::FSub => format!("sub.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::FMul => format!("mul.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::FDiv => format!("div.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::FRem => format!("rem.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::Not => format!("not.{} %{}", ty, inst.operands[0]),
+            InstKind::And => format!("and.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::Or => format!("or.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::Xor => format!("xor.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::LShl => format!("lshl.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::LShr => format!("lshr.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::AShr => format!("ashr.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
 
-            InstKind::Add => {
-                format!(
-                    "add.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
+            InstKind::Cmp(k) => format!(
+                "icmp.{} {} %{}, %{}",
+                ty, k, inst.operands[0], inst.operands[1]
+            ),
+            InstKind::FCmp(k) => format!(
+                "fcmp.{} {} %{}, %{}",
+                ty, k, inst.operands[0], inst.operands[1]
+            ),
 
-            InstKind::Sub => {
-                format!(
-                    "sub.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
+            InstKind::Load { volatile } => format!(
+                "{}load.{} %{}",
+                if *volatile { "volatile " } else { "" },
+                ty,
+                inst.operands[0]
+            ),
+            InstKind::Store { volatile } => format!(
+                "{}store.{} %{}, %{}",
+                if *volatile { "volatile " } else { "" },
+                self.get_type_of(inst.operands[1]),
+                inst.operands[0],
+                inst.operands[1],
+            ),
 
-            InstKind::Mul => {
-                format!(
-                    "mul.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::Div { signed } => {
-                format!(
-                    "{}div.{:<6} {:<8} {:<8}",
-                    if !*signed { "u" } else { "s" },
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::Rem { signed } => {
-                format!(
-                    "{}rem.{:<6} {:<8} {:<8}",
-                    if !*signed { "u" } else { "s" },
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::FAdd => {
-                format!(
-                    "add.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::FSub => {
-                format!(
-                    "sub.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::FMul => {
-                format!(
-                    "mul.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::FDiv => {
-                format!(
-                    "div.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::FRem => {
-                format!(
-                    "rem.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::Not => {
-                format!("not.{:<6} {:<8}", ty, format!("%{}", inst.operands[0]))
-            }
-
-            InstKind::And => {
-                format!(
-                    "and.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::Or => {
-                format!(
-                    "or.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::Xor => {
-                format!(
-                    "xor.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::LShl => {
-                format!(
-                    "lshl.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::LShr => {
-                format!(
-                    "lshr.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::AShr => {
-                format!(
-                    "ashr.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::Cmp(k) => {
-                format!(
-                    "icmp.{:<6} {:<4} {:<8} {:<8}",
-                    ty,
-                    k,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::FCmp(k) => {
-                format!(
-                    "fcmp.{:<6} {:<4} {:<8} {:<8}",
-                    ty,
-                    k,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
-            }
-
-            InstKind::Load { volatile } => {
-                format!(
-                    "{}load.{:<6} {:<8}",
-                    if *volatile { "volatile " } else { "" },
-                    ty,
-                    format!("%{}", inst.operands[0])
-                )
-            }
-
-            InstKind::Store { volatile } => {
-                format!(
-                    "{}store.{:<6} {:<8} {:<8}",
-                    if *volatile { "volatile " } else { "" },
-                    self.get_type_of(inst.operands[1]),
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1]),
-                )
-            }
-
-            InstKind::Alloca(t) => format!("alloca     {}", t),
-            InstKind::NAlloca(t, size) => format!("nalloca    {} {}", t, size),
+            InstKind::Alloca(t) => format!("alloca {}", t),
+            InstKind::NAlloca(t, size) => format!("nalloca {} {}", t, size),
 
             InstKind::PtrOffset => {
-                format!(
-                    "ptroffset  {:<8} {:<8}",
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
-                )
+                format!("ptroffset %{}, %{}", inst.operands[0], inst.operands[1])
             }
-
             InstKind::ElementPtr(ty) => {
                 format!(
-                    "elementptr.{:<6} {:<8} {:<8}",
-                    ty,
-                    format!("%{}", inst.operands[0]),
-                    format!("%{}", inst.operands[1])
+                    "elementptr.{} %{}, %{}",
+                    ty, inst.operands[0], inst.operands[1]
                 )
             }
 
             InstKind::Call(fid) => {
                 let name = &module.get_function(*fid).unwrap().name;
-                format!("call       {}({})", name, Self::fmt_args(&inst.operands))
+                format!("call {}({})", name, Self::fmt_args(&inst.operands))
             }
 
-            InstKind::Cast(k) => {
-                format!("cast.{:<6} {:<8}", k, format!("%{}", inst.operands[0]))
-            }
+            InstKind::Cast(k) => format!("cast.{} %{}", k, inst.operands[0]),
 
             InstKind::Jump(bb) => {
                 if inst.operands.is_empty() {
-                    format!("jmp        B{}", bb)
+                    format!("jmp B{}", bb)
                 } else {
                     let args = Self::fmt_args(&inst.operands);
-                    format!("jmp        B{}({})", bb, args)
+                    format!("jmp B{}({})", bb, args)
                 }
             }
 
@@ -283,10 +132,10 @@ impl FunctionDef {
 
             InstKind::Ret => {
                 if inst.operands.is_empty() {
-                    format!("ret.{:<6}", Type::Void)
+                    format!("ret.{}", Type::Void)
                 } else {
                     let op = inst.operands[0];
-                    format!("ret.{:<6} %{}", self.get_type_of(op), op)
+                    format!("ret.{} %{}", self.get_type_of(op), op)
                 }
             }
 
