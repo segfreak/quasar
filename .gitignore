@@ -1,4 +1,6 @@
-/target
+/target/
+/build/
+/.vscode/
 *.svg
 perf.*
 *.dot
