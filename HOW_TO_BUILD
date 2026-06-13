@@ -4,16 +4,10 @@ NOTES
 
 EXAMPLES
   - Building with LLVM 22.1 (with installation)
-    $ ./build.sh --enable-llvm=ON --inkwell-llvm=llvm22-1 --release --install --prefix "/usr/local/"
+    $ ./build.sh --with-llvm=llvm22-1 --release --install --prefix "/usr/local/"
+  
+  - Building with cranelift only (with installation)
+    $ ./build.sh ---release --install --prefix "/usr/local/"
 
-FEATURES
-
-llvm
-  Enables LLVM backend support for code generation.
-  Required dependencies:
-    - inkwell
-    - llvm (system or bundled version compatible with inkwell)
-
-cranelift
-  Enables Cranelift backend support for code generation.
-  No additional mandatory system dependencies (handled via Cranelift crates).
+  - Building with LLVM 22.1 only (with installation)
+    $ ./build.sh --with-llvm=llvm22-1 --enable-cranelift=OFF ---release --install --prefix "/usr/local/"

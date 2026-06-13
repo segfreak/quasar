@@ -28,7 +28,7 @@ build:
 	./build.sh $(BUILD_ARGS)
 
 test:
-	./build.sh --test
+	./build.sh --test $(BUILD_ARGS)
 
 install:
 	./build.sh $(BUILD_ARGS) --prefix=$(PREFIX) --install
