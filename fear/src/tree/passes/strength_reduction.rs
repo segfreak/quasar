@@ -61,31 +61,87 @@ pub fn reduce_expr(expr: Expr, changed: &mut bool) -> Expr {
                 }
 
                 // mul => shifts (decompose)
-                (ExprKind::Const(y), _) | (_, ExprKind::Const(y))
-                    if !is_power_of_two(*y) && *y > 2 =>
+                (ExprKind::Const(c), _) | (_, ExprKind::Const(c))
+                    if *c > 1 && !is_power_of_two(*c) =>
                 {
                     let x = if matches!(a.kind, ExprKind::Const(_)) {
-                        &b
+                        b.clone()
                     } else {
-                        &a
+                        a.clone()
                     };
-                    if let Some(new) = try_decompose_mul(x.clone(), *y) {
-                        let new_cost = new.get_cost();
-                        if new_cost < cost {
+
+                    #[allow(clippy::collapsible_if)]
+                    if let Some(new) = try_decompose_mul(x, *c) {
+                        if new.get_cost() < cost {
                             *changed = true;
                             return new;
                         }
-                        log::debug!(
-                            "decompose for constant {} is not profitable (cost {} >= {})",
-                            y,
-                            new_cost,
-                            cost
-                        );
                     }
+
                     ExprKind::Mul(Box::new(a), Box::new(b))
                 }
 
                 _ => ExprKind::Mul(Box::new(a), Box::new(b)),
+            }
+        }
+
+        ExprKind::Div(signed, a, b) if signed => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+
+            match &b.kind {
+                ExprKind::Const(y) if *y > 0 && is_power_of_two(*y) => {
+                    *changed = true;
+
+                    let k = y.trailing_zeros() as i64;
+
+                    let bitwidth = a.ty.get_bitwidth() as i64;
+                    let sign_shift = bitwidth - 1;
+
+                    // (x >> sign_shift)
+                    let sign = Expr {
+                        ty: a.ty,
+                        kind: ExprKind::ArithShr(
+                            Box::new(a.clone()),
+                            Box::new(Expr {
+                                ty: b.ty,
+                                kind: ExprKind::Const(sign_shift),
+                            }),
+                        ),
+                    };
+
+                    // mask = (2^k - 1)
+                    let mask_val: i64 = if k >= 63 {
+                        i64::MAX >> 1 // safe
+                    } else {
+                        (1i64 << k) - 1
+                    };
+
+                    let mask = Expr {
+                        ty: b.ty,
+                        kind: ExprKind::Const(mask_val),
+                    };
+
+                    let correction = Expr {
+                        ty: a.ty,
+                        kind: ExprKind::BitAnd(Box::new(sign), Box::new(mask)),
+                    };
+
+                    let shifted = Expr {
+                        ty: a.ty,
+                        kind: ExprKind::ArithShr(
+                            Box::new(a),
+                            Box::new(Expr {
+                                ty: b.ty,
+                                kind: ExprKind::Const(k),
+                            }),
+                        ),
+                    };
+
+                    ExprKind::Add(Box::new(shifted), Box::new(correction))
+                }
+
+                _ => ExprKind::Div(true, Box::new(a), Box::new(b)),
             }
         }
 
@@ -137,46 +193,48 @@ pub fn reduce_expr(expr: Expr, changed: &mut bool) -> Expr {
             }
         }
 
-        other => other,
+        _ => expr.kind,
     };
 
     Expr { ty, kind }
 }
 
 fn try_decompose_mul(x: Expr, c: i64) -> Option<Expr> {
-    if let ExprKind::Mul(_left, right) = x.kind.clone() {
-        if c <= 2 || (c & (c - 1)) == 0 {
-            return None;
-        }
-
-        let mut current_val = c;
-        let mut shifts = Vec::new();
-        let mut bit_position = 0;
-
-        while current_val > 0 {
-            if (current_val & 1) == 1 {
-                shifts.push(bit_position);
-            }
-            current_val >>= 1;
-            bit_position += 1;
-        }
-
-        let mut result = make_lshift(x.clone(), right.ty, shifts[0]);
-
-        for &shift in &shifts[1..] {
-            let next_shift_expr = make_lshift(x.clone(), right.ty, shift);
-            result = Expr {
-                ty: x.ty,
-                kind: ExprKind::Add(Box::new(result), Box::new(next_shift_expr)),
-            };
-        }
-
-        Some(result)
-    } else {
-        None
+    if c <= 1 || is_power_of_two(c) {
+        return None;
     }
-}
 
+    let mut shifts = Vec::new();
+    let mut v = c;
+    let mut bit = 0;
+
+    while v != 0 {
+        if (v & 1) != 0 {
+            shifts.push(bit);
+        }
+
+        v >>= 1;
+        bit += 1;
+    }
+
+    if shifts.len() <= 1 {
+        return None;
+    }
+
+    let mut result = make_lshift(x.clone(), x.ty, shifts[0]);
+
+    for shift in &shifts[1..] {
+        result = Expr {
+            ty: x.ty,
+            kind: ExprKind::Add(
+                Box::new(result),
+                Box::new(make_lshift(x.clone(), x.ty, *shift)),
+            ),
+        };
+    }
+
+    Some(result)
+}
 fn is_power_of_two(v: i64) -> bool {
     v > 0 && (v & (v - 1)) == 0
 }

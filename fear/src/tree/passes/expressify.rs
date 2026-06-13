@@ -108,22 +108,26 @@ pub fn expressify(func: &mut FunctionDef) -> bool {
 fn should_inline(
     func: &FunctionDef,
     v: ValueId,
-    uses: &HashMap<ValueId, usize>,
+    _uses: &HashMap<ValueId, usize>,
     params: &HashSet<ValueId>,
 ) -> bool {
     if params.contains(&v) {
+        // cannot inline a block-parameter value-id
         return false;
     }
 
-    matches!(func.get_expr(v).kind, ExprKind::Const(_))
-        || matches!(uses.get(&v), Some(&1))
-            && !matches!(
-                func.get_expr(v).kind,
-                ExprKind::Alloca(_)
-                    | ExprKind::Load(_, _)
-                    | ExprKind::Store(_, _, _)
-                    | ExprKind::Call(_, _)
-            )
+    // matches!(
+    // func.get_expr(v).kind, ExprKind::Const(_)
+    // || matches!(_uses.get(&v), Some(&1))
+    // );
+
+    !matches!(
+        func.get_expr(v).kind,
+        ExprKind::Alloca(_)
+            | ExprKind::Load(_, _)
+            | ExprKind::Store(_, _, _)
+            | ExprKind::Call(_, _)
+    )
 }
 
 fn expand_value(
@@ -191,8 +195,8 @@ fn expand_expr(
         }
         ExprKind::Store(volatile, ptr, value) => {
             let ptr = expand_expr(func, *ptr, cache, uses, params, changed);
-            // let value = expand_expr(func, *value, cache, uses, params, changed);
-            ExprKind::Store(volatile, Box::new(ptr), value.clone())
+            let value = expand_expr(func, *value, cache, uses, params, changed);
+            ExprKind::Store(volatile, Box::new(ptr), Box::new(value.clone()))
         }
 
         ExprKind::Cmp(kind, a, b) => {

@@ -134,6 +134,57 @@ impl ExprKind {
         }
     }
 
+    pub fn get_operands_mut(&mut self) -> Vec<&mut Expr> {
+        match self {
+            Self::Var(_) => vec![],
+            Self::Const(_) | Self::FConst(_) => vec![],
+
+            Self::Add(a, b)
+            | Self::Sub(a, b)
+            | Self::Mul(a, b)
+            | Self::FAdd(a, b)
+            | Self::FSub(a, b)
+            | Self::FMul(a, b)
+            | Self::FDiv(a, b)
+            | Self::FRem(a, b)
+            | Self::BitShl(a, b)
+            | Self::BitShr(a, b)
+            | Self::ArithShr(a, b)
+            | Self::BitAnd(a, b)
+            | Self::BitOr(a, b)
+            | Self::BitXor(a, b)
+            | Self::PtrOffset(a, b) => {
+                vec![a.as_mut(), b.as_mut()]
+            }
+
+            Self::Div(_, a, b)
+            | Self::Rem(_, a, b)
+            | Self::Cmp(_, a, b)
+            | Self::FCmp(_, a, b)
+            | Self::ElementPtr(_, a, b) => {
+                vec![a.as_mut(), b.as_mut()]
+            }
+
+            Self::Square(v)
+            | Self::FSquare(v)
+            | Self::BitNeg(v)
+            | Self::Cast(_, v)
+            | Self::Load(_, v) => {
+                vec![v.as_mut()]
+            }
+
+            Self::Store(_, ptr, value) => {
+                vec![ptr.as_mut(), value.as_mut()]
+            }
+
+            Self::Call(_, args) => args.iter_mut().collect(),
+
+            Self::Alloca(_) => vec![],
+            Self::NAlloca(_, _) => vec![],
+            Self::Undef => vec![],
+        }
+    }
+
     pub fn is_volatile(&self) -> bool {
         match self {
             Self::Load(volatile, _) | Self::Store(volatile, _, _) => *volatile,

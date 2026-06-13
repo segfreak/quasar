@@ -62,6 +62,7 @@ impl Type {
         matches!(self, Type::Pointer)
     }
 
+    /// Get size in bytes
     pub fn get_size(&self) -> usize {
         match self {
             Self::Void => 0,
@@ -74,6 +75,11 @@ impl Type {
             Self::Float64 => 8,
             Self::Pointer => crate::target::HOST_DESC.pointer_size,
         }
+    }
+
+    /// Get size in bits
+    pub fn get_bitwidth(&self) -> usize {
+        self.get_size() * 8
     }
 }
 

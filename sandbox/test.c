@@ -339,10 +339,8 @@ void test_algebraic_simplification(FearModule* m)
     fearDefineFunction(m, fid, f);
 }
 
-int main()
+int faz()
 {
-    fearInitLogging();
-
     struct FearModule* mod = fearModuleCreate("faz");
     if (!mod)
     {
@@ -360,11 +358,7 @@ int main()
 
     fearModuleVerify(mod);
 
-#ifdef MULT
-    uint32_t passes = fearModuleOptimizeMultilevel(mod, FearOptDefault);
-#else
     uint32_t passes = fearModuleOptimize(mod, FearOptDefault);
-#endif
 
     fearDumpToFile(mod, 0);
 
@@ -378,11 +372,69 @@ int main()
         fclose(f);
     }
 
+    fprintf(stderr, "=> test.ssa\n");
+    FILE* f = fopen("test.ssa", "w");
+    fearDumpToFile(mod, fileno(f));
+
     uint32_t errors = fearModuleVerify(mod);
 
     printf("passes: %u\n", passes);
     printf("errors: %u\n", errors);
 
     fearModuleDispose(mod);
+    return 0;
+}
+
+int faz_multilevel()
+{
+    struct FearModule* mod = fearModuleCreate("faz_multilevel");
+    if (!mod)
+    {
+        fprintf(stderr, "cannot create module\n");
+        return 1;
+    }
+
+    test_diamond(mod);
+    test_if_else_chain(mod);
+    test_early_return(mod);
+    test_cross_phi(mod);
+    test_big_cfg_stress(mod);
+    test_memory_stack_heavy(mod);
+    test_algebraic_simplification(mod);
+
+    fearModuleVerify(mod);
+
+    uint32_t passes = fearModuleOptimizeMultilevel(mod, FearOptDefault);
+
+    fearDumpToFile(mod, 0);
+
+    FearBackend backend;
+    if ((backend = fearSelectBackendForObject()) &&
+        fearHasBackend(backend))
+    {
+        fprintf(stderr, "=> test-ml.o\n");
+        FILE* f = fopen("test-ml.o", "w");
+        fearEmitObject(mod, backend, FearOptFull, fileno(f));
+        fclose(f);
+    }
+
+    fprintf(stderr, "=> test-ml.ssa\n");
+    FILE* f = fopen("test-ml.ssa", "w");
+    fearDumpToFile(mod, fileno(f));
+
+    uint32_t errors = fearModuleVerify(mod);
+
+    printf("passes: %u\n", passes);
+    printf("errors: %u\n", errors);
+
+    fearModuleDispose(mod);
+    return 0;
+}
+
+int main()
+{
+    fearInitLogging();
+    faz();
+    faz_multilevel();
     return 0;
 }

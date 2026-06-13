@@ -49,6 +49,8 @@ impl Pipeline {
     pub fn with_passes(max_passes: i32, passes: &[PassKind]) -> Self {
         use PassKind::*;
 
+        log::debug!("creating pipeline with passes: {:?}", passes);
+
         let mut pipeline = Self::new(max_passes);
 
         pipeline.get_passes_mut().insert(Expressify);
@@ -59,12 +61,10 @@ impl Pipeline {
     pub fn with_level(max_passes: i32, level: OptLevel) -> Self {
         use PassKind::*;
 
-        let mut pipeline = Self::new(max_passes);
-
-        pipeline.get_passes_mut().insert(Expressify);
+        let mut passes = Vec::new();
 
         if level >= OptLevel::Default {
-            pipeline.passes.extend(vec![
+            passes.extend(vec![
                 CommonSubexpressionElimination,
                 DeadCodeElimination,
                 Expressify,
@@ -76,7 +76,7 @@ impl Pipeline {
             ]);
         }
 
-        pipeline
+        Self::with_passes(max_passes, &passes)
     }
 
     pub fn get_max_passes(&self) -> i32 {
@@ -144,7 +144,6 @@ impl PassManager {
             }
 
             try_run_pass!(expressify::expressify, PassKind::Expressify);
-
             try_run_pass!(normalize::normalize, PassKind::Normalize);
             try_run_pass!(simplify::simplify, PassKind::Simplify);
             try_run_pass!(fold::fold, PassKind::ConstantFolding);
@@ -179,10 +178,10 @@ impl PassManager {
         let after_cost = f.get_cost();
 
         log::debug!(
-            "summary: cost {} -> {} (diff: -{}, improvement: {:.2}%)",
+            "summary: cost {} -> {} (diff: {}, improvement: {:.2}%)",
             before_cost,
             after_cost,
-            before_cost.saturating_sub(after_cost),
+            -(before_cost.saturating_sub(after_cost) as i32),
             if before_cost > 0 {
                 (before_cost as f64 - after_cost as f64) / before_cost as f64 * 100.0
             } else {
