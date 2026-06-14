@@ -3,7 +3,6 @@
 #include <ranges>
 #include <sstream>
 #include <string_view>
-#include <umbrella/Logging.hpp>
 #include <umbrella/x86/Display.hpp>
 #include <umbrella/x86/Instruction.hpp>
 #include <umbrella/x86/InstructionSet.hpp>
@@ -12,8 +11,9 @@
 #include <umbrella/x86/ToString.hpp>
 #include <utility>
 
-namespace umbrella::x86
-{
+#include "umbrella/support/Logging.hpp"
+
+namespace umbrella::x86 {
 
 std::string toString(const Instruction& instr)
 {
@@ -22,13 +22,11 @@ std::string toString(const Instruction& instr)
     ss << toString(instr.getOpcode());
 
     const auto& operands = instr.getOperands();
-    if (!operands.empty())
-    {
+    if (!operands.empty()) {
         ss << "  ";
         ss << toString(operands.front());
 
-        for (const auto& operand : operands | std::views::drop(1))
-        {
+        for (const auto& operand : operands | std::views::drop(1)) {
             ss << ", " << toString(operand);
         }
     }
@@ -39,8 +37,7 @@ std::string toString(const Operand& op)
 {
     std::ostringstream ss;
 
-    switch (*op.getKind())
-    {
+    switch (*op.getKind()) {
         case OperandKind::Register:
         {
             auto reg = op.getRegister().value();
@@ -66,8 +63,7 @@ std::string toString(const Operand& op)
 
 std::string_view toString(OperandKind k)
 {
-    switch (k)
-    {
+    switch (k) {
         case OperandKind::Register:
             return "r";
         case OperandKind::Immediate:
@@ -86,8 +82,7 @@ std::string toString(const Memory& mem)
 {
     std::ostringstream oss;
 
-    if (mem.getDisplacement() != 0 || mem.isAbsolute())
-    {
+    if (mem.getDisplacement() != 0 || mem.isAbsolute()) {
         oss << mem.getDisplacement();
     }
 
@@ -97,8 +92,7 @@ std::string toString(const Memory& mem)
 
     if (mem.hasBase()) { oss << toString(mem.getBase().value()); }
 
-    if (mem.hasIndex())
-    {
+    if (mem.hasIndex()) {
         oss << "," << toString(mem.getIndex().value()) << ","
             << static_cast<int>(mem.getScale());
     }
@@ -109,8 +103,7 @@ std::string toString(const Memory& mem)
 }
 std::string_view toString(RegisterKind k)
 {
-    switch (k)
-    {
+    switch (k) {
         // 8-bit
         case RegisterKind::Al:
             return "al";
@@ -241,8 +234,7 @@ std::string_view toString(RegisterKind k)
 std::string toString(Register r)
 {
     if (r.isVirtual()) { return toString(r.getVirtual().value()); }
-    if (r.isPhysical())
-    {
+    if (r.isPhysical()) {
         return std::string{toString(r.getPhysical().value())};
     }
     std::unreachable();
@@ -250,8 +242,7 @@ std::string toString(Register r)
 
 std::string_view toString(X86Opcode opcode)
 {
-    switch (opcode)
-    {
+    switch (opcode) {
         case X86Opcode::Mov8rr:
         case X86Opcode::Mov8ri:
         case X86Opcode::Mov8rm:
@@ -595,12 +586,95 @@ std::string_view toString(X86Opcode opcode)
             return "leal";
         case X86Opcode::Lea64rm:
             return "leaq";
-            // default:
-            //     errs("toString")
-            //         << "unknown opcode: " <<
-            //         static_cast<std::uint8_t>(opcode)
-            //         << "\n";
-            //     return "unknown";
+
+        case X86Opcode::Ud2:
+            return "ud2";
+        default:
+            errs("toString")
+                << "unknown opcode: " << static_cast<std::uint8_t>(opcode)
+                << "\n";
+            return "unknown";
+    }
+}
+
+std::string_view toString(X86Mnemonic mnemonic)
+{
+    switch (mnemonic) {
+        case X86Mnemonic::Mov:
+            return "mov";
+        case X86Mnemonic::Add:
+            return "add";
+        case X86Mnemonic::Sub:
+            return "sub";
+        case X86Mnemonic::Imul:
+            return "imul";
+        case X86Mnemonic::Div:
+            return "div";
+        case X86Mnemonic::Idiv:
+            return "idiv";
+        case X86Mnemonic::And:
+            return "and";
+        case X86Mnemonic::Or:
+            return "or";
+        case X86Mnemonic::Xor:
+            return "xor";
+        case X86Mnemonic::Shl:
+            return "shl";
+        case X86Mnemonic::Shr:
+            return "shr";
+        case X86Mnemonic::Sar:
+            return "sar";
+        case X86Mnemonic::Cmp:
+            return "cmp";
+        case X86Mnemonic::Test:
+            return "test";
+        case X86Mnemonic::Jmp:
+            return "jmp";
+        case X86Mnemonic::Je:
+            return "je";
+        case X86Mnemonic::Jne:
+            return "jne";
+        case X86Mnemonic::Jl:
+            return "jl";
+        case X86Mnemonic::Jle:
+            return "jle";
+        case X86Mnemonic::Jg:
+            return "jg";
+        case X86Mnemonic::Jge:
+            return "jge";
+        case X86Mnemonic::Call:
+            return "call";
+        case X86Mnemonic::Ret:
+            return "ret";
+        case X86Mnemonic::Sete:
+            return "sete";
+        case X86Mnemonic::Setne:
+            return "setne";
+        case X86Mnemonic::Setl:
+            return "setl";
+        case X86Mnemonic::Setle:
+            return "setle";
+        case X86Mnemonic::Setg:
+            return "setg";
+        case X86Mnemonic::Setge:
+            return "setge";
+        case X86Mnemonic::Movzx:
+            return "movzx";
+        case X86Mnemonic::Movsx:
+            return "movsx";
+        case X86Mnemonic::Neg:
+            return "neg";
+        case X86Mnemonic::Not:
+            return "not";
+        case X86Mnemonic::Lea:
+            return "lea";
+        case X86Mnemonic::Ud2:
+            return "ud2";
+        default:
+            errs("toString")
+                << "unknown mnemonic: "
+                << static_cast<std::uint8_t>(mnemonic) << "\n";
+            return "unknown";
     }
 }
 

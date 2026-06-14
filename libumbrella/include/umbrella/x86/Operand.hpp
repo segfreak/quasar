@@ -9,8 +9,7 @@
 #include "../VirtualRegister.hpp"
 #include "Register.hpp"
 
-namespace umbrella::x86
-{
+namespace umbrella::x86 {
 
 enum class OperandKind : std::uint8_t
 {
@@ -99,24 +98,19 @@ struct Operand
     std::optional<OperandKind> getKind() const
     {
         return std::visit(
-            [](auto&& v)
-            {
+            [](auto&& v) {
                 using T = std::decay_t<decltype(v)>;
 
-                if constexpr (std::is_same_v<T, Register>)
-                {
+                if constexpr (std::is_same_v<T, Register>) {
                     return OperandKind::Register;
                 }
-                if constexpr (std::is_same_v<T, Immediate>)
-                {
+                if constexpr (std::is_same_v<T, Immediate>) {
                     return OperandKind::Immediate;
                 }
-                if constexpr (std::is_same_v<T, Memory>)
-                {
+                if constexpr (std::is_same_v<T, Memory>) {
                     return OperandKind::Memory;
                 }
-                if constexpr (std::is_same_v<T, std::monostate>)
-                {
+                if constexpr (std::is_same_v<T, std::monostate>) {
                     std::unreachable();
                     return static_cast<OperandKind>(-1);
                 }

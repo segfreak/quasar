@@ -9,8 +9,7 @@
 #include "OperandRole.hpp"
 #include "VirtualRegister.hpp"
 
-namespace umbrella
-{
+namespace umbrella {
 
 using Immediate = std::uint64_t;
 
@@ -34,6 +33,11 @@ struct Operand
     {
     }
     Operand(Immediate imm, OperandRole role) : value_(imm), role_(role) {}
+    Operand(std::variant<std::monostate, VirtualRegister, Immediate> var,
+            OperandRole                                              role)
+        : value_(var), role_(role)
+    {
+    }
 
     template <typename T>
     constexpr bool is() const
@@ -101,16 +105,17 @@ struct Instruction
     /// get the destination operands
     auto                     getDestinations() const
     {
-        return operands_ |
-               std::views::filter([](const Operand& op)
-                                  { return op.isDestination(); });
+        return operands_ | std::views::filter([](const Operand& op) {
+                   return op.isDestination();
+               });
     }
 
     /// get the source operands
     auto getSources() const
     {
-        return operands_ | std::views::filter([](const Operand& op)
-                                              { return op.isSource(); });
+        return operands_ | std::views::filter([](const Operand& op) {
+                   return op.isSource();
+               });
     }
 
     // check that the instructions are legal

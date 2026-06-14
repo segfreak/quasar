@@ -2,11 +2,11 @@
 
 #include <cstddef>
 #include <map>
+#include <vector>
 
 #include "Instruction.hpp"
 
-namespace umbrella
-{
+namespace umbrella {
 
 struct BasicBlock
 {
@@ -30,14 +30,11 @@ struct BasicBlock
     {
         std::map</* instruction index*/ std::size_t, VirtualRegister>
             usedRegisters;
-        for (const auto& instruction : instructions_)
-        {
+        for (const auto& instruction : instructions_) {
             for (std::size_t i = 0; i < instruction.getOperands().size();
-                 ++i)
-            {
+                 ++i) {
                 const auto& o = instruction.getOperands()[i];
-                if (o.isSource() && o.isRegister())
-                {
+                if (o.isSource() && o.isRegister()) {
                     usedRegisters[i] = (o.getRegister().value());
                 }
             }
@@ -50,14 +47,11 @@ struct BasicBlock
     {
         std::map</* instruction index*/ std::size_t, VirtualRegister>
             usedRegisters;
-        for (const auto& instruction : instructions_)
-        {
+        for (const auto& instruction : instructions_) {
             for (std::size_t i = 0; i < instruction.getOperands().size();
-                 ++i)
-            {
+                 ++i) {
                 const auto& o = instruction.getOperands()[i];
-                if (o.isDestination() && o.isRegister())
-                {
+                if (o.isDestination() && o.isRegister()) {
                     usedRegisters[i] = (o.getRegister().value());
                 }
             }

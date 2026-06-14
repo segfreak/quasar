@@ -3,8 +3,7 @@
 #include <span>
 #include <variant>
 
-namespace umbrella
-{
+namespace umbrella {
 
 template <typename RegisterT, typename SpillT>
 struct RegAlloc

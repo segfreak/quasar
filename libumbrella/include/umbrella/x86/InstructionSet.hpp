@@ -2,8 +2,7 @@
 
 #include <cstdint>
 
-namespace umbrella::x86
-{
+namespace umbrella::x86 {
 
 enum class X86Opcode : std::uint8_t
 {
@@ -280,6 +279,8 @@ enum class X86Opcode : std::uint8_t
     Lea16rm,
     Lea32rm,
     Lea64rm,
+
+    Ud2,
 };
 
 enum class X86Mnemonic : std::uint8_t
@@ -317,7 +318,8 @@ enum class X86Mnemonic : std::uint8_t
     Movsx,
     Neg,
     Not,
-    Lea
+    Lea,
+    Ud2
 };
 
 }  // namespace umbrella::x86

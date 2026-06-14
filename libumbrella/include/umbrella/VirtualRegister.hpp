@@ -5,8 +5,7 @@
 
 #include "Type.hpp"
 
-namespace umbrella
-{
+namespace umbrella {
 
 struct VirtualRegister
 {

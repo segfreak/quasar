@@ -6,8 +6,7 @@
 #include "InstructionSet.hpp"
 #include "Operand.hpp"
 
-namespace umbrella::x86
-{
+namespace umbrella::x86 {
 
 struct InstructionInfo
 {

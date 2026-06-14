@@ -4,8 +4,7 @@
 
 #include "umbrella/x86/InstructionSet.hpp"
 
-namespace umbrella::x86
-{
+namespace umbrella::x86 {
 
 std::ostream& operator<<(std::ostream& os, RegisterKind k)
 { return os << toString(k); }

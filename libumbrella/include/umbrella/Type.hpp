@@ -6,8 +6,7 @@
 
 #include "Context.hpp"
 
-namespace umbrella
-{
+namespace umbrella {
 
 enum class TypeKind : std::uint8_t
 {
@@ -35,8 +34,7 @@ struct Type
     bool isPointer() const { return getKind() == TypeKind::Pointer; }
     bool isInteger() const
     {
-        switch (getKind())
-        {
+        switch (getKind()) {
             case TypeKind::Int8:
             case TypeKind::Int16:
             case TypeKind::Int32:
@@ -49,8 +47,7 @@ struct Type
 
     bool isFloat() const
     {
-        switch (getKind())
-        {
+        switch (getKind()) {
             case TypeKind::Float32:
             case TypeKind::Float64:
                 return true;
@@ -64,8 +61,7 @@ struct Type
 
     std::size_t getSize(std::unique_ptr<Context>& ctx) const
     {
-        switch (getKind())
-        {
+        switch (getKind()) {
             case TypeKind::Int8:
                 return 1;
             case TypeKind::Int16:
@@ -79,8 +75,7 @@ struct Type
             case TypeKind::Float64:
                 return 8;
             case TypeKind::Pointer:
-                if (ctx)
-                {
+                if (ctx) {
                     return ctx->getTargetDescription().getPointerSize();
                 }
                 return 0;

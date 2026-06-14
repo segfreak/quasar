@@ -2,15 +2,13 @@
 #include <cstddef>
 #include <umbrella/Display.hpp>
 #include <umbrella/Instruction.hpp>
-#include <umbrella/Logging.hpp>
+#include <umbrella/support/Logging.hpp>
 
-namespace umbrella
-{
+namespace umbrella {
 
 std::vector<OperandRole> getExpectedOperandRolesFor(Opcode opcode)
 {
-    switch (opcode)
-    {
+    switch (opcode) {
         case Opcode::Mov:
             return {OperandRole::Dst, OperandRole::Src};
         case Opcode::Add:
@@ -31,20 +29,17 @@ bool Instruction::verify() const
     auto expectedRoles = getExpectedOperandRolesFor(getOpcode());
     auto operands      = getOperands();
 
-    if (operands.size() != expectedRoles.size())
-    {
+    if (operands.size() != expectedRoles.size()) {
         errs("verify") << "operands count mismatch\n";
         errs("verify") << " operands.size() != expectedRoles.size()\n";
         return false;
     }
 
-    for (std::size_t i = 0; i < operands.size(); ++i)
-    {
+    for (std::size_t i = 0; i < operands.size(); ++i) {
         const auto& operandRole  = operands.at(i).getRole();
         const auto& expectedRole = expectedRoles.at(i);
 
-        if (operandRole != expectedRole)
-        {
+        if (operandRole != expectedRole) {
             errs("verify") << "operand role mismatch\n";
             errs("verify") << "got: " << operandRole << ", ";
             errs("verify") << "expected: " << expectedRole << "\n";

@@ -7,8 +7,7 @@
 #include "../Context.hpp"
 #include "../VirtualRegister.hpp"
 
-namespace umbrella::x86
-{
+namespace umbrella::x86 {
 
 enum class RegisterKind : std::uint8_t
 {

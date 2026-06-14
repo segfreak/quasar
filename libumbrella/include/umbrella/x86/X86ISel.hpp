@@ -3,8 +3,7 @@
 #include "../interface/ISel.hpp"
 #include "Instruction.hpp"
 
-namespace umbrella::x86
-{
+namespace umbrella::x86 {
 
 struct X86ISel : public umbrella::ISel<Instruction>
 {

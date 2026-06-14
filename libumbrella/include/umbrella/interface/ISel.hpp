@@ -4,8 +4,7 @@
 
 #include "../Instruction.hpp"
 
-namespace umbrella
-{
+namespace umbrella {
 
 template <typename MachInstrT>
 struct ISel

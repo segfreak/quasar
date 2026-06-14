@@ -2,8 +2,7 @@
 
 #include <cstdint>
 
-namespace umbrella
-{
+namespace umbrella {
 
 enum class OperandRole : std::uint8_t
 {

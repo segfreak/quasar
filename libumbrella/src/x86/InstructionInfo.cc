@@ -2,8 +2,7 @@
 #include <umbrella/x86/InstructionSet.hpp>
 #include <umbrella/x86/Operand.hpp>
 
-namespace umbrella::x86
-{
+namespace umbrella::x86 {
 
 std::span<const OperandKind> InstructionInfo::getExplicitOperandKinds()
     const
@@ -21,8 +20,7 @@ std::span<const OperandKind> InstructionInfo::getExplicitOperandKinds()
                                                    OperandKind::Immediate};
     static const std::vector<OperandKind> empty = {};
 
-    switch (opcode_)
-    {
+    switch (opcode_) {
         case X86Opcode::Imul8r:
         case X86Opcode::Imul16r:
         case X86Opcode::Imul32r:
@@ -267,6 +265,7 @@ std::span<const OperandKind> InstructionInfo::getExplicitOperandKinds()
         case X86Opcode::Jge:
         case X86Opcode::Call:
         case X86Opcode::Ret:
+        case X86Opcode::Ud2:
             return empty;
     }
     return empty;
@@ -276,8 +275,7 @@ std::vector<Operand> InstructionInfo::getImplicitOperands() const
 {
     std::vector<Operand> implicit;
 
-    switch (opcode_)
-    {
+    switch (opcode_) {
         case X86Opcode::Imul8r:
             implicit.emplace_back(Register(RegisterKind::Al),
                                   OperandRole::DstSrc);

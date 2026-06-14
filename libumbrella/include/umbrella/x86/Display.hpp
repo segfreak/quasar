@@ -7,8 +7,7 @@
 #include "Operand.hpp"
 #include "Register.hpp"
 
-namespace umbrella::x86
-{
+namespace umbrella::x86 {
 
 std::ostream& operator<<(std::ostream& os, RegisterKind k);
 std::ostream& operator<<(std::ostream& os, Register reg);

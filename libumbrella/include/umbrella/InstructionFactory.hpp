@@ -3,13 +3,14 @@
 #include "Instruction.hpp"
 #include "VirtualRegister.hpp"
 
-namespace umbrella
-{
+namespace umbrella {
 
 struct InstructionFactory
 {
-    static Instruction createAdd(VirtualRegister dst, VirtualRegister src,
-                                 VirtualRegister src2)
+    static Instruction createAdd(
+        VirtualRegister                                          dst,
+        std::variant<std::monostate, VirtualRegister, Immediate> src,
+        std::variant<std::monostate, VirtualRegister, Immediate> src2)
     {
         return {
             Opcode::Add, std::vector{Operand{dst, OperandRole::Dst},

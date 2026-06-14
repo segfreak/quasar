@@ -1,8 +1,7 @@
 
 #include <umbrella/ToString.hpp>
 
-namespace umbrella
-{
+namespace umbrella {
 
 std::ostream& operator<<(std::ostream& os, Opcode opcode)
 { return os << toString(opcode); }

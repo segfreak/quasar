@@ -2,8 +2,7 @@
 
 #include <ostream>
 
-namespace umbrella
-{
+namespace umbrella {
 
 enum class Opcode : std::uint8_t;
 enum class OperandRole : std::uint8_t;

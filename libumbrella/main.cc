@@ -17,6 +17,7 @@
 int main()
 {
     umbrella::Type        int32{umbrella::TypeKind::Int32};
+    // add r2:b, r0:b, r1:b
     umbrella::Instruction t0 = umbrella::InstructionFactory::createAdd(
         umbrella::VirtualRegister{2, umbrella::TypeKind::Int8},
         umbrella::VirtualRegister{0, umbrella::TypeKind::Int8},
@@ -25,37 +26,33 @@ int main()
 
     umbrella::Instruction t1 = umbrella::InstructionFactory::createAdd(
         umbrella::VirtualRegister{2, umbrella::TypeKind::Int32},
-        umbrella::VirtualRegister{0, umbrella::TypeKind::Int32},
-        umbrella::VirtualRegister{1, umbrella::TypeKind::Int32});
-    t0.verify();
+        umbrella::VirtualRegister{2, umbrella::TypeKind::Int32},
+        umbrella::Immediate{42});
+    t1.verify();
 
-    auto                   src = {t1};
+    auto                   src = {t0, t1};
     umbrella::x86::X86ISel isel;
     std::cout << "before isel:\n";
     for (const auto& instr : src) { std::cout << "  " << instr << "\n"; }
     auto post_isel = isel.select(src);
     std::cout << "after isel:\n";
-    for (const auto& instr : post_isel)
-    {
+    for (const auto& instr : post_isel) {
         std::cout << "  " << instr << "\n";
     }
 
-    for (const auto& instr : post_isel)
-    {
+    for (const auto& instr : post_isel) {
         std::cout << "analysis of " << instr << "\n";
 
         const auto& info = instr.getInfo();
 
-        std::cout << "explicit operand kinds:\n";
-        for (const auto& k : info.getExplicitOperandKinds())
-        {
-            std::cout << k << "\n";
+        std::cout << " : explicit operand kinds:\n";
+        for (const auto& k : info.getExplicitOperandKinds()) {
+            std::cout << "   : " << k << "\n";
         }
 
-        std::cout << "implicit operands:\n";
-        for (const auto& o : info.getImplicitOperands())
-        {
-            std::cout << umbrella::x86::toString(o) << "("
+        std::cout << " : implicit operands:\n";
+        for (const auto& o : info.getImplicitOperands()) {
+            std::cout << "   : " << umbrella::x86::toString(o) << "("
                       << umbrella::x86::toString(o.getKind().value())
                       << ")"
                       << " role: " << umbrella::toString(o.getRole())

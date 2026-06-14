@@ -1,0 +1,10 @@
+BasedOnStyle: InheritParentConfig
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterCaseLabel: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterStruct: true
+IndentPPDirectives: AfterHash
+InsertBraces: true

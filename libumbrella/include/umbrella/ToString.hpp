@@ -5,8 +5,7 @@
 #include "Instruction.hpp"
 #include "Type.hpp"
 
-namespace umbrella
-{
+namespace umbrella {
 
 std::string_view toString(Opcode opcode);
 std::string_view toString(OperandRole role);

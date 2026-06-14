@@ -2,25 +2,22 @@
 #include <limits>
 #include <umbrella/x86/Register.hpp>
 
-#include "umbrella/Logging.hpp"
+#include "umbrella/support/Logging.hpp"
 
-namespace umbrella::x86
-{
+namespace umbrella::x86 {
 
 std::uint8_t Register::getPhysicalId() const
 {
     if (isVirtual()) { return std::numeric_limits<std::uint8_t>::max(); }
 
-    if (!getPhysical().has_value())
-    {
+    if (!getPhysical().has_value()) {
         errs("x86::Register::getPhysicalId()")
             << "bogus state: isVirtual() is false, but getPhysical() is "
                "std::nullopt\n";
         return std::numeric_limits<std::uint8_t>::max();
     }
 
-    switch (getPhysical().value())
-    {
+    switch (getPhysical().value()) {
         case RegisterKind::Al:
         case RegisterKind::Ax:
         case RegisterKind::Eax:
@@ -101,27 +98,24 @@ std::uint8_t Register::getPhysicalId() const
         case RegisterKind::R15:
             return 15;
     }
-    return std::numeric_limits<std::uint32_t>::max();
+    return std::numeric_limits<std::uint8_t>::max();
 }
 
 bool Register::requiresRexPrefix() const
 {
-    if (isVirtual())
-    {
+    if (isVirtual()) {
         // sanity: virtual registers does not requires rex prefix
         return false;
     }
 
-    if (!getPhysical().has_value())
-    {
+    if (!getPhysical().has_value()) {
         errs("x86::Register::requiresRexPrefix()")
             << "bogus state: isVirtual() is false, but getPhysical() is "
                "std::nullopt\n";
         return false;
     }
 
-    switch (getPhysical().value())
-    {
+    switch (getPhysical().value()) {
         case RegisterKind::R8w:
         case RegisterKind::R9w:
         case RegisterKind::R10w:
@@ -159,16 +153,14 @@ std::size_t Register::getSize(std::unique_ptr<Context>& ctx) const
 {
     if (isVirtual()) { return getVirtual()->getType().getSize(ctx); }
 
-    if (!getPhysical().has_value())
-    {
+    if (!getPhysical().has_value()) {
         errs("x86::Register::getSize(ctx)")
             << "bogus state: isVirtual() is false, but getPhysical() is "
                "std::nullopt\n";
         return 0;
     }
 
-    switch (getPhysical().value())
-    {
+    switch (getPhysical().value()) {
         // 8-bit
         case RegisterKind::Al:
         case RegisterKind::Bl:
@@ -243,22 +235,19 @@ std::size_t Register::getSize(std::unique_ptr<Context>& ctx) const
 
 bool Register::isCallerSaved() const
 {
-    if (isVirtual())
-    {
+    if (isVirtual()) {
         // sanity: virtual registers does not requires rex prefix
         return false;
     }
 
-    if (!getPhysical().has_value())
-    {
+    if (!getPhysical().has_value()) {
         errs("x86::Register::isCallerSaved()")
             << "bogus state: isVirtual() is false, but getPhysical() is "
                "std::nullopt\n";
         return false;
     }
 
-    switch (getPhysical().value())
-    {
+    switch (getPhysical().value()) {
         case RegisterKind::Rax:
         case RegisterKind::Rcx:
         case RegisterKind::Rdx:

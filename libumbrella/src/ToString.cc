@@ -2,18 +2,17 @@
 #include <string>
 #include <umbrella/Display.hpp>
 #include <umbrella/Instruction.hpp>
-#include <umbrella/Logging.hpp>
 #include <umbrella/ToString.hpp>
 #include <umbrella/Type.hpp>
 #include <umbrella/VirtualRegister.hpp>
 
-namespace umbrella
-{
+#include "umbrella/support/Logging.hpp"
+
+namespace umbrella {
 
 std::string_view toString(Opcode opcode)
 {
-    switch (opcode)
-    {
+    switch (opcode) {
         case Opcode::Mov:
             return "mov";
         case Opcode::Add:
@@ -32,8 +31,7 @@ std::string_view toString(Opcode opcode)
 
 std::string_view toString(OperandRole role)
 {
-    switch (role)
-    {
+    switch (role) {
         case OperandRole::Dst:
             return "dst";
         case OperandRole::Src:
@@ -49,8 +47,7 @@ std::string_view toString(OperandRole role)
 
 std::string_view toString(TypeKind kind)
 {
-    switch (kind)
-    {
+    switch (kind) {
         case TypeKind::Void:
             return "void";
         case TypeKind::Int8:
@@ -80,8 +77,7 @@ std::string_view toString(Type type)
 
 std::string_view getRegisterPrefix(TypeKind kind)
 {
-    switch (kind)
-    {
+    switch (kind) {
         case TypeKind::Void:
             return "V";
         case TypeKind::Int8:
@@ -117,16 +113,11 @@ std::string toString(const Operand& operand)
 {
     std::ostringstream oss;
 
-    if (operand.isRegister())
-    {
+    if (operand.isRegister()) {
         oss << toString(operand.getRegister().value());
-    }
-    else if (operand.isImmediate())
-    {
+    } else if (operand.isImmediate()) {
         oss << "$0x" << std::hex << operand.getImmediate().value();
-    }
-    else
-    {
+    } else {
         errs("toString") << "unknown operand type\n";
         oss << "unknown";
     }
@@ -141,13 +132,11 @@ std::string toString(const Instruction& instr)
     oss << "(" << toString(instr.getOpcode());
 
     const auto& operands = instr.getOperands();
-    if (!operands.empty())
-    {
+    if (!operands.empty()) {
         oss << " (";
         oss << toString(operands.front()) << ")";
 
-        for (const auto& operand : operands | std::views::drop(1))
-        {
+        for (const auto& operand : operands | std::views::drop(1)) {
             oss << " (" << toString(operand) << ")";
         }
     }
