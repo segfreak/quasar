@@ -6,12 +6,12 @@ int main()
 {
     fearInitLogging();
 
-    FearModule*   m   = fearModuleCreate("dse_test");
+    FearModule*   m   = fearModuleCreate("dse");
 
     enum FearType i32 = FearInt32;
 
     FearFuncId    f =
-        fearDeclareFunction(m, "test1", &i32, 0, i32, FearLinkageExternal);
+        fearDeclareFunction(m, "dse", &i32, 0, i32, FearLinkageExternal);
 
     FearFunctionDef* def   = fearDefinitionCreate();
 
@@ -46,9 +46,9 @@ int main()
 
     fearModuleVerify(m);
 
-		FILE *out = fopen("dse.bin", "wb");
-		fearBinaryDumpToFile(m, fileno(out));
-		fclose(out);
+    FILE* out = fopen("dse.bin", "wb");
+    fearBinaryDumpToFile(m, fileno(out));
+    fclose(out);
 
     fearModuleDispose(m);
     fearDefinitionDispose(def);

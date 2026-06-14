@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output_module_name = out_path
         .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "linked_module".to_string());
+        .unwrap_or_else(|| "unnamed".to_string());
 
     let result = match fear::linker::link(output_module_name, modules) {
         Ok(m) => m,

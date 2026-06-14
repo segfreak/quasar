@@ -26,7 +26,8 @@ impl OutputType {
         match self {
             Self::Text => true,
             #[cfg(feature = "llvm")]
-            Self::LlvmIr => false,
+            Self::LlvmIr => true,
+            Self::Assembly => true,
             _ => false,
         }
     }
@@ -99,10 +100,15 @@ impl Backend {
     pub fn supported_output_types(&self) -> &[OutputType] {
         match self {
             #[cfg(feature = "llvm")]
-            Self::Llvm => &[OutputType::LlvmIr, OutputType::Assembly, OutputType::Object],
+            Self::Llvm => &[
+                OutputType::Text,
+                OutputType::LlvmIr,
+                OutputType::Assembly,
+                OutputType::Object,
+            ],
             #[cfg(feature = "cranelift")]
-            Self::Cranelift => &[OutputType::Object],
-            Self::Dummy => &[],
+            Self::Cranelift => &[OutputType::Text, OutputType::Object],
+            Self::Dummy => &[OutputType::Text],
         }
     }
 }

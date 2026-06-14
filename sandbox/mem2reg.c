@@ -7,12 +7,12 @@ int main(void)
 {
     fearInitLogging();
 
-    FearModule*   m        = fearModuleCreate("mem2reg_stress");
+    FearModule*   m        = fearModuleCreate("mem2reg");
 
     enum FearType params[] = {FearBool, FearBool, FearBool};
 
-    FearFuncId fid = fearDeclareFunction(m, "test", params, 3, FearInt32,
-                                         FearLinkageExternal);
+    FearFuncId fid = fearDeclareFunction(m, "mem2reg", params, 3,
+                                         FearInt32, FearLinkageExternal);
 
     FearFunctionDef* f        = fearDefinitionCreate();
 
@@ -112,16 +112,16 @@ int main(void)
     printf("%s\n", after);
     fearStringDispose(after);
 
-		FILE *out = fopen("mem2reg.bin", "wb");
-		fearBinaryDumpToFile(m, fileno(out));
-		fclose(out);
+    FILE* out = fopen("mem2reg.bin", "wb");
+    fearBinaryDumpToFile(m, fileno(out));
+    fclose(out);
 
     FearBackend backend;
     if ((backend = fearSelectBackendForObject()) &&
         fearHasBackend(backend))
     {
-        fprintf(stderr, "=> foobarbaz.o\n");
-        FILE* exf_obj = fopen("foobarbaz.o", "w");
+        fprintf(stderr, "=> mem2reg.o\n");
+        FILE* exf_obj = fopen("mem2reg.o", "w");
         fearEmitObject(m, backend, FearOptFull, fileno(exf_obj));
         fclose(exf_obj);
     }

@@ -19,7 +19,16 @@ all: $(TARGETS)
 %.x: %.cc
 	$(CXX) $(CXXFLAGS) $< $(LDFLAGS) -o $@
 
+bazbar.bin: bar.x baz.x
+	@./baz.x
+	@./bar.x
+	fearlink -o bazbar.bin baz.bin bar.bin
+	fearopt --opt default bazbar.bin
+	feardump bazbar.bin
+	fearc --opt default --type object -o bazbar.o bazbar.bin
+	cc -O0 -o bazbar.x runners/bazbar.c bazbar.o
+
 clean:
-	rm -f $(TARGETS)
+	rm -f $(TARGETS) *.o *.ll *.ssa *.bin *.s
 
 .PHONY: all clean

@@ -6,12 +6,12 @@ int main()
 {
     fearInitLogging();
 
-    FearModule*      m   = fearModuleCreate("global_dse");
+    FearModule*   m   = fearModuleCreate("gdse");
 
-    enum FearType    i32 = FearInt32;
+    enum FearType i32 = FearInt32;
 
-    FearFuncId       f = fearDeclareFunction(m, "global_dse", &i32, 1, i32,
-                                             FearLinkageExternal);
+    FearFuncId    f =
+        fearDeclareFunction(m, "gdse", &i32, 1, i32, FearLinkageExternal);
 
     FearFunctionDef* def   = fearDefinitionCreate();
 
@@ -73,9 +73,9 @@ int main()
 
     fearModuleVerify(m);
 
-		FILE* out = fopen("gdse.bin", "wb");
-		fearBinaryDumpToFile(m, fileno(out));
-		fclose(out);
+    FILE* out = fopen("gdse.bin", "wb");
+    fearBinaryDumpToFile(m, fileno(out));
+    fclose(out);
 
     fearModuleDispose(m);
     fearDefinitionDispose(def);
