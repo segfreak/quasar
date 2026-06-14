@@ -4,48 +4,63 @@
 #include "umbrella/Display.hpp"
 #include "umbrella/Instruction.hpp"
 #include "umbrella/InstructionFactory.hpp"
-#include "umbrella/Register.hpp"
 #include "umbrella/ToString.hpp"
 #include "umbrella/Type.hpp"
+#include "umbrella/VirtualRegister.hpp"
 #include "umbrella/x86/Display.hpp"
+#include "umbrella/x86/Instruction.hpp"
 #include "umbrella/x86/InstructionInfo.hpp"
-#include "umbrella/x86/InstructionSet.hpp"
-#include "umbrella/x86/Register.hpp"
+#include "umbrella/x86/Operand.hpp"
 #include "umbrella/x86/ToString.hpp"
+#include "umbrella/x86/X86ISel.hpp"
 
 int main()
 {
     umbrella::Type        int32{umbrella::TypeKind::Int32};
     umbrella::Instruction t0 = umbrella::InstructionFactory::createAdd(
-        umbrella::Register{2}, umbrella::Register{0},
-        umbrella::Register{1});
+        umbrella::VirtualRegister{2, umbrella::TypeKind::Int8},
+        umbrella::VirtualRegister{0, umbrella::TypeKind::Int8},
+        umbrella::VirtualRegister{1, umbrella::TypeKind::Int8});
     t0.verify();
 
-    umbrella::Instruction t1 = umbrella::InstructionFactory::createSub(
-        umbrella::Register{3}, umbrella::Register{0},
-        umbrella::Register{1});
-    t1.verify();
+    umbrella::Instruction t1 = umbrella::InstructionFactory::createAdd(
+        umbrella::VirtualRegister{2, umbrella::TypeKind::Int32},
+        umbrella::VirtualRegister{0, umbrella::TypeKind::Int32},
+        umbrella::VirtualRegister{1, umbrella::TypeKind::Int32});
+    t0.verify();
 
-    auto op  = umbrella::x86::Opcode::Imul8r;
-    auto src = umbrella::x86::Register{umbrella::x86::RegisterKind::Al};
-
-    std::cout << op << " %" << src << "\n";
-
-    auto info =
-        umbrella::x86::InstructionInfo::get(umbrella::x86::Opcode::Imul8r);
-
-    std::cout << "explicit operand kinds:\n";
-    for (const auto& k : info.getExplicitOperandKinds())
+    auto                   src = {t1};
+    umbrella::x86::X86ISel isel;
+    std::cout << "before isel:\n";
+    for (const auto& instr : src) { std::cout << "  " << instr << "\n"; }
+    auto post_isel = isel.select(src);
+    std::cout << "after isel:\n";
+    for (const auto& instr : post_isel)
     {
-        std::cout << umbrella::x86::toString(k) << "\n";
+        std::cout << "  " << instr << "\n";
     }
 
-    std::cout << "implicit operands:\n";
-    for (const auto& o : info.getImplicitOperands())
+    for (const auto& instr : post_isel)
     {
-        std::cout << umbrella::x86::toString(o) << "("
-                  << umbrella::x86::toString(o.getKind().value()) << ")"
-                  << " role: " << umbrella::toString(o.getRole()) << "\n";
+        std::cout << "analysis of " << instr << "\n";
+
+        const auto& info = instr.getInfo();
+
+        std::cout << "explicit operand kinds:\n";
+        for (const auto& k : info.getExplicitOperandKinds())
+        {
+            std::cout << k << "\n";
+        }
+
+        std::cout << "implicit operands:\n";
+        for (const auto& o : info.getImplicitOperands())
+        {
+            std::cout << umbrella::x86::toString(o) << "("
+                      << umbrella::x86::toString(o.getKind().value())
+                      << ")"
+                      << " role: " << umbrella::toString(o.getRole())
+                      << "\n";
+        }
     }
 
     return 0;

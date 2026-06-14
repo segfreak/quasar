@@ -9,12 +9,13 @@ namespace umbrella::x86
 
 struct Instruction
 {
-    Instruction(Opcode opcode, std::vector<Operand> operands)
+    Instruction(X86Opcode opcode, std::vector<Operand> operands)
         : info_(opcode), operands_(std::move(operands))
     {
     }
 
-    Opcode getOpcode() const { return getInfo().getOpcode(); }
+    X86Opcode getOpcode() const { return getInfo().getOpcode(); }
+
     const InstructionInfo&      getInfo() const { return info_; }
     const std::vector<Operand>& getOperands() const { return operands_; }
 

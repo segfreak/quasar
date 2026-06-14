@@ -3,12 +3,16 @@
 #include <cstdint>
 #include <ranges>
 #include <span>
+#include <variant>
 #include <vector>
 
-#include "Register.hpp"
+#include "OperandRole.hpp"
+#include "VirtualRegister.hpp"
 
 namespace umbrella
 {
+
+using Immediate = std::uint64_t;
 
 enum class Opcode : std::uint8_t
 {
@@ -22,19 +26,34 @@ enum class Opcode : std::uint8_t
     Ret,
 };
 
-enum class OperandRole : std::uint8_t
-{
-    Dst,
-    Src,
-    DstSrc,
-};
-
 struct Operand
 {
     Operand() = delete;
-    Operand(Register reg, OperandRole role) : reg_(reg), role_(role) {}
+    Operand(VirtualRegister reg, OperandRole role)
+        : value_(reg), role_(role)
+    {
+    }
+    Operand(Immediate imm, OperandRole role) : value_(imm), role_(role) {}
 
-    Register    getRegister() const { return reg_; }
+    template <typename T>
+    constexpr bool is() const
+    { return std::holds_alternative<T>(value_); }
+
+    template <typename T>
+    std::optional<T> get() const
+    {
+        if (is<T>()) { return std::get<T>(value_); }
+        return std::nullopt;
+    }
+
+    bool isRegister() const { return is<VirtualRegister>(); }
+    bool isImmediate() const { return is<Immediate>(); }
+
+    std::optional<VirtualRegister> getRegister() const
+    { return get<VirtualRegister>(); }
+    std::optional<Immediate> getImmediate() const
+    { return get<Immediate>(); }
+
     OperandRole getRole() const { return role_; }
 
     bool        isDestinationOnly() const
@@ -49,8 +68,8 @@ struct Operand
     { return isSourceOnly() || isDestinationAndSource(); }
 
    private:
-    Register    reg_;
-    OperandRole role_;
+    std::variant<std::monostate, VirtualRegister, Immediate> value_;
+    OperandRole                                              role_;
 };
 
 // gets a expected operand roles for opcode

@@ -13,5 +13,6 @@ std::string_view toString(OperandRole role);
 std::string_view toString(TypeKind kind);
 std::string_view toString(Type type);
 std::string      toString(const Instruction& instr);
+std::string      toString(VirtualRegister reg);
 
 }  // namespace umbrella

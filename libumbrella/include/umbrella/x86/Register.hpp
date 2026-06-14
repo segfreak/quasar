@@ -1,6 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
+#include <variant>
+
+#include "../Context.hpp"
+#include "../VirtualRegister.hpp"
 
 namespace umbrella::x86
 {
@@ -74,17 +79,37 @@ enum class RegisterKind : std::uint8_t
 
 struct Register
 {
-    Register(RegisterKind kind) : kind_(kind) {}
+    Register(RegisterKind kind) : value_(kind) {}
+    Register(VirtualRegister vreg) : value_(vreg) {}
 
-    RegisterKind getKind() const { return kind_; }
-    std::uint8_t getId() const;
-    std::size_t  getSize() const;
+    template <typename T>
+    constexpr bool is() const
+    { return std::holds_alternative<T>(value_); }
+
+    template <typename T>
+    std::optional<T> get() const
+    {
+        if (is<T>()) { return std::get<T>(value_); }
+        return std::nullopt;
+    }
+
+    std::optional<RegisterKind> getPhysical() const
+    { return get<RegisterKind>(); }
+
+    std::optional<VirtualRegister> getVirtual() const
+    { return get<VirtualRegister>(); }
+
+    bool         isVirtual() const { return is<VirtualRegister>(); }
+    bool         isPhysical() const { return is<RegisterKind>(); }
+
+    std::uint8_t getPhysicalId() const;
+    std::size_t  getSize(std::unique_ptr<Context>& ctx) const;
 
     bool         isCallerSaved() const;
     bool         requiresRexPrefix() const;
 
    private:
-    RegisterKind kind_;
+    std::variant<std::monostate, VirtualRegister, RegisterKind> value_;
 };
 
 }  // namespace umbrella::x86

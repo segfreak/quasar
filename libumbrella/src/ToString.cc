@@ -5,6 +5,7 @@
 #include <umbrella/Logging.hpp>
 #include <umbrella/ToString.hpp>
 #include <umbrella/Type.hpp>
+#include <umbrella/VirtualRegister.hpp>
 
 namespace umbrella
 {
@@ -77,16 +78,81 @@ std::string_view toString(TypeKind kind)
 std::string_view toString(Type type)
 { return toString(type.getKind()); }
 
+std::string_view getRegisterPrefix(TypeKind kind)
+{
+    switch (kind)
+    {
+        case TypeKind::Void:
+            return "V";
+        case TypeKind::Int8:
+            return "B";
+        case TypeKind::Int16:
+            return "H";
+        case TypeKind::Int32:
+            return "W";
+        case TypeKind::Int64:
+            return "X";
+        case TypeKind::Pointer:
+            return "P";
+        case TypeKind::Float32:
+        case TypeKind::Float64:
+            return "F";
+        default:
+            errs("toString")
+                << "unknown type kind: " << static_cast<std::uint8_t>(kind)
+                << "\n";
+            return "unknown";
+    }
+}
+
+std::string toString(VirtualRegister reg)
+{
+    std::ostringstream oss;
+    oss << reg.getId() << ":"
+        << getRegisterPrefix(reg.getType().getKind());
+    return oss.str();
+}
+
+std::string toString(const Operand& operand)
+{
+    std::ostringstream oss;
+
+    if (operand.isRegister())
+    {
+        oss << toString(operand.getRegister().value());
+    }
+    else if (operand.isImmediate())
+    {
+        oss << "$0x" << std::hex << operand.getImmediate().value();
+    }
+    else
+    {
+        errs("toString") << "unknown operand type\n";
+        oss << "unknown";
+    }
+
+    return oss.str();
+}
+
 std::string toString(const Instruction& instr)
 {
     std::ostringstream oss;
 
-    oss << toString(instr.getOpcode());
+    oss << "(" << toString(instr.getOpcode());
 
-    for (const auto& operand : instr.getOperands())
+    const auto& operands = instr.getOperands();
+    if (!operands.empty())
     {
-        oss << " %r" << operand.getRegister().getId();
+        oss << " (";
+        oss << toString(operands.front()) << ")";
+
+        for (const auto& operand : operands | std::views::drop(1))
+        {
+            oss << " (" << toString(operand) << ")";
+        }
     }
+
+    oss << ")";
 
     return oss.str();
 }

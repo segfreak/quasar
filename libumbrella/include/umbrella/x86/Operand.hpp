@@ -5,7 +5,8 @@
 #include <utility>
 #include <variant>
 
-#include "../Instruction.hpp"
+#include "../OperandRole.hpp"
+#include "../VirtualRegister.hpp"
 #include "Register.hpp"
 
 namespace umbrella::x86
@@ -30,6 +31,16 @@ enum class Scale : std::uint8_t
 
 struct Memory
 {
+    Memory(Register base, std::int64_t displacement = 0,
+           std::optional<Register> index = std::nullopt,
+           Scale                   scale = Scale::One)
+        : base_(base),
+          index_(index),
+          scale_(scale),
+          displacement_(displacement)
+    {
+    }
+
     bool hasBase() const { return base_.has_value(); }
     bool hasIndex() const { return index_.has_value(); }
     bool isAbsolute() const
@@ -48,11 +59,16 @@ struct Memory
     Scale                   scale_        = Scale::One;
     std::int64_t            displacement_ = 0;
 };
+
 struct Operand
 {
     Operand(Register reg, OperandRole role) : value_(reg), role_(role) {}
     Operand(Immediate imm, OperandRole role) : value_(imm), role_(role) {}
     Operand(Memory mem, OperandRole role) : value_(mem), role_(role) {}
+    Operand(VirtualRegister vreg, OperandRole role)
+        : value_(Register{vreg}), role_(role)
+    {
+    }
 
     template <typename T>
     constexpr bool is() const
@@ -69,6 +85,11 @@ struct Operand
     bool isRegister() const { return is<Register>(); }
     bool isImmediate() const { return is<Immediate>(); }
     bool isMemory() const { return is<Memory>(); }
+    bool isVirtualRegister() const
+    {
+        if (isRegister()) { return getRegister()->isVirtual(); }
+        return false;
+    }
 
     std::optional<Register> getRegister() const { return get<Register>(); }
     std::optional<Immediate> getImmediate() const

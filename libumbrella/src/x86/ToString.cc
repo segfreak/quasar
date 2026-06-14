@@ -1,14 +1,39 @@
+#include "umbrella/ToString.hpp"
 
+#include <ranges>
 #include <sstream>
 #include <string_view>
 #include <umbrella/Logging.hpp>
+#include <umbrella/x86/Display.hpp>
+#include <umbrella/x86/Instruction.hpp>
 #include <umbrella/x86/InstructionSet.hpp>
 #include <umbrella/x86/Operand.hpp>
 #include <umbrella/x86/Register.hpp>
 #include <umbrella/x86/ToString.hpp>
+#include <utility>
 
 namespace umbrella::x86
 {
+
+std::string toString(const Instruction& instr)
+{
+    std::ostringstream ss;
+
+    ss << toString(instr.getOpcode());
+
+    const auto& operands = instr.getOperands();
+    if (!operands.empty())
+    {
+        ss << "  ";
+        ss << toString(operands.front());
+
+        for (const auto& operand : operands | std::views::drop(1))
+        {
+            ss << ", " << toString(operand);
+        }
+    }
+    return ss.str();
+}
 
 std::string toString(const Operand& op)
 {
@@ -19,7 +44,7 @@ std::string toString(const Operand& op)
         case OperandKind::Register:
         {
             auto reg = op.getRegister().value();
-            ss << "%" << toString(reg.getKind());
+            ss << toString(reg);
             break;
         }
         case OperandKind::Immediate:
@@ -70,11 +95,11 @@ std::string toString(const Memory& mem)
 
     oss << "(";
 
-    if (mem.hasBase()) { oss << toString(mem.getBase()->getKind()); }
+    if (mem.hasBase()) { oss << toString(mem.getBase().value()); }
 
     if (mem.hasIndex())
     {
-        oss << "," << toString(mem.getIndex()->getKind()) << ","
+        oss << "," << toString(mem.getIndex().value()) << ","
             << static_cast<int>(mem.getScale());
     }
 
@@ -213,349 +238,363 @@ std::string_view toString(RegisterKind k)
     }
 }
 
-std::string_view toString(Register r)
-{ return toString(r.getKind()); }
+std::string toString(Register r)
+{
+    if (r.isVirtual()) { return toString(r.getVirtual().value()); }
+    if (r.isPhysical())
+    {
+        return std::string{toString(r.getPhysical().value())};
+    }
+    std::unreachable();
+}
 
-std::string_view toString(Opcode opcode)
+std::string_view toString(X86Opcode opcode)
 {
     switch (opcode)
     {
-        case Opcode::Mov8rr:
-        case Opcode::Mov8ri:
-        case Opcode::Mov8rm:
-        case Opcode::Mov8mr:
-        case Opcode::Mov8mi:
+        case X86Opcode::Mov8rr:
+        case X86Opcode::Mov8ri:
+        case X86Opcode::Mov8rm:
+        case X86Opcode::Mov8mr:
+        case X86Opcode::Mov8mi:
             return "movb";
-        case Opcode::Mov16rr:
-        case Opcode::Mov16ri:
-        case Opcode::Mov16rm:
-        case Opcode::Mov16mr:
-        case Opcode::Mov16mi:
+        case X86Opcode::Mov16rr:
+        case X86Opcode::Mov16ri:
+        case X86Opcode::Mov16rm:
+        case X86Opcode::Mov16mr:
+        case X86Opcode::Mov16mi:
             return "movw";
-        case Opcode::Mov32rr:
-        case Opcode::Mov32ri:
-        case Opcode::Mov32rm:
-        case Opcode::Mov32mr:
-        case Opcode::Mov32mi:
+        case X86Opcode::Mov32rr:
+        case X86Opcode::Mov32ri:
+        case X86Opcode::Mov32rm:
+        case X86Opcode::Mov32mr:
+        case X86Opcode::Mov32mi:
             return "movl";
-        case Opcode::Mov64rr:
-        case Opcode::Mov64ri:
-        case Opcode::Mov64rm:
-        case Opcode::Mov64mr:
-        case Opcode::Mov64mi:
+        case X86Opcode::Mov64rr:
+        case X86Opcode::Mov64ri:
+        case X86Opcode::Mov64rm:
+        case X86Opcode::Mov64mr:
+        case X86Opcode::Mov64mi:
             return "movq";
 
-        case Opcode::Add8rr:
-        case Opcode::Add8ri:
-        case Opcode::Add8rm:
-        case Opcode::Add8mr:
-        case Opcode::Add8mi:
+        case X86Opcode::Add8rr:
+        case X86Opcode::Add8ri:
+        case X86Opcode::Add8rm:
+        case X86Opcode::Add8mr:
+        case X86Opcode::Add8mi:
             return "addb";
-        case Opcode::Add16rr:
-        case Opcode::Add16ri:
-        case Opcode::Add16rm:
-        case Opcode::Add16mr:
-        case Opcode::Add16mi:
+        case X86Opcode::Add16rr:
+        case X86Opcode::Add16ri:
+        case X86Opcode::Add16rm:
+        case X86Opcode::Add16mr:
+        case X86Opcode::Add16mi:
             return "addw";
-        case Opcode::Add32rr:
-        case Opcode::Add32ri:
-        case Opcode::Add32rm:
-        case Opcode::Add32mr:
-        case Opcode::Add32mi:
+        case X86Opcode::Add32rr:
+        case X86Opcode::Add32ri:
+        case X86Opcode::Add32rm:
+        case X86Opcode::Add32mr:
+        case X86Opcode::Add32mi:
             return "addl";
-        case Opcode::Add64rr:
-        case Opcode::Add64ri:
-        case Opcode::Add64rm:
-        case Opcode::Add64mr:
-        case Opcode::Add64mi:
+        case X86Opcode::Add64rr:
+        case X86Opcode::Add64ri:
+        case X86Opcode::Add64rm:
+        case X86Opcode::Add64mr:
+        case X86Opcode::Add64mi:
             return "addq";
 
-        case Opcode::Sub8rr:
-        case Opcode::Sub8ri:
-        case Opcode::Sub8rm:
-        case Opcode::Sub8mr:
-        case Opcode::Sub8mi:
+        case X86Opcode::Sub8rr:
+        case X86Opcode::Sub8ri:
+        case X86Opcode::Sub8rm:
+        case X86Opcode::Sub8mr:
+        case X86Opcode::Sub8mi:
             return "subb";
-        case Opcode::Sub16rr:
-        case Opcode::Sub16ri:
-        case Opcode::Sub16rm:
-        case Opcode::Sub16mr:
-        case Opcode::Sub16mi:
+        case X86Opcode::Sub16rr:
+        case X86Opcode::Sub16ri:
+        case X86Opcode::Sub16rm:
+        case X86Opcode::Sub16mr:
+        case X86Opcode::Sub16mi:
             return "subw";
-        case Opcode::Sub32rr:
-        case Opcode::Sub32ri:
-        case Opcode::Sub32rm:
-        case Opcode::Sub32mr:
-        case Opcode::Sub32mi:
+        case X86Opcode::Sub32rr:
+        case X86Opcode::Sub32ri:
+        case X86Opcode::Sub32rm:
+        case X86Opcode::Sub32mr:
+        case X86Opcode::Sub32mi:
             return "subl";
-        case Opcode::Sub64rr:
-        case Opcode::Sub64ri:
-        case Opcode::Sub64rm:
-        case Opcode::Sub64mr:
-        case Opcode::Sub64mi:
+        case X86Opcode::Sub64rr:
+        case X86Opcode::Sub64ri:
+        case X86Opcode::Sub64rm:
+        case X86Opcode::Sub64mr:
+        case X86Opcode::Sub64mi:
             return "subq";
 
-        case Opcode::Imul8r:
-        case Opcode::Imul8rr:
+        case X86Opcode::Imul8r:
+        case X86Opcode::Imul8rr:
             return "imulb";
-        case Opcode::Imul16r:
-        case Opcode::Imul16rr:
+        case X86Opcode::Imul16r:
+        case X86Opcode::Imul16rr:
             return "imulw";
-        case Opcode::Imul32r:
-        case Opcode::Imul32rr:
+        case X86Opcode::Imul32r:
+        case X86Opcode::Imul32rr:
             return "imull";
-        case Opcode::Imul64r:
-        case Opcode::Imul64rr:
+        case X86Opcode::Imul64r:
+        case X86Opcode::Imul64rr:
             return "imulq";
 
-        case Opcode::Div8r:
+        case X86Opcode::Div8r:
             return "divb";
-        case Opcode::Div16r:
+        case X86Opcode::Div16r:
             return "divw";
-        case Opcode::Div32r:
+        case X86Opcode::Div32r:
             return "divl";
-        case Opcode::Div64r:
+        case X86Opcode::Div64r:
             return "divq";
-        case Opcode::Idiv8r:
+        case X86Opcode::Idiv8r:
             return "idivb";
-        case Opcode::Idiv16r:
+        case X86Opcode::Idiv16r:
             return "idivw";
-        case Opcode::Idiv32r:
+        case X86Opcode::Idiv32r:
             return "idivl";
-        case Opcode::Idiv64r:
+        case X86Opcode::Idiv64r:
             return "idivq";
 
-        case Opcode::And8rr:
-        case Opcode::And8ri:
-        case Opcode::And8rm:
-        case Opcode::And8mr:
-        case Opcode::And8mi:
+        case X86Opcode::And8rr:
+        case X86Opcode::And8ri:
+        case X86Opcode::And8rm:
+        case X86Opcode::And8mr:
+        case X86Opcode::And8mi:
             return "andb";
-        case Opcode::And16rr:
-        case Opcode::And16ri:
-        case Opcode::And16rm:
-        case Opcode::And16mr:
-        case Opcode::And16mi:
+        case X86Opcode::And16rr:
+        case X86Opcode::And16ri:
+        case X86Opcode::And16rm:
+        case X86Opcode::And16mr:
+        case X86Opcode::And16mi:
             return "andw";
-        case Opcode::And32rr:
-        case Opcode::And32ri:
-        case Opcode::And32rm:
-        case Opcode::And32mr:
-        case Opcode::And32mi:
+        case X86Opcode::And32rr:
+        case X86Opcode::And32ri:
+        case X86Opcode::And32rm:
+        case X86Opcode::And32mr:
+        case X86Opcode::And32mi:
             return "andl";
-        case Opcode::And64rr:
-        case Opcode::And64ri:
-        case Opcode::And64rm:
-        case Opcode::And64mr:
-        case Opcode::And64mi:
+        case X86Opcode::And64rr:
+        case X86Opcode::And64ri:
+        case X86Opcode::And64rm:
+        case X86Opcode::And64mr:
+        case X86Opcode::And64mi:
             return "andq";
 
-        case Opcode::Or8rr:
-        case Opcode::Or8ri:
-        case Opcode::Or8rm:
-        case Opcode::Or8mr:
-        case Opcode::Or8mi:
+        case X86Opcode::Or8rr:
+        case X86Opcode::Or8ri:
+        case X86Opcode::Or8rm:
+        case X86Opcode::Or8mr:
+        case X86Opcode::Or8mi:
             return "orb";
-        case Opcode::Or16rr:
-        case Opcode::Or16ri:
-        case Opcode::Or16rm:
-        case Opcode::Or16mr:
-        case Opcode::Or16mi:
+        case X86Opcode::Or16rr:
+        case X86Opcode::Or16ri:
+        case X86Opcode::Or16rm:
+        case X86Opcode::Or16mr:
+        case X86Opcode::Or16mi:
             return "orw";
-        case Opcode::Or32rr:
-        case Opcode::Or32ri:
-        case Opcode::Or32rm:
-        case Opcode::Or32mr:
-        case Opcode::Or32mi:
+        case X86Opcode::Or32rr:
+        case X86Opcode::Or32ri:
+        case X86Opcode::Or32rm:
+        case X86Opcode::Or32mr:
+        case X86Opcode::Or32mi:
             return "orl";
-        case Opcode::Or64rr:
-        case Opcode::Or64ri:
-        case Opcode::Or64rm:
-        case Opcode::Or64mr:
-        case Opcode::Or64mi:
+        case X86Opcode::Or64rr:
+        case X86Opcode::Or64ri:
+        case X86Opcode::Or64rm:
+        case X86Opcode::Or64mr:
+        case X86Opcode::Or64mi:
             return "orq";
 
-        case Opcode::Xor8rr:
-        case Opcode::Xor8ri:
-        case Opcode::Xor8rm:
-        case Opcode::Xor8mr:
-        case Opcode::Xor8mi:
+        case X86Opcode::Xor8rr:
+        case X86Opcode::Xor8ri:
+        case X86Opcode::Xor8rm:
+        case X86Opcode::Xor8mr:
+        case X86Opcode::Xor8mi:
             return "xorb";
-        case Opcode::Xor16rr:
-        case Opcode::Xor16ri:
-        case Opcode::Xor16rm:
-        case Opcode::Xor16mr:
-        case Opcode::Xor16mi:
+        case X86Opcode::Xor16rr:
+        case X86Opcode::Xor16ri:
+        case X86Opcode::Xor16rm:
+        case X86Opcode::Xor16mr:
+        case X86Opcode::Xor16mi:
             return "xorw";
-        case Opcode::Xor32rr:
-        case Opcode::Xor32ri:
-        case Opcode::Xor32rm:
-        case Opcode::Xor32mr:
-        case Opcode::Xor32mi:
+        case X86Opcode::Xor32rr:
+        case X86Opcode::Xor32ri:
+        case X86Opcode::Xor32rm:
+        case X86Opcode::Xor32mr:
+        case X86Opcode::Xor32mi:
             return "xorl";
-        case Opcode::Xor64rr:
-        case Opcode::Xor64ri:
-        case Opcode::Xor64rm:
-        case Opcode::Xor64mr:
-        case Opcode::Xor64mi:
+        case X86Opcode::Xor64rr:
+        case X86Opcode::Xor64ri:
+        case X86Opcode::Xor64rm:
+        case X86Opcode::Xor64mr:
+        case X86Opcode::Xor64mi:
             return "xorq";
 
-        case Opcode::Shl8ri:
-        case Opcode::Shl8rc:
-        case Opcode::Shl8rm:
+        case X86Opcode::Shl8ri:
+        case X86Opcode::Shl8rc:
+        case X86Opcode::Shl8rm:
             return "shlb";
-        case Opcode::Shl16ri:
-        case Opcode::Shl16rc:
-        case Opcode::Shl16rm:
+        case X86Opcode::Shl16ri:
+        case X86Opcode::Shl16rc:
+        case X86Opcode::Shl16rm:
             return "shlw";
-        case Opcode::Shl32ri:
-        case Opcode::Shl32rc:
-        case Opcode::Shl32rm:
+        case X86Opcode::Shl32ri:
+        case X86Opcode::Shl32rc:
+        case X86Opcode::Shl32rm:
             return "shll";
-        case Opcode::Shl64ri:
-        case Opcode::Shl64rc:
-        case Opcode::Shl64rm:
+        case X86Opcode::Shl64ri:
+        case X86Opcode::Shl64rc:
+        case X86Opcode::Shl64rm:
             return "shlq";
 
-        case Opcode::Shr8ri:
-        case Opcode::Shr8rc:
-        case Opcode::Shr8rm:
+        case X86Opcode::Shr8ri:
+        case X86Opcode::Shr8rc:
+        case X86Opcode::Shr8rm:
             return "shrb";
-        case Opcode::Shr16ri:
-        case Opcode::Shr16rc:
-        case Opcode::Shr16rm:
+        case X86Opcode::Shr16ri:
+        case X86Opcode::Shr16rc:
+        case X86Opcode::Shr16rm:
             return "shrw";
-        case Opcode::Shr32ri:
-        case Opcode::Shr32rc:
-        case Opcode::Shr32rm:
+        case X86Opcode::Shr32ri:
+        case X86Opcode::Shr32rc:
+        case X86Opcode::Shr32rm:
             return "shrl";
-        case Opcode::Shr64ri:
-        case Opcode::Shr64rc:
-        case Opcode::Shr64rm:
+        case X86Opcode::Shr64ri:
+        case X86Opcode::Shr64rc:
+        case X86Opcode::Shr64rm:
             return "shrq";
 
-        case Opcode::Sar8ri:
-        case Opcode::Sar8rc:
-        case Opcode::Sar8rm:
+        case X86Opcode::Sar8ri:
+        case X86Opcode::Sar8rc:
+        case X86Opcode::Sar8rm:
             return "sarb";
-        case Opcode::Sar16ri:
-        case Opcode::Sar16rc:
-        case Opcode::Sar16rm:
+        case X86Opcode::Sar16ri:
+        case X86Opcode::Sar16rc:
+        case X86Opcode::Sar16rm:
             return "sarw";
-        case Opcode::Sar32ri:
-        case Opcode::Sar32rc:
-        case Opcode::Sar32rm:
+        case X86Opcode::Sar32ri:
+        case X86Opcode::Sar32rc:
+        case X86Opcode::Sar32rm:
             return "sarl";
-        case Opcode::Sar64ri:
-        case Opcode::Sar64rc:
-        case Opcode::Sar64rm:
+        case X86Opcode::Sar64ri:
+        case X86Opcode::Sar64rc:
+        case X86Opcode::Sar64rm:
             return "sarq";
 
-        case Opcode::Cmp8rr:
-        case Opcode::Cmp8ri:
-        case Opcode::Cmp8rm:
-        case Opcode::Cmp8mr:
+        case X86Opcode::Cmp8rr:
+        case X86Opcode::Cmp8ri:
+        case X86Opcode::Cmp8rm:
+        case X86Opcode::Cmp8mr:
             return "cmpb";
-        case Opcode::Cmp16rr:
-        case Opcode::Cmp16ri:
-        case Opcode::Cmp16rm:
-        case Opcode::Cmp16mr:
+        case X86Opcode::Cmp16rr:
+        case X86Opcode::Cmp16ri:
+        case X86Opcode::Cmp16rm:
+        case X86Opcode::Cmp16mr:
             return "cmpw";
-        case Opcode::Cmp32rr:
-        case Opcode::Cmp32ri:
-        case Opcode::Cmp32rm:
-        case Opcode::Cmp32mr:
+        case X86Opcode::Cmp32rr:
+        case X86Opcode::Cmp32ri:
+        case X86Opcode::Cmp32rm:
+        case X86Opcode::Cmp32mr:
             return "cmpl";
-        case Opcode::Cmp64rr:
-        case Opcode::Cmp64ri:
-        case Opcode::Cmp64rm:
-        case Opcode::Cmp64mr:
+        case X86Opcode::Cmp64rr:
+        case X86Opcode::Cmp64ri:
+        case X86Opcode::Cmp64rm:
+        case X86Opcode::Cmp64mr:
             return "cmpq";
 
-        case Opcode::Test8rr:
+        case X86Opcode::Test8rr:
             return "testb";
-        case Opcode::Test16rr:
+        case X86Opcode::Test16rr:
             return "testw";
-        case Opcode::Test32rr:
+        case X86Opcode::Test32rr:
             return "testl";
-        case Opcode::Test64rr:
+        case X86Opcode::Test64rr:
             return "testq";
 
-        case Opcode::Jmp:
+        case X86Opcode::Jmp:
             return "jmp";
-        case Opcode::Je:
+        case X86Opcode::Je:
             return "je";
-        case Opcode::Jne:
+        case X86Opcode::Jne:
             return "jne";
-        case Opcode::Jl:
+        case X86Opcode::Jl:
             return "jl";
-        case Opcode::Jle:
+        case X86Opcode::Jle:
             return "jle";
-        case Opcode::Jg:
+        case X86Opcode::Jg:
             return "jg";
-        case Opcode::Jge:
+        case X86Opcode::Jge:
             return "jge";
-        case Opcode::Call:
+        case X86Opcode::Call:
             return "call";
-        case Opcode::Ret:
+        case X86Opcode::Ret:
             return "ret";
 
-        case Opcode::Sete:
+        case X86Opcode::Sete:
             return "sete";
-        case Opcode::Setne:
+        case X86Opcode::Setne:
             return "setne";
-        case Opcode::Setl:
+        case X86Opcode::Setl:
             return "setl";
-        case Opcode::Setle:
+        case X86Opcode::Setle:
             return "setle";
-        case Opcode::Setg:
+        case X86Opcode::Setg:
             return "setg";
-        case Opcode::Setge:
+        case X86Opcode::Setge:
             return "setge";
 
-        case Opcode::Movzx8_16:
+        case X86Opcode::Movzx8_16:
             return "movzbw";
-        case Opcode::Movzx8_32:
+        case X86Opcode::Movzx8_32:
             return "movzbl";
-        case Opcode::Movzx8_64:
+        case X86Opcode::Movzx8_64:
             return "movzbq";
-        case Opcode::Movzx16_32:
+        case X86Opcode::Movzx16_32:
             return "movzwl";
-        case Opcode::Movzx16_64:
+        case X86Opcode::Movzx16_64:
             return "movzwq";
-        case Opcode::Movzx32_64:
+        case X86Opcode::Movzx32_64:
             return "movzlq";
 
-        case Opcode::Movsx8_16:
+        case X86Opcode::Movsx8_16:
             return "movsbw";
-        case Opcode::Movsx8_32:
+        case X86Opcode::Movsx8_32:
             return "movsbl";
-        case Opcode::Movsx8_64:
+        case X86Opcode::Movsx8_64:
             return "movsbq";
-        case Opcode::Movsx16_32:
+        case X86Opcode::Movsx16_32:
             return "movswl";
-        case Opcode::Movsx16_64:
+        case X86Opcode::Movsx16_64:
             return "movswq";
-        case Opcode::Movsx32_64:
+        case X86Opcode::Movsx32_64:
             return "movslq";
 
-        case Opcode::Neg8r:
+        case X86Opcode::Neg8r:
             return "negb";
-        case Opcode::Neg16r:
+        case X86Opcode::Neg16r:
             return "negw";
-        case Opcode::Neg32r:
+        case X86Opcode::Neg32r:
             return "negl";
-        case Opcode::Neg64r:
+        case X86Opcode::Neg64r:
             return "negq";
 
-        case Opcode::Not8r:
+        case X86Opcode::Not8r:
             return "notb";
-        case Opcode::Not16r:
+        case X86Opcode::Not16r:
             return "notw";
-        case Opcode::Not32r:
+        case X86Opcode::Not32r:
             return "notl";
-        case Opcode::Not64r:
+        case X86Opcode::Not64r:
             return "notq";
+
+        case X86Opcode::Lea16rm:
+            return "leaw";
+        case X86Opcode::Lea32rm:
+            return "leal";
+        case X86Opcode::Lea64rm:
+            return "leaq";
             // default:
             //     errs("toString")
             //         << "unknown opcode: " <<

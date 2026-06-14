@@ -5,7 +5,7 @@
 namespace umbrella::x86
 {
 
-enum class Opcode : std::uint8_t
+enum class X86Opcode : std::uint8_t
 {
     Mov8rr,
     Mov8ri,
@@ -276,6 +276,48 @@ enum class Opcode : std::uint8_t
     Not16r,
     Not32r,
     Not64r,
+
+    Lea16rm,
+    Lea32rm,
+    Lea64rm,
+};
+
+enum class X86Mnemonic : std::uint8_t
+{
+    Mov,
+    Add,
+    Sub,
+    Imul,
+    Div,
+    Idiv,
+    And,
+    Or,
+    Xor,
+    Shl,
+    Shr,
+    Sar,
+    Cmp,
+    Test,
+    Jmp,
+    Je,
+    Jne,
+    Jl,
+    Jle,
+    Jg,
+    Jge,
+    Call,
+    Ret,
+    Sete,
+    Setne,
+    Setl,
+    Setle,
+    Setg,
+    Setge,
+    Movzx,
+    Movsx,
+    Neg,
+    Not,
+    Lea
 };
 
 }  // namespace umbrella::x86
