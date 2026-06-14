@@ -140,6 +140,10 @@ impl FunctionDef {
             }
 
             InstKind::Undef => "undef".into(),
+            InstKind::Select => format!(
+                "select.{} %{}, %{}, %{}",
+                ty, inst.operands[0], inst.operands[1], inst.operands[2]
+            ),
         }
     }
 

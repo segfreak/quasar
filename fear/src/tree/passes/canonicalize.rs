@@ -20,6 +20,13 @@ pub fn canonicalize_expr(expr: Expr, changed: &mut bool) -> Expr {
 
         ExprKind::Undef => expr.kind,
 
+        ExprKind::Select(c, t, e) => {
+            let c = canonicalize_expr(*c, changed);
+            let t = canonicalize_expr(*t, changed);
+            let e = canonicalize_expr(*e, changed);
+            ExprKind::Select(Box::new(c), Box::new(t), Box::new(e))
+        }
+
         ExprKind::Load(volatile, ptr) => {
             let a = canonicalize_expr(*ptr, changed);
             ExprKind::Load(volatile, Box::new(a))

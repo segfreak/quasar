@@ -140,6 +140,13 @@ impl FunctionDef {
                 )
             }
             ExprKind::Undef => format!("({}.undef)", ty),
+            ExprKind::Select(c, t, e) => format!(
+                "(select.{} {} {} {})",
+                ty,
+                Self::fmt_expr(c),
+                Self::fmt_expr(t),
+                Self::fmt_expr(e)
+            ),
         }
     }
 

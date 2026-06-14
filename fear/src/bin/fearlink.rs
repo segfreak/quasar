@@ -25,6 +25,8 @@ struct Cli {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    pretty_env_logger::init();
+
     let cli = Cli::parse();
 
     let mut modules = Vec::new();

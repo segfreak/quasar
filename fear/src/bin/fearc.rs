@@ -45,13 +45,15 @@ struct Cli {
 
     #[arg(
         short = 'm',
-        long = "multilevel",
+        long = "multi-level",
         help = "Enable high-level Expression Tree optimizations"
     )]
     multilevel: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    pretty_env_logger::init();
+
     let cli = Cli::parse();
 
     let output_type = cli.output_type.unwrap_or(OutputType::Object);

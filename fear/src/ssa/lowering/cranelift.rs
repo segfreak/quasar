@@ -554,6 +554,14 @@ fn compile_inst(
             let val = fx.ins().stack_load(cl_ty, slot, 0);
             values.insert(result_id, val);
         }
+
+        InstKind::Select => {
+            let cond = get_or_const(def, inst.operands[0], values, fx);
+            let tvalue = get_or_const(def, inst.operands[1], values, fx);
+            let evalue = get_or_const(def, inst.operands[2], values, fx);
+            let result = fx.ins().select(cond, tvalue, evalue);
+            values.insert(inst.result.unwrap(), result);
+        }
     }
 }
 

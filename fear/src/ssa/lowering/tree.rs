@@ -201,6 +201,10 @@ impl TreeSsaRaiser {
 
             ssa::InstKind::Undef => dst.make_undef(block, ty),
 
+            ssa::InstKind::Select => {
+                dst.make_select(block, ty,  &self.v(ops[0], dst), &self.v(ops[1], dst), &self.v(ops[2], dst))
+            }
+
             ssa::InstKind::Ret | ssa::InstKind::Jump(_) | ssa::InstKind::JumpIf { .. } => {
                 todo!("{:?} must be handled by raise_terminator", inst.kind)
             }

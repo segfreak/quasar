@@ -434,6 +434,17 @@ fn rewrite(
             };
             hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
         }
+
+        ExprKind::Select(c, t, e) => {
+            let c = rewrite(m, func, bid, *c.clone(), cnt, memo, new_values, changed);
+            let t = rewrite(m, func, bid, *t.clone(), cnt, memo, new_values, changed);
+            let e = rewrite(m, func, bid, *e.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::Select(Box::new(c), Box::new(t), Box::new(e)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
+        }
     }
 }
 

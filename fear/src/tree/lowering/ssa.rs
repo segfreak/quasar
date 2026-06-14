@@ -300,6 +300,12 @@ impl SsaRaiser {
             }
 
             ExprKind::Undef => dst.make_undef(block, ty),
+            ExprKind::Select(c, t, e) => {
+                let c = self.raise_expr(c, dst, block);
+                let t = self.raise_expr(t, dst, block);
+                let e = self.raise_expr(e, dst, block);
+                dst.make_select(block, ty, c, t, e)
+            }
         }
     }
 }

@@ -28,13 +28,15 @@ struct Cli {
 
     #[arg(
         short = 'm',
-        long = "multilevel",
+        long = "multi-level",
         help = "Enable high-level Expression Tree optimizations"
     )]
     multilevel: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    pretty_env_logger::init();
+
     let cli = Cli::parse();
 
     let mut module = fear::binary::load_from_file::<Module>(&cli.input)

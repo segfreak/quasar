@@ -14,6 +14,13 @@ pub fn reduce_expr(expr: Expr, changed: &mut bool) -> Expr {
     let cost = expr.get_cost();
 
     let kind = match expr.kind {
+        ExprKind::Var(_)
+        | ExprKind::Const(_)
+        | ExprKind::FConst(_)
+        | ExprKind::Undef
+        | ExprKind::Alloca(_)
+        | ExprKind::NAlloca(_, _) => expr.kind,
+
         ExprKind::Call(func, params) => {
             let reducted: Vec<Expr> = params
                 .iter()
@@ -193,7 +200,160 @@ pub fn reduce_expr(expr: Expr, changed: &mut bool) -> Expr {
             }
         }
 
-        _ => expr.kind,
+        ExprKind::Select(c, t, e) => {
+            let c = reduce_expr(*c, changed);
+            let t = reduce_expr(*t, changed);
+            let e = reduce_expr(*e, changed);
+            ExprKind::Select(Box::new(c), Box::new(t), Box::new(e))
+        }
+
+        ExprKind::Cast(kind, a) => {
+            let a = reduce_expr(*a, changed);
+            ExprKind::Cast(kind, Box::new(a))
+        }
+
+        ExprKind::Load(volatile, ptr) => {
+            let ptr = reduce_expr(*ptr, changed);
+            ExprKind::Load(volatile, Box::new(ptr))
+        }
+
+        ExprKind::Store(volatile, ptr, value) => {
+            let ptr = reduce_expr(*ptr, changed);
+            let value = reduce_expr(*value, changed);
+            ExprKind::Store(volatile, Box::new(ptr), Box::new(value))
+        }
+
+        ExprKind::PtrOffset(base, offset) => {
+            let base = reduce_expr(*base, changed);
+            let offset = reduce_expr(*offset, changed);
+            ExprKind::PtrOffset(Box::new(base), Box::new(offset))
+        }
+
+        ExprKind::ElementPtr(ty, base, offset) => {
+            let base = reduce_expr(*base, changed);
+            let offset = reduce_expr(*offset, changed);
+            ExprKind::ElementPtr(ty, Box::new(base), Box::new(offset))
+        }
+
+        ExprKind::Square(a) => {
+            let a = reduce_expr(*a, changed);
+            ExprKind::Square(Box::new(a))
+        }
+
+        ExprKind::FSquare(a) => {
+            let a = reduce_expr(*a, changed);
+            ExprKind::FSquare(Box::new(a))
+        }
+
+        ExprKind::Div(signed, a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::Div(signed, Box::new(a), Box::new(b))
+        }
+
+        ExprKind::Rem(signed, a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::Rem(signed, Box::new(a), Box::new(b))
+        }
+
+        ExprKind::FAdd(a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            match (&a.kind, &b.kind) {
+                (ExprKind::Const(_), _) => {
+                    *changed = true;
+                    ExprKind::FAdd(Box::new(b), Box::new(a))
+                }
+                _ => ExprKind::FAdd(Box::new(a), Box::new(b)),
+            }
+        }
+        ExprKind::FSub(a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::FSub(Box::new(a), Box::new(b))
+        }
+        ExprKind::FMul(a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            match (&a.kind, &b.kind) {
+                (ExprKind::Const(_), _) => {
+                    *changed = true;
+                    ExprKind::FMul(Box::new(b), Box::new(a))
+                }
+                _ => ExprKind::FMul(Box::new(a), Box::new(b)),
+            }
+        }
+        ExprKind::FDiv(a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::FDiv(Box::new(a), Box::new(b))
+        }
+        ExprKind::FRem(a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::FRem(Box::new(a), Box::new(b))
+        }
+
+        ExprKind::BitShl(a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::BitShl(Box::new(a), Box::new(b))
+        }
+
+        ExprKind::BitShr(a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::BitShr(Box::new(a), Box::new(b))
+        }
+
+        ExprKind::ArithShr(a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::ArithShr(Box::new(a), Box::new(b))
+        }
+
+        ExprKind::BitNeg(a) => {
+            let a = reduce_expr(*a, changed);
+            *changed = true;
+            ExprKind::Mul(
+                Box::new(a.clone()),
+                Box::new(Expr {
+                    ty: a.ty,
+                    kind: ExprKind::Const(-1),
+                }),
+            )
+        }
+
+        ExprKind::BitAnd(a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::BitAnd(Box::new(a), Box::new(b))
+        }
+
+        ExprKind::BitOr(a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::BitOr(Box::new(a), Box::new(b))
+        }
+
+        ExprKind::BitXor(a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::BitXor(Box::new(a), Box::new(b))
+        }
+
+        ExprKind::Cmp(kind, a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::Cmp(kind, Box::new(a), Box::new(b))
+        }
+
+        ExprKind::FCmp(kind, a, b) => {
+            let a = reduce_expr(*a, changed);
+            let b = reduce_expr(*b, changed);
+            ExprKind::FCmp(kind, Box::new(a), Box::new(b))
+        }
     };
 
     Expr { ty, kind }
@@ -235,6 +395,7 @@ fn try_decompose_mul(x: Expr, c: i64) -> Option<Expr> {
 
     Some(result)
 }
+
 fn is_power_of_two(v: i64) -> bool {
     v > 0 && (v & (v - 1)) == 0
 }

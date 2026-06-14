@@ -212,6 +212,8 @@ pub fn compile_module<W: Write>(
         log::error!("compiling using invalid compiler-config");
     }
 
+    log::info!("compiling with opt-level: {:?}", config.opt_level);
+
     match (config.backend, config.output_type) {
         (_, OutputType::Text) => {
             writer.write_all(module.dump().as_bytes());
@@ -292,11 +294,11 @@ pub fn compile_module<W: Write>(
                 flag_builder
                     .set("is_pic", "true")
                     .map_err(|e| format!("cranelift config error: {:?}", e))?;
+
+                let opt_level = settings::OptLevel::from(config.opt_level);
+                log::debug!("cranelift opt-level is {}", opt_level);
                 flag_builder
-                    .set(
-                        "opt_level",
-                        &settings::OptLevel::from(config.opt_level).to_string(),
-                    )
+                    .set("opt_level", &opt_level.to_string())
                     .map_err(|e| format!("cranelift config error: {:?}", e))?;
 
                 let flags = cranelift::codegen::settings::Flags::new(flag_builder);

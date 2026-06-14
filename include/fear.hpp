@@ -79,19 +79,136 @@ enum class Backend
     Llvm,
 };
 
+/**
+ * @brief Integer comparison predicates for the `icmp` instruction.
+ */
+enum class IntPredicate
+{
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+};
+
+/**
+ * @brief Float comparison predicates for the `fcmp` instruction.
+ */
+enum class FloatPredicate
+{
+    Ord,
+    OEq,
+    ONe,
+    OLt,
+    OLe,
+    OGt,
+    OGe,
+    Uno,
+    UEq,
+    UNe,
+    ULt,
+    ULe,
+    UGt,
+    UGe,
+};
+
 // Type aliases for compiler primitives
-using ValueId    = FearValueId;
-using BlockId    = FearBlockId;
-using FuncId     = FearFuncId;
+struct ValueId
+{
+    ValueId(FearValueId value) : value_(value) {}
+
+    FearValueId getRaw() const { return value_; }
+
+   private:
+    FearValueId value_;
+};
+
+struct BlockId
+{
+    BlockId(FearBlockId value) : value_(value) {}
+
+    FearBlockId getRaw() const { return value_; }
+
+   private:
+    FearBlockId value_;
+};
+
+struct FuncId
+{
+    FuncId(FearFuncId value) : value_(value) {}
+
+    FearFuncId getRaw() const { return value_; }
+
+   private:
+    FearFuncId value_;
+};
 
 using RawFuncDef = FearFunctionDef;
 using RawModule  = FearModule;
 
 namespace detail
 {
+
 /**
  * @brief Converts C++ high-level enums to raw C API constants.
  */
+inline FearIntCmp into(IntPredicate pred)
+{
+    switch (pred)
+    {
+        case IntPredicate::Eq:
+            return FearIntCmpEq;
+        case IntPredicate::Ne:
+            return FearIntCmpNe;
+        case IntPredicate::Lt:
+            return FearIntCmpLt;
+        case IntPredicate::Le:
+            return FearIntCmpLe;
+        case IntPredicate::Gt:
+            return FearIntCmpGt;
+        case IntPredicate::Ge:
+            return FearIntCmpGe;
+    }
+    throw std::runtime_error("Unknown IntPredicate");
+}
+
+inline FearFloatCmp into(FloatPredicate pred)
+{
+    switch (pred)
+    {
+        case FloatPredicate::Ord:
+            return FearFloatCmpOrd;
+        case FloatPredicate::OEq:
+            return FearFloatCmpOrdEq;
+        case FloatPredicate::ONe:
+            return FearFloatCmpOrdNe;
+        case FloatPredicate::OLt:
+            return FearFloatCmpOrdLt;
+        case FloatPredicate::OLe:
+            return FearFloatCmpOrdLe;
+        case FloatPredicate::OGt:
+            return FearFloatCmpOrdGt;
+        case FloatPredicate::OGe:
+            return FearFloatCmpOrdGe;
+        case FloatPredicate::Uno:
+            return FearFloatCmpUno;
+        case FloatPredicate::UEq:
+            return FearFloatCmpUnoEq;
+        case FloatPredicate::UNe:
+            return FearFloatCmpUnoNe;
+        case FloatPredicate::ULt:
+            return FearFloatCmpUnoLt;
+        case FloatPredicate::ULe:
+            return FearFloatCmpUnoLe;
+        case FloatPredicate::UGt:
+            return FearFloatCmpUnoGt;
+        case FloatPredicate::UGe:
+            return FearFloatCmpUnoGe;
+    }
+    throw std::runtime_error("Unknown FloatPredicate");
+}
+
 inline FearType into(Type ty)
 {
     switch (ty)
@@ -174,9 +291,76 @@ inline FearBackend into(Backend backend)
     throw std::runtime_error("Unknown Fear Backend");
 }
 
+static std::vector<FearValueId> into(const std::vector<ValueId>& values)
+{
+    std::vector<FearValueId> result;
+    result.reserve(values.size());
+
+    for (auto v : values) result.push_back(v.getRaw());
+
+    return result;
+}
+
 /**
  * @brief Converts raw C API constants back to C++ high-level enums.
  */
+
+inline IntPredicate from(FearIntCmp pred)
+{
+    switch (pred)
+    {
+        case FearIntCmpEq:
+            return IntPredicate::Eq;
+        case FearIntCmpNe:
+            return IntPredicate::Ne;
+        case FearIntCmpLt:
+            return IntPredicate::Lt;
+        case FearIntCmpLe:
+            return IntPredicate::Le;
+        case FearIntCmpGt:
+            return IntPredicate::Gt;
+        case FearIntCmpGe:
+            return IntPredicate::Ge;
+    }
+    throw std::runtime_error("Unknown FearIntCmp");
+}
+
+inline FloatPredicate from(FearFloatCmp pred)
+{
+    switch (pred)
+    {
+        case FearFloatCmpOrd:
+            return FloatPredicate::Ord;
+        case FearFloatCmpOrdEq:
+            return FloatPredicate::OEq;
+        case FearFloatCmpOrdNe:
+            return FloatPredicate::ONe;
+        case FearFloatCmpOrdLt:
+            return FloatPredicate::OLt;
+        case FearFloatCmpOrdLe:
+            return FloatPredicate::OLe;
+        case FearFloatCmpOrdGt:
+            return FloatPredicate::OGt;
+        case FearFloatCmpOrdGe:
+            return FloatPredicate::OGe;
+        case FearFloatCmpUno:
+            return FloatPredicate::Uno;
+        case FearFloatCmpUnoEq:
+            return FloatPredicate::UEq;
+        case FearFloatCmpUnoNe:
+            return FloatPredicate::UNe;
+        case FearFloatCmpUnoLt:
+            return FloatPredicate::ULt;
+        case FearFloatCmpUnoLe:
+            return FloatPredicate::ULe;
+        case FearFloatCmpUnoGt:
+            return FloatPredicate::UGt;
+        case FearFloatCmpUnoGe:
+            return FloatPredicate::UGe;
+    }
+    throw std::runtime_error("Unknown FearFloatCmp");
+}
+
 inline Type from(FearType ty)
 {
     switch (ty)
@@ -325,174 +509,229 @@ struct FunctionDef
     void        switchTo(BlockId id) { currentBlock_ = id; }
 
     // Parameter generation
-    BlockId     funcParam(Type ty)
+    ValueId     funcParam(Type ty)
     { return fearCreateFuncParam(getRaw(), detail::into(ty)); }
-    BlockId blockParam(Type ty)
+    ValueId blockParam(Type ty)
     {
-        return fearCreateBlockParam(getRaw(), getCurrentBlock(),
+        return fearCreateBlockParam(getRaw(), getCurrentBlock().getRaw(),
                                     detail::into(ty));
     }
 
     // Constants
     ValueId iconst(Type ty, int64_t val)
     {
-        return fearCreateIntConst(getRaw(), getCurrentBlock(),
+        return fearCreateIntConst(getRaw(), getCurrentBlock().getRaw(),
                                   detail::into(ty), val);
+    }
+    ValueId fconst(Type ty, double val)
+    {
+        return fearCreateFloatConst(getRaw(), getCurrentBlock().getRaw(),
+                                    detail::into(ty), val);
     }
 
     // Memory operations
-    ValueId stack_alloca(Type ty)
+    ValueId alloca(Type ty)
     {
-        return fearCreateAlloca(getRaw(), getCurrentBlock(),
+        return fearCreateAlloca(getRaw(), getCurrentBlock().getRaw(),
                                 detail::into(ty));
     }
     ValueId load(Type ty, ValueId ptr)
     {
-        return fearCreateLoad(getRaw(), getCurrentBlock(),
-                              detail::into(ty), ptr);
+        return fearCreateLoad(getRaw(), getCurrentBlock().getRaw(),
+                              detail::into(ty), ptr.getRaw());
     }
     void store(ValueId ptr, ValueId value)
-    { fearCreateStore(getRaw(), getCurrentBlock(), ptr, value); }
+    {
+        fearCreateStore(getRaw(), getCurrentBlock().getRaw(), ptr.getRaw(),
+                        value.getRaw());
+    }
 
     ValueId vload(Type ty, ValueId ptr)
     {
-        return fearCreateVolatileLoad(getRaw(), getCurrentBlock(),
-                                      detail::into(ty), ptr);
+        return fearCreateVolatileLoad(getRaw(), getCurrentBlock().getRaw(),
+                                      detail::into(ty), ptr.getRaw());
     }
     void vstore(ValueId ptr, ValueId value)
-    { fearCreateVolatileStore(getRaw(), getCurrentBlock(), ptr, value); }
+    {
+        fearCreateVolatileStore(getRaw(), getCurrentBlock().getRaw(),
+                                ptr.getRaw(), value.getRaw());
+    }
 
     // Integer Arithmetic
     ValueId add(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateAdd(getRaw(), getCurrentBlock(), detail::into(ty),
-                             a, b);
+        return fearCreateAdd(getRaw(), getCurrentBlock().getRaw(),
+                             detail::into(ty), a.getRaw(), b.getRaw());
     }
     ValueId sub(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateSub(getRaw(), getCurrentBlock(), detail::into(ty),
-                             a, b);
+        return fearCreateSub(getRaw(), getCurrentBlock().getRaw(),
+                             detail::into(ty), a.getRaw(), b.getRaw());
     }
     ValueId mul(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateMul(getRaw(), getCurrentBlock(), detail::into(ty),
-                             a, b);
+        return fearCreateMul(getRaw(), getCurrentBlock().getRaw(),
+                             detail::into(ty), a.getRaw(), b.getRaw());
     }
     ValueId div(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateDiv(getRaw(), getCurrentBlock(), detail::into(ty),
-                             a, b);
+        return fearCreateDiv(getRaw(), getCurrentBlock().getRaw(),
+                             detail::into(ty), a.getRaw(), b.getRaw());
     }
     ValueId udiv(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateUnsignedDiv(getRaw(), getCurrentBlock(),
-                                     detail::into(ty), a, b);
+        return fearCreateUnsignedDiv(getRaw(), getCurrentBlock().getRaw(),
+                                     detail::into(ty), a.getRaw(),
+                                     b.getRaw());
     }
     ValueId rem(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateRem(getRaw(), getCurrentBlock(), detail::into(ty),
-                             a, b);
+        return fearCreateRem(getRaw(), getCurrentBlock().getRaw(),
+                             detail::into(ty), a.getRaw(), b.getRaw());
     }
     ValueId urem(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateUnsignedRem(getRaw(), getCurrentBlock(),
-                                     detail::into(ty), a, b);
+        return fearCreateUnsignedRem(getRaw(), getCurrentBlock().getRaw(),
+                                     detail::into(ty), a.getRaw(),
+                                     b.getRaw());
     }
 
     // Floating-Point Arithmetic
     ValueId fadd(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateFloatAdd(getRaw(), getCurrentBlock(),
-                                  detail::into(ty), a, b);
+        return fearCreateFloatAdd(getRaw(), getCurrentBlock().getRaw(),
+                                  detail::into(ty), a.getRaw(),
+                                  b.getRaw());
     }
     ValueId fsub(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateFloatSub(getRaw(), getCurrentBlock(),
-                                  detail::into(ty), a, b);
+        return fearCreateFloatSub(getRaw(), getCurrentBlock().getRaw(),
+                                  detail::into(ty), a.getRaw(),
+                                  b.getRaw());
     }
     ValueId fmul(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateFloatMul(getRaw(), getCurrentBlock(),
-                                  detail::into(ty), a, b);
+        return fearCreateFloatMul(getRaw(), getCurrentBlock().getRaw(),
+                                  detail::into(ty), a.getRaw(),
+                                  b.getRaw());
     }
     ValueId fdiv(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateFloatDiv(getRaw(), getCurrentBlock(),
-                                  detail::into(ty), a, b);
+        return fearCreateFloatDiv(getRaw(), getCurrentBlock().getRaw(),
+                                  detail::into(ty), a.getRaw(),
+                                  b.getRaw());
     }
     ValueId frem(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateFloatRem(getRaw(), getCurrentBlock(),
-                                  detail::into(ty), a, b);
+        return fearCreateFloatRem(getRaw(), getCurrentBlock().getRaw(),
+                                  detail::into(ty), a.getRaw(),
+                                  b.getRaw());
     }
 
     // Bitwise and Shifts
     ValueId bnot(Type ty, ValueId v)
     {
-        return fearCreateBitNot(getRaw(), getCurrentBlock(),
-                                detail::into(ty), v);
+        return fearCreateBitNot(getRaw(), getCurrentBlock().getRaw(),
+                                detail::into(ty), v.getRaw());
     }
     ValueId band(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateBitAnd(getRaw(), getCurrentBlock(),
-                                detail::into(ty), a, b);
+        return fearCreateBitAnd(getRaw(), getCurrentBlock().getRaw(),
+                                detail::into(ty), a.getRaw(), b.getRaw());
     }
     ValueId bor(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateBitOr(getRaw(), getCurrentBlock(),
-                               detail::into(ty), a, b);
+        return fearCreateBitOr(getRaw(), getCurrentBlock().getRaw(),
+                               detail::into(ty), a.getRaw(), b.getRaw());
     }
     ValueId bxor(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateBitXor(getRaw(), getCurrentBlock(),
-                                detail::into(ty), a, b);
+        return fearCreateBitXor(getRaw(), getCurrentBlock().getRaw(),
+                                detail::into(ty), a.getRaw(), b.getRaw());
     }
     ValueId shl(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateShl(getRaw(), getCurrentBlock(), detail::into(ty),
-                             a, b);
+        return fearCreateShl(getRaw(), getCurrentBlock().getRaw(),
+                             detail::into(ty), a.getRaw(), b.getRaw());
     }
     ValueId shr(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateShr(getRaw(), getCurrentBlock(), detail::into(ty),
-                             a, b);
+        return fearCreateShr(getRaw(), getCurrentBlock().getRaw(),
+                             detail::into(ty), a.getRaw(), b.getRaw());
     }
     ValueId ashr(Type ty, ValueId a, ValueId b)
     {
-        return fearCreateArithShr(getRaw(), getCurrentBlock(),
-                                  detail::into(ty), a, b);
+        return fearCreateArithShr(getRaw(), getCurrentBlock().getRaw(),
+                                  detail::into(ty), a.getRaw(),
+                                  b.getRaw());
     }
 
-    // Control Flow / Termigators
+    ValueId icmp(IntPredicate pred, ValueId left, ValueId right)
+    {
+        return fearCreateIntCompare(getRaw(), getCurrentBlock().getRaw(),
+                                    detail::into(pred), left.getRaw(),
+                                    right.getRaw());
+    }
+
+    ValueId fcmp(FloatPredicate pred, ValueId left, ValueId right)
+    {
+        return fearCreateFloatCompare(getRaw(), getCurrentBlock().getRaw(),
+                                      detail::into(pred), left.getRaw(),
+                                      right.getRaw());
+    }
+
+    // Control Flow / Terminators
     void jmp(BlockId target, const std::vector<ValueId>& params = {})
     {
-        fearCreateJump(getRaw(), getCurrentBlock(), target, params.data(),
-                       static_cast<uint32_t>(params.size()));
+        auto raw_params = detail::into(params);
+        fearCreateJump(getRaw(), getCurrentBlock().getRaw(),
+                       target.getRaw(), raw_params.data(),
+                       static_cast<uint32_t>(raw_params.size()));
     }
 
     void jmpif(ValueId cond, BlockId true_block,
                const std::vector<ValueId>& true_args, BlockId false_block,
                const std::vector<ValueId>& false_args)
     {
-        fearCreateCondJump(getRaw(), getCurrentBlock(), cond, true_block,
-                           true_args.data(),
-                           static_cast<uint32_t>(true_args.size()),
-                           false_block, false_args.data(),
-                           static_cast<uint32_t>(false_args.size()));
+        auto raw_true_args  = detail::into(true_args);
+        auto raw_false_args = detail::into(true_args);
+
+        fearCreateCondJump(getRaw(), getCurrentBlock().getRaw(),
+                           cond.getRaw(), true_block.getRaw(),
+                           raw_true_args.data(),
+                           static_cast<uint32_t>(raw_true_args.size()),
+                           false_block.getRaw(), raw_false_args.data(),
+                           static_cast<uint32_t>(raw_false_args.size()));
     }
 
-    void ret(ValueId v) { fearCreateRet(getRaw(), getCurrentBlock(), v); }
-    void ret() { fearCreateRetVoid(getRaw(), getCurrentBlock()); }
+    void ret(ValueId v)
+    { fearCreateRet(getRaw(), getCurrentBlock().getRaw(), v.getRaw()); }
+    void ret() { fearCreateRetVoid(getRaw(), getCurrentBlock().getRaw()); }
 
     std::optional<ValueId> call(FuncId func, Type ret,
                                 std::vector<ValueId> params)
     {
-        auto tmp = fearCreateCall(getRaw(), getCurrentBlock(),
-                                  static_cast<FearFuncId>(func),
-                                  detail::into(ret), params.data(),
-                                  static_cast<uint32_t>(params.size()));
+        auto raw_params = detail::into(params);
+        auto tmp        = fearCreateCall(
+            getRaw(), getCurrentBlock().getRaw(), func.getRaw(),
+            detail::into(ret), raw_params.data(),
+            static_cast<uint32_t>(raw_params.size()));
         if (ret == Type::Void) { return std::nullopt; }
         return tmp;
+    }
+
+    ValueId undef(Type ty)
+    {
+        return fearCreateUndef(getRaw(), getCurrentBlock().getRaw(),
+                               detail::into(ty));
+    }
+
+    ValueId select(Type ty, ValueId cond, ValueId then_value,
+                   ValueId else_value)
+    {
+        return fearCreateSelect(getRaw(), getCurrentBlock().getRaw(),
+                                detail::into(ty), cond.getRaw(),
+                                then_value.getRaw(), else_value.getRaw());
     }
 
    private:
@@ -577,7 +816,7 @@ struct Module
      * declared function ID.
      */
     void defineFunction(FuncId id, const FunctionDef& def)
-    { fearDefineFunction(getRaw(), id, def.getRaw()); }
+    { fearDefineFunction(getRaw(), id.getRaw(), def.getRaw()); }
 
     /**
      * @brief Optimizes the module using the specified optimization level.
@@ -668,7 +907,10 @@ struct Function
      * @brief Configures the target calling convention for the function.
      */
     void setCallingConvention(CallConv cc)
-    { fearFunctionSetCC(parent_->getRaw(), getId(), detail::into(cc)); }
+    {
+        fearFunctionSetCC(parent_->getRaw(), getId().getRaw(),
+                          detail::into(cc));
+    }
 
     const Module* getParent() { return parent_; }
     FuncId        getId() const { return id_; }

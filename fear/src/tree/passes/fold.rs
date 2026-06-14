@@ -20,6 +20,13 @@ pub fn fold_expr(expr: Expr, changed: &mut bool) -> Expr {
 
         ExprKind::Undef => expr.kind,
 
+        ExprKind::Select(c, t, e) => {
+            let c = fold_expr(*c, changed);
+            let t = fold_expr(*t, changed);
+            let e = fold_expr(*e, changed);
+            ExprKind::Select(Box::new(c), Box::new(t), Box::new(e))
+        }
+
         ExprKind::Load(volatile, ptr) => {
             let a = fold_expr(*ptr, changed);
             ExprKind::Load(volatile, Box::new(a))

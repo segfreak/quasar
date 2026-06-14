@@ -74,6 +74,11 @@ pub enum ExprKind {
     Call(/* using fear modules */ crate::ssa::FuncId, Vec<Expr>),
 
     Undef,
+    Select(
+        /* cond */ Box<Expr>,
+        /* then value */ Box<Expr>,
+        /* else value */ Box<Expr>,
+    ),
 }
 
 impl From<ValueId> for ExprKind {
@@ -131,6 +136,10 @@ impl ExprKind {
             Self::Alloca(_) => vec![],
             Self::NAlloca(_, _) => vec![],
             Self::Undef => vec![],
+
+            Self::Select(c, t, e) => {
+                vec![c.as_ref().clone(), t.as_ref().clone(), e.as_ref().clone()]
+            }
         }
     }
 
@@ -182,6 +191,10 @@ impl ExprKind {
             Self::Alloca(_) => vec![],
             Self::NAlloca(_, _) => vec![],
             Self::Undef => vec![],
+
+            Self::Select(c, t, e) => {
+                vec![c.as_mut(), t.as_mut(), e.as_mut()]
+            }
         }
     }
 
@@ -269,7 +282,9 @@ impl ExprKind {
             Self::PtrOffset(_, _) | Self::ElementPtr(_, _, _) => 2,
             Self::Load(_, _) | Self::Store(_, _, _) => 5,
 
-            Self::Call(_, _) => 30,
+            Self::Call(_, _) => 50,
+
+            Self::Select(c, t, e) => 2 + c.get_cost() + t.get_cost() + e.get_cost(),
         }
     }
 }
@@ -460,6 +475,27 @@ impl FunctionDef {
             Expr {
                 ty,
                 kind: ExprKind::Undef,
+            },
+        )
+    }
+
+    pub fn make_select(
+        &mut self,
+        block: BlockId,
+        ty: Type,
+        cond: &Expr,
+        then_value: &Expr,
+        else_value: &Expr,
+    ) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::Select(
+                    Box::new(cond.clone()),
+                    Box::new(then_value.clone()),
+                    Box::new(else_value.clone()),
+                ),
             },
         )
     }

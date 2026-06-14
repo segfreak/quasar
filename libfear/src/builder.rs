@@ -550,3 +550,27 @@ pub unsafe extern "C" fn fearCreateRet(
 pub unsafe extern "C" fn fearCreateRetVoid(f: *mut FearFunctionDef, parent: FearBlockId) {
     as_def(f).make_ret(parent, None)
 }
+
+/// Emits an instruction to create an undefined value of the specified type, which can be used as a placeholder or for optimization purposes.
+/// Cranelift: undef its a read from uninitialized stack slot.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearCreateUndef(
+    f: *mut FearFunctionDef,
+    parent: FearBlockId,
+    ty: FearType,
+) -> FearValueId {
+    as_def(f).make_undef(parent, ty.into())
+}
+
+/// Emits a instruction to select one of two values based on a condition, similar to the ternary operator `cond ? then_value : else_value`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearCreateSelect(
+    f: *mut FearFunctionDef,
+    parent: FearBlockId,
+    ty: FearType,
+    cond: FearValueId,
+    then_value: FearValueId,
+    else_value: FearValueId,
+) -> FearValueId {
+    as_def(f).make_select(parent, ty.into(), cond, then_value, else_value)
+}

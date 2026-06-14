@@ -543,6 +543,24 @@ void fearCreateRet(struct FearFunctionDef *f, FearBlockId parent, FearValueId v)
 void fearCreateRetVoid(struct FearFunctionDef *f, FearBlockId parent);
 
 /**
+ * Emits an instruction to create an undefined value of the specified type, which can be used as a placeholder or for optimization purposes.
+ * Cranelift: undef its a read from uninitialized stack slot.
+ */
+FearValueId fearCreateUndef(struct FearFunctionDef *f,
+                            FearBlockId parent,
+                            enum FearType ty);
+
+/**
+ * Emits a instruction to select one of two values based on a condition, similar to the ternary operator `cond ? then_value : else_value`.
+ */
+FearValueId fearCreateSelect(struct FearFunctionDef *f,
+                             FearBlockId parent,
+                             enum FearType ty,
+                             FearValueId cond,
+                             FearValueId then_value,
+                             FearValueId else_value);
+
+/**
  * Declares a function prototype inside the module. Returns a unique function identifier.
  */
 FearFuncId fearDeclareFunction(struct FearModule *m,

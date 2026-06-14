@@ -18,6 +18,18 @@ pub fn simplify_expr(expr: Expr, changed: &mut bool) -> Expr {
         | ExprKind::NAlloca(_, _)
         | ExprKind::Undef => expr.kind,
 
+        ExprKind::Select(c, t, e) => {
+            let c = simplify_expr(*c, changed);
+            let t = simplify_expr(*t, changed);
+            let e = simplify_expr(*e, changed);
+
+            match c.kind {
+                ExprKind::Const(1) => t.kind,
+                ExprKind::Const(0) => e.kind,
+                _ => ExprKind::Select(Box::new(c), Box::new(t), Box::new(e)),
+            }
+        }
+
         ExprKind::Cmp(pred, l, r) => {
             let l = simplify_expr(*l, changed);
             let r = simplify_expr(*r, changed);

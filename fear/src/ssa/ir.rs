@@ -110,6 +110,9 @@ pub enum InstKind {
     Ret,
 
     Undef,
+
+    /// select {cond} {then_value}, {else_value}
+    Select,
 }
 
 impl InstKind {
@@ -149,6 +152,8 @@ impl InstKind {
 
             Not => 1,
 
+            Select => 3,
+
             // context depended
             Call(_) | Jump(_) | JumpIf { .. } => usize::MAX,
         }
@@ -156,6 +161,7 @@ impl InstKind {
 
     pub fn get_cost(&self) -> u8 {
         match self {
+            Self::Select => 2,
             Self::Undef => 0,
 
             // constants (free)
@@ -535,6 +541,22 @@ impl FunctionDef {
 
     pub fn make_undef(&mut self, block: BlockId, ty: Type) -> ValueId {
         self.append_inst(block, InstKind::Undef, ty, vec![])
+    }
+
+    pub fn make_select(
+        &mut self,
+        block: BlockId,
+        ty: Type,
+        cond: ValueId,
+        then_value: ValueId,
+        else_value: ValueId,
+    ) -> ValueId {
+        self.append_inst(
+            block,
+            InstKind::Select,
+            ty,
+            vec![cond, then_value, else_value],
+        )
     }
 
     fn make_unary(&mut self, block: BlockId, kind: InstKind, ty: Type, value: ValueId) -> ValueId {

@@ -182,6 +182,18 @@ fn example1_def() -> FunctionDef {
     f
 }
 
+fn min_def() -> FunctionDef {
+    let mut f = FunctionDef::new();
+    let entry = f.entry;
+    let left = f.add_param(Type::Int32);
+    let right = f.add_param(Type::Int32);
+    let lt = f.make_int_cmp(entry, IntCmp::Lt, left, right);
+    let value = f.make_select(entry, Type::Int32, lt, left, right);
+    f.make_ret(entry, Some(value));
+
+    f
+}
+
 #[test]
 fn test() {
     pretty_env_logger::try_init().expect("cannot initialize logging");
@@ -229,6 +241,12 @@ fn test() {
         Linkage::default(),
         CallingConvention::default(),
     );
+    let mmin = m.declare_function(
+        "min",
+        FunctionSignature::new(vec![Type::Int32, Type::Int32], Type::Int32),
+        Linkage::default(),
+        CallingConvention::default(),
+    );
     m.define_function(mfoo, foo_def())
         .expect("define_function error");
     m.define_function(mbar, bar_def(mfoo))
@@ -242,6 +260,8 @@ fn test() {
     m.define_function(mfact_tr, fact_tr_def(mfact_tr))
         .expect("define_function error");
     m.define_function(mexample1, example1_def())
+        .expect("define_function error");
+    m.define_function(mmin, min_def())
         .expect("define_function error");
     m.verify().expect("pre-opt verify error");
     fs::write("preopt-fear.dot", m.dump_dot()).expect("fs::write error");

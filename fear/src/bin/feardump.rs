@@ -28,6 +28,8 @@ struct Cli {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    pretty_env_logger::init();
+
     let cli = Cli::parse();
 
     let module = fear::binary::load_from_file::<Module>(&cli.input)

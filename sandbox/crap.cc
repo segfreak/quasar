@@ -8,11 +8,13 @@ int main()
 
     fear::Module m("crap");
     auto         f = fear::Function::declare(
-        &m, "add", {fear::Type::Int32, fear::Type::Int32},
+        &m, "shit", {fear::Type::Int32, fear::Type::Int32},
         fear::Type::Int32);
     f.setCallingConvention(fear::CallConv::C);
 
-    auto def      = fear::FunctionDef();
+    auto def = fear::FunctionDef();
+    def.switchTo(def.entryBlock());
+
     auto a        = def.blockParam(fear::Type::Int32);
     auto b        = def.blockParam(fear::Type::Int32);
     auto sum      = def.add(fear::Type::Int32, a, b);
@@ -22,7 +24,17 @@ int main()
     auto masked   = def.band(fear::Type::Int32, xored, mask);
     auto multiply = def.mul(fear::Type::Int32, masked, magic);
     auto divided  = def.div(fear::Type::Int32, multiply, magic);
-    def.ret(divided);
+    auto cmp      = def.icmp(fear::IntPredicate::Lt, a, b);
+
+    auto b1       = def.createBlock();
+
+    def.jmp(b1, {cmp, a, divided});
+    def.switchTo(b1);
+    auto c = def.blockParam(fear::Type::Bool);
+    auto t = def.blockParam(fear::Type::Int32);
+    auto e = def.blockParam(fear::Type::Int32);
+    auto v = def.select(fear::Type::Int32, c, t, e);
+    def.ret(v);
 
     f.define(def);
 
