@@ -1,4 +1,4 @@
-use crate::ssa::*;
+use crate::{ssa::*, types::Type};
 
 fn is_zero(func: &FunctionDef, v: ValueId) -> bool {
     func.get_int_const(v) == Some(0)
@@ -6,6 +6,26 @@ fn is_zero(func: &FunctionDef, v: ValueId) -> bool {
 
 fn is_one(func: &FunctionDef, v: ValueId) -> bool {
     func.get_int_const(v) == Some(1)
+}
+
+fn is_all_ones(func: &FunctionDef, v: ValueId) -> bool {
+    let ty = func.get_type_of(v);
+
+    let expected = match ty {
+        Type::Int8 => u8::MAX as u64,
+        Type::Int16 => u16::MAX as u64,
+        Type::Int32 => u32::MAX as u64,
+        Type::Int64 => u64::MAX,
+        _ => {
+            return false;
+        }
+    };
+
+    if let Some(val) = func.get_int_const(v) {
+        val as u64 == expected
+    } else {
+        false
+    }
 }
 
 pub fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
@@ -66,8 +86,53 @@ pub fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
                 return replace(func, inst, id, zero);
             }
 
+            if is_all_ones(func, a) {
+                return replace(func, inst, id, b);
+            }
+            if is_all_ones(func, b) {
+                return replace(func, inst, id, a);
+            }
+
             if a == b {
                 return replace(func, inst, id, a);
+            }
+        }
+
+        InstKind::Or => {
+            let (a, b) = bin(inst);
+
+            if is_zero(func, a) {
+                return replace(func, inst, id, b);
+            }
+            if is_zero(func, b) {
+                return replace(func, inst, id, a);
+            }
+
+            if is_all_ones(func, a) {
+                return replace(func, inst, id, a);
+            }
+            if is_all_ones(func, b) {
+                return replace(func, inst, id, b);
+            }
+
+            if a == b {
+                return replace(func, inst, id, a);
+            }
+        }
+
+        InstKind::Xor => {
+            let (a, b) = bin(inst);
+
+            if is_zero(func, a) {
+                return replace(func, inst, id, b);
+            }
+            if is_zero(func, b) {
+                return replace(func, inst, id, a);
+            }
+
+            if a == b {
+                let zero = func.make_int_const(inst.parent, func.get_type_of(a), 0);
+                return replace(func, inst, id, zero);
             }
         }
 
@@ -84,7 +149,7 @@ fn replace(func: &mut FunctionDef, inst: &Inst, id: InstId, val: ValueId) -> boo
     true
 }
 
-pub fn algebraic_simplify(m: &mut Module, f: FuncId) -> bool {
+pub fn simplify(m: &mut Module, f: FuncId) -> bool {
     let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
 
     let mut changed = false;

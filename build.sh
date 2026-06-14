@@ -140,6 +140,8 @@ if [ "$DO_INSTALL" = "1" ]; then
   sudo install -m 644 "./include/fear.h" "$INC_DIR/fear.h"
   sudo install -m 644 "./include/fear.hpp" "$INC_DIR/fear.hpp"
   sudo install -m 755 "./target/$TARGET_SUBDIR/fearc"      "$BIN_DIR/"
+  sudo install -m 755 "./target/$TARGET_SUBDIR/fearopt"      "$BIN_DIR/"
+  sudo install -m 755 "./target/$TARGET_SUBDIR/feardump"      "$BIN_DIR/"
   sudo install -m 755 "./target/$TARGET_SUBDIR/libfear.so" "$LIB_DIR/"
   sudo install -m 644 "./target/$TARGET_SUBDIR/libfear.a"  "$LIB_DIR/"
 fi

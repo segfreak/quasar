@@ -585,6 +585,12 @@ struct Module
     unsigned optimize(OptLevel lvl)
     { return fearModuleOptimize(getRaw(), detail::into(lvl)); }
 
+    /**
+     * @brief Verifys the module for correctness and consistency.
+     * @returns Returns the number of errors found.
+     */
+    unsigned    verify() { return fearModuleVerify(getRaw()); }
+
     // Serialization and Diagnostics
     void        dumpToFile(int fd) { fearDumpToFile(getRaw(), fd); }
 

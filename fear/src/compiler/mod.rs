@@ -10,6 +10,7 @@ use inkwell::OptimizationLevel;
 
 #[derive(Debug, EnumDisplay, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum OutputType {
+    Text,
     #[cfg(feature = "llvm")]
     #[display("llvm-ir")]
     LlvmIr,
@@ -18,6 +19,17 @@ pub enum OutputType {
     #[default]
     #[display("object")]
     Object,
+}
+
+impl OutputType {
+    pub fn is_text(&self) -> bool {
+        match self {
+            Self::Text => true,
+            #[cfg(feature = "llvm")]
+            Self::LlvmIr => false,
+            _ => false,
+        }
+    }
 }
 
 /// Backend kind
@@ -51,6 +63,8 @@ impl Backend {
 
     pub fn select_for(output_type: OutputType) -> Option<Self> {
         match output_type {
+            OutputType::Text => Some(Self::Dummy),
+
             #[cfg(feature = "llvm")]
             OutputType::LlvmIr => Some(Self::Llvm),
 
@@ -100,6 +114,7 @@ impl OutputType {
             Self::LlvmIr => "ll",
             Self::Assembly => "s",
             Self::Object => "o",
+            Self::Text => "ssa",
         }
     }
 }
@@ -198,6 +213,11 @@ pub fn compile_module<W: Write>(
     }
 
     match (config.backend, config.output_type) {
+        (_, OutputType::Text) => {
+            writer.write_all(module.dump().as_bytes());
+            writer.flush();
+            Ok(())
+        }
         #[cfg(feature = "llvm")]
         (Backend::Llvm, ty) => {
             #[cfg(feature = "llvm")]
@@ -243,6 +263,9 @@ pub fn compile_module<W: Write>(
                             .write_to_memory_buffer(llvm_module, inkwell::targets::FileType::Object)
                             .map_err(|e| format!("llvm target machine error: {:?}", e))?;
                         writer.write_all(buffer.as_slice())?;
+                    }
+                    _ => {
+                        std::unreachable!();
                     }
                 }
                 writer.flush()?;

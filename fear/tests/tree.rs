@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::{fs::File, io::BufWriter};
 
 use fear::types::{CastKind, FunctionSignature, OptLevel, Type};
@@ -112,7 +113,8 @@ fn test() {
         m.verify().expect("verify error");
         println!("{}", m.dump());
 
-        fear::binary::write_to_file(&m, "treessa.bin").expect("cannot write fear binary module");
+        fear::binary::write_to_file(&m, &PathBuf::from("treessa.bin"))
+            .expect("cannot write fear binary module");
         std::fs::write("treessa.ssa", m.dump()).expect("cannot write fear text module");
     }
 

@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::BufWriter;
+use std::path::PathBuf;
 
 use fear::compiler::CompilerConfig;
 use fear::tree::passes::PassManager;
@@ -115,8 +116,9 @@ pub fn complex() {
         m.verify().expect("verify error");
         println!("{}", m.dump());
 
-        fear::binary::write_to_file(&m, "treessa.bin").expect("cannot write fear binary module");
-        std::fs::write("treessa.ssa", m.dump()).expect("cannot write fear text module");
+        fear::binary::write_to_file(&m, &PathBuf::from("treessac.bin"))
+            .expect("cannot write fear binary module");
+        std::fs::write("treessac.ssa", m.dump()).expect("cannot write fear text module");
     }
 
     {

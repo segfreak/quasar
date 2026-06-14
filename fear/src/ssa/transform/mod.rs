@@ -4,7 +4,7 @@ use crate::{ssa::FunctionDef, tree, types::OptLevel};
 
 use super::{FuncId, Module};
 
-pub mod algebraic_simplify;
+pub mod simplify;
 pub mod cfg_simplify;
 pub mod constfold;
 pub mod copyprop;
@@ -26,7 +26,7 @@ pub enum PassKind {
     CommonSubexpressionElimination,
     DeadStoreElimination,
     TailRecursionElimination,
-    AlgebraicSimplify,
+    Simplify,
     GlobalValueNumbering,
     CFGSimplify,
     Mem2Reg,
@@ -109,8 +109,8 @@ impl PassManager {
             if opts.level >= OptLevel::Default {
                 run_pass!(constfold::constfold, PassKind::ConstantFolding);
                 run_pass!(
-                    algebraic_simplify::algebraic_simplify,
-                    PassKind::AlgebraicSimplify
+                    simplify::simplify,
+                    PassKind::Simplify
                 );
                 run_pass!(
                     strength_reduction::strength_reduction,

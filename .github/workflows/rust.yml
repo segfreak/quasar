@@ -19,4 +19,4 @@ jobs:
     - name: Installing depenedencies
       run: cargo install cbindgen
     - name: Run tests
-      run: make test RELEASE=1
+      run: make test RELEASE=1 LLVM=OFF

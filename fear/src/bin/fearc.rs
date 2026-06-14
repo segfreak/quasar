@@ -1,19 +1,9 @@
+use clap::*;
+use fear::style::*;
+use fear::{compiler::*, ssa::Module, types::OptLevel};
 use std::str::FromStr;
 use std::{fs::File, path::PathBuf};
-
-use clap::builder::Styles;
-use clap::builder::styling::{AnsiColor, Effects};
-use clap::*;
-use fear::{compiler::*, ssa::Module, types::OptLevel};
 use target_lexicon::Triple;
-
-fn styles() -> Styles {
-    Styles::styled()
-        .header(AnsiColor::BrightBlue.on_default() | Effects::BOLD)
-        .usage(AnsiColor::BrightGreen.on_default() | Effects::BOLD)
-        .literal(AnsiColor::BrightCyan.on_default())
-        .placeholder(AnsiColor::BrightMagenta.on_default())
-}
 
 #[derive(Parser, Debug)]
 #[command(
@@ -27,22 +17,38 @@ fn styles() -> Styles {
     arg_required_else_help = true,
 )]
 struct Cli {
-    #[arg()]
-    input: String,
+    #[arg(help = "Input Fear Binary IR module (.bin)")]
+    input: PathBuf,
+
     #[arg(short = 'b', long = "backend", value_enum)]
     backend: Option<Backend>,
+
     #[arg(long = "type", value_enum)]
     output_type: Option<OutputType>,
-    #[arg(short = 'o')]
+
+    #[arg(
+        short = 'o',
+        help = "Output file path (defaults to stdout for text, file for objects)"
+    )]
     output_path: Option<PathBuf>,
+
     #[arg(
         short = 't',
         long = "triple", 
-        value_parser = |s: &str| target_lexicon::Triple::from_str(s).map_err(|e| e.to_string())
+        value_parser = |s: &str| target_lexicon::Triple::from_str(s).map_err(|e| e.to_string()),
+        help = "Target platform triple (defaults to host)"
     )]
     triple: Option<Triple>,
-    #[arg(long = "opt")]
+
+    #[arg(long = "opt", value_enum)]
     opt_level: Option<OptLevel>,
+
+    #[arg(
+        short = 'm',
+        long = "multilevel",
+        help = "Enable high-level Expression Tree optimizations"
+    )]
+    multilevel: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -58,20 +64,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         opt_level: cli.opt_level.unwrap_or(OptLevel::Default),
     };
 
-    let module = fear::binary::load_from_file::<Module>(&cli.input)
+    let mut module = fear::binary::load_from_file::<Module>(&cli.input)
         .map_err(|e| format!("failed to load module file: {}", e))?;
+    module.optimize(config.opt_level, cli.multilevel);
 
-    let output_path = cli.output_path.unwrap_or_else(|| {
-        PathBuf::from(&module.name).with_extension(config.output_type.extenstion())
-    });
+    let writer: Box<dyn std::io::Write> = match cli.output_path {
+        Some(path) => Box::new(
+            File::create(&path)
+                .map_err(|_| format!("failed to open/create file: {}", path.to_string_lossy()))?,
+        ),
 
-    let file = File::create(&output_path).map_err(|_e| {
-        format!(
-            "failed to open/create file: {}",
-            output_path.to_string_lossy()
-        )
-    })?;
+        None => {
+            if config.output_type.is_text() {
+                Box::new(std::io::stdout())
+            } else {
+                let default_path =
+                    PathBuf::from(&module.name).with_extension(config.output_type.extenstion());
 
-    compile_module(&module, &config, file)?;
+                Box::new(File::create(&default_path).map_err(|_| {
+                    format!(
+                        "failed to open/create file: {}",
+                        default_path.to_string_lossy()
+                    )
+                })?)
+            }
+        }
+    };
+
+    compile_module(&module, &config, writer)?;
     Ok(())
 }
