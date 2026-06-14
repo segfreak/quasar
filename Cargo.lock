@@ -243,6 +243,7 @@ dependencies = [
  "hashbrown 0.17.0",
  "libm",
  "log",
+ "pulley-interpreter",
  "regalloc2",
  "rustc-hash",
  "serde",
@@ -261,6 +262,7 @@ dependencies = [
  "cranelift-codegen-shared",
  "cranelift-srcgen",
  "heck",
+ "pulley-interpreter",
 ]
 
 [[package]]
@@ -395,6 +397,7 @@ dependencies = [
  "bincode",
  "clap",
  "cranelift",
+ "cranelift-codegen",
  "cranelift-frontend",
  "cranelift-module",
  "cranelift-object",
@@ -619,6 +622,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "pulley-interpreter"
+version = "45.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9204ad9435f2a6fe3bd13bba52389fb8488fa20ba497e35c5d2db638166019d"
+dependencies = [
+ "cranelift-bitset",
+ "log",
+ "pulley-macros",
+]
+
+[[package]]
+name = "pulley-macros"
+version = "45.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53009b033747e0d79a76549a744da58e84c9da8076492c7e6d491fdc6cc41b95"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
