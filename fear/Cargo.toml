@@ -12,6 +12,8 @@ name = "fearc"
 name = "fearopt"
 [[bin]]
 name = "feardump"
+[[bin]]
+name = "fearlink"
 
 [features]
 default = ["binary-ir"]

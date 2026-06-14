@@ -106,7 +106,7 @@ impl FunctionSignature {
 }
 
 #[repr(C)]
-#[derive(Debug, EnumDisplay, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, EnumDisplay, Default, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Linkage {
     /// Function Definition:  Visible outside module, single strong definition

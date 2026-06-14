@@ -1161,7 +1161,7 @@ impl FunctionDef {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Function {
     pub name: String,
@@ -1209,7 +1209,7 @@ impl Function {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Module {
     pub name: String,
@@ -1259,6 +1259,20 @@ impl Module {
         if func.definition.is_some() {
             return Err(format!("function {} already defined", id));
         }
+
+        func.definition = Some(def.into());
+        Ok(())
+    }
+
+    pub fn set_definition(
+        &mut self,
+        id: FuncId,
+        def: impl Into<FunctionDef>,
+    ) -> Result<(), String> {
+        let func = self
+            .functions
+            .get_mut(&id)
+            .ok_or_else(|| format!("function {} not found", id))?;
 
         func.definition = Some(def.into());
         Ok(())

@@ -7,6 +7,7 @@ pub mod ssa;
 pub mod tree;
 
 pub mod compiler;
+pub mod linker;
 pub mod target;
 pub mod types;
 
