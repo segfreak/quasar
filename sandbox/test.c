@@ -376,6 +376,10 @@ int faz()
     FILE* f = fopen("test.ssa", "w");
     fearDumpToFile(mod, fileno(f));
 
+		FILE *b = fopen("test.bin", "wb");
+		fearBinaryDumpToFile(mod, fileno(b));
+		fclose(b);
+
     uint32_t errors = fearModuleVerify(mod);
 
     printf("passes: %u\n", passes);
@@ -421,6 +425,10 @@ int faz_multilevel()
     fprintf(stderr, "=> test-ml.ssa\n");
     FILE* f = fopen("test-ml.ssa", "w");
     fearDumpToFile(mod, fileno(f));
+
+		FILE *b = fopen("test-ml.bin", "wb");
+		fearBinaryDumpToFile(mod, fileno(b));
+		fclose(b);
 
     uint32_t errors = fearModuleVerify(mod);
 

@@ -51,7 +51,7 @@ int main()
     fprintf(stderr, "postopt (%d passes)\n", total_passes);
     fearDumpToFile(m, fileno(stderr));
 
-    FILE *exf = fopen("ex.bin", "w");
+    FILE *exf = fopen("foo.bin", "w");
     fearBinaryDumpToFile(m, fileno(exf));
     fclose(exf);
 

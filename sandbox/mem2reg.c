@@ -112,6 +112,10 @@ int main(void)
     printf("%s\n", after);
     fearStringDispose(after);
 
+		FILE *out = fopen("mem2reg.bin", "wb");
+		fearBinaryDumpToFile(m, fileno(out));
+		fclose(out);
+
     FearBackend backend;
     if ((backend = fearSelectBackendForObject()) &&
         fearHasBackend(backend))
