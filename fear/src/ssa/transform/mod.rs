@@ -88,20 +88,18 @@ impl PassManager {
             }
         }
 
+        let before_hash = m.get_function_mut(f).unwrap().get_definition().unwrap().get_hash();
+
         loop {
-            let mut changed = false;
             let mut run = Vec::new();
+            let before_hash = m.get_function_mut(f).unwrap().get_definition().unwrap().get_hash();
 
             macro_rules! run_pass {
                 ($pass:expr, $kind:expr) => {
                     if $pass(m, f) {
                         log::trace!("performed pass: {:?}", $kind);
-                        changed = true;
                         run.push($kind);
-                    }
-                    if changed {
-                        let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
-                        func.reconstruct();
+                        m.get_function_mut(f).unwrap().get_definition_mut().unwrap().reconstruct();
                     }
                 };
             }
@@ -127,14 +125,21 @@ impl PassManager {
                 run_pass!(cfg_simplify::cfg_simplify, PassKind::CFGSimplify);
             }
 
-            result.passes.extend(run);
+
+            let changed = m.get_function_mut(f).unwrap().get_definition().unwrap().get_hash() != before_hash;
+            if changed
+            {
+                log::debug!("pipeline: performed {:?} passes", run);
+            }
 
             if !changed {
                 break;
             }
 
-            result.changed = true;
+            result.passes.extend(run);
         }
+
+        result.changed = m.get_function_mut(f).unwrap().get_definition().unwrap().get_hash() != before_hash;
 
         result
     }
@@ -164,6 +169,11 @@ impl PassManager {
                 func_name,
                 pass_result.passes
             );
+
+            if pass_result.changed
+            {
+                log::trace!("after passes:\n{}", m.dump_function(func_id));        
+            }
 
             tmp.insert(func_id, pass_result);
         }

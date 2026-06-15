@@ -2,10 +2,10 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::Module,
-    targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple},
+    targets::{InitializationConfig, Target, TargetMachine, TargetTriple},
     types::{AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum, FloatType, FunctionType, IntType},
     values::{BasicValue, BasicValueEnum, FloatValue, FunctionValue, IntValue, PhiValue},
-    AddressSpace, FloatPredicate, IntPredicate, OptimizationLevel,
+    AddressSpace, FloatPredicate, IntPredicate,
 };
 
 use std::collections::HashMap;
@@ -13,12 +13,30 @@ use target_lexicon::Triple;
 
 use crate::{ssa::*, types::*};
 
-pub struct LlvmLowerer<'ctx> {
-    // target triple
+#[derive(Debug)]
+pub struct LlvmTarget {
     pub triple: Triple,
-    pub target_machine: TargetMachine,
+    pub machine: TargetMachine,
+}
 
+impl LlvmTarget {
+    pub fn new(triple: Triple, machine: TargetMachine) -> Self {
+        Self { triple, machine }
+    }
+
+    pub fn get_machine(&self) -> &TargetMachine {
+        &self.machine
+    }
+
+    pub fn get_triple(&self) -> &Triple {
+        &self.triple
+    }
+}
+
+pub struct LlvmLowerer<'ctx> {
+    pub target: &'ctx LlvmTarget,
     pub context: &'ctx Context,
+
     pub module: Module<'ctx>,
     pub builder: Builder<'ctx>,
 
@@ -29,33 +47,20 @@ pub struct LlvmLowerer<'ctx> {
 }
 
 impl<'ctx> LlvmLowerer<'ctx> {
-    pub fn new(name: &str, triple: Triple, ctx: &'ctx Context) -> Self {
+    pub fn new(name: &str, target: &'ctx LlvmTarget, ctx: &'ctx Context) -> Self {
         Target::initialize_all(&InitializationConfig::default());
 
         let module = ctx.create_module(name);
         let builder = ctx.create_builder();
 
-        let target_triple = TargetTriple::create(&triple.to_string());
+        let target_triple = TargetTriple::create(&target.get_triple().to_string());
         module.set_triple(&target_triple);
-        let llvm_target =
-            Target::from_triple(&target_triple).expect("invalid target triple for LLVM");
-        let target_machine = llvm_target
-            .create_target_machine(
-                &target_triple,
-                "generic",
-                "",
-                OptimizationLevel::None,
-                RelocMode::PIC,
-                CodeModel::Default,
-            )
-            .expect("failed to create TargetMachine");
 
-        let data_layout = target_machine.get_target_data().get_data_layout();
+        let data_layout = target.get_machine().get_target_data().get_data_layout();
         module.set_data_layout(&data_layout);
 
         Self {
-            triple,
-            target_machine,
+            target,
             context: ctx,
             module,
             builder,
@@ -75,12 +80,9 @@ impl<'ctx> LlvmLowerer<'ctx> {
             Type::Int16 => ctx.i16_type().into(),
             Type::Int32 => ctx.i32_type().into(),
             Type::Int64 => ctx.i64_type().into(),
-
             Type::Float32 => ctx.f32_type().into(),
             Type::Float64 => ctx.f64_type().into(),
-
             Type::Pointer => ctx.ptr_type(AddressSpace::default()).into(),
-
             Type::Void => panic!("void cannot be BasicType"),
         }
     }
@@ -94,12 +96,9 @@ impl<'ctx> LlvmLowerer<'ctx> {
             Type::Int16 => ctx.i16_type().into(),
             Type::Int32 => ctx.i32_type().into(),
             Type::Int64 => ctx.i64_type().into(),
-
             Type::Float32 => ctx.f32_type().into(),
             Type::Float64 => ctx.f64_type().into(),
-
             Type::Pointer => ctx.ptr_type(AddressSpace::default()).into(),
-
             Type::Void => ctx.void_type().into(),
         }
     }
@@ -198,7 +197,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
     }
 
     pub fn get_target_machine(&self) -> &TargetMachine {
-        &self.target_machine
+        self.target.get_machine()
     }
 
     pub fn lower_module(&mut self, m: &crate::ssa::Module) {

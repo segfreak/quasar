@@ -77,6 +77,10 @@ pub enum FearIntCmp {
     FearIntCmpLe,
     FearIntCmpGt,
     FearIntCmpGe,
+    FearIntCmpULt,
+    FearIntCmpULe,
+    FearIntCmpUGt,
+    FearIntCmpUGe,
 }
 
 /// Float compare predicate
@@ -200,6 +204,10 @@ impl From<FearIntCmp> for IntCmp {
             FearIntCmp::FearIntCmpLe => IntCmp::Le,
             FearIntCmp::FearIntCmpGt => IntCmp::Gt,
             FearIntCmp::FearIntCmpGe => IntCmp::Ge,
+            FearIntCmp::FearIntCmpULt => IntCmp::ULt,
+            FearIntCmp::FearIntCmpULe => IntCmp::ULe,
+            FearIntCmp::FearIntCmpUGt => IntCmp::UGt,
+            FearIntCmp::FearIntCmpUGe => IntCmp::UGe,
         }
     }
 }

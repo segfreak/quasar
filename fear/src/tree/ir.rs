@@ -4,7 +4,7 @@ use crate::{
 };
 use std::{
     collections::{HashMap, HashSet},
-    hash::{DefaultHasher, Hash, Hasher},
+    hash::{Hash, Hasher},
 };
 
 pub type ValueId = u32;
@@ -325,6 +325,31 @@ pub struct FunctionDef {
     entry: BlockId,
 }
 
+impl Hash for FunctionDef {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.next_value.hash(state);
+        self.next_block.hash(state);
+
+        let mut blocks: Vec<_> = self.blocks.iter().collect();
+        blocks.sort_by_key(|(id, _)| *id);
+
+        for (id, block) in blocks {
+            id.hash(state);
+            block.hash(state);
+        }
+
+        let mut values: Vec<_> = self.values.iter().collect();
+        values.sort_by_key(|(id, _)| *id);
+
+        for (id, value) in values {
+            id.hash(state);
+            value.hash(state);
+        }
+
+        self.entry.hash(state);
+    }
+}
+
 impl FunctionDef {
     pub fn new() -> Self {
         let mut t = Self::default();
@@ -332,7 +357,13 @@ impl FunctionDef {
         t
     }
 
-    pub fn reverse_post_order(&self) -> Vec<BlockId> {
+    pub fn get_hash(&self) -> u64 {
+        let mut state = crate::DefaultHasher::new();
+        self.hash(&mut state);
+        state.finish()
+    }
+
+    pub fn compute_rpo(&self) -> Vec<BlockId> {
         fn dfs(
             f: &FunctionDef,
             b: BlockId,
@@ -370,33 +401,6 @@ impl FunctionDef {
 
         post.reverse();
         post
-    }
-
-    pub fn dirty_hash(&self) -> u64 {
-        let mut hasher = DefaultHasher::new();
-
-        self.next_value.hash(&mut hasher);
-        self.next_block.hash(&mut hasher);
-
-        let mut blocks: Vec<_> = self.blocks.iter().collect();
-        blocks.sort_by_key(|(id, _)| *id);
-
-        for (id, block) in blocks {
-            id.hash(&mut hasher);
-            block.hash(&mut hasher);
-        }
-
-        let mut values: Vec<_> = self.values.iter().collect();
-        values.sort_by_key(|(id, _)| *id);
-
-        for (id, value) in values {
-            id.hash(&mut hasher);
-            value.hash(&mut hasher);
-        }
-
-        self.entry.hash(&mut hasher);
-
-        hasher.finish()
     }
 
     pub fn get_entry(&self) -> BlockId {

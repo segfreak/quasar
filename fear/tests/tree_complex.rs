@@ -126,6 +126,8 @@ pub fn complex() {
             fear::compiler::OutputType::Object,
             target_lexicon::Triple::host(),
             OptLevel::Full,
+            true,
+            None,
         );
         let file = File::create("faz.o").unwrap();
         let writer = BufWriter::new(file);

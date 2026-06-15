@@ -26,7 +26,7 @@ impl SsaRaiser {
     }
 
     pub fn raise_function(&mut self, src: &FunctionDef, dst: &mut crate::ssa::FunctionDef) {
-        let rpo = src.reverse_post_order();
+        let rpo = src.compute_rpo();
 
         for id in rpo.iter() {
             let block = &src.blocks[id];

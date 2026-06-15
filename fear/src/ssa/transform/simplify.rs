@@ -136,6 +136,22 @@ pub fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
             }
         }
 
+        InstKind::Select => {
+            let (c, t, e) = (inst.operands[0], inst.operands[1], inst.operands[2]);
+
+            if let Some(c) = func.get_int_const(c) {
+                match c {
+                    0 => {
+                        return replace(func, inst, id, e);
+                    }
+                    1 => {
+                        return replace(func, inst, id, t);
+                    }
+                    _ => std::unreachable!(),
+                }
+            }
+        }
+
         _ => {}
     }
 

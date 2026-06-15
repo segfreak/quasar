@@ -111,7 +111,7 @@ impl PassManager {
         let mut counter: i32 = 0;
         loop {
             let before_cost = f.get_cost();
-            let before_hash = f.dirty_hash();
+            let before_hash = f.get_hash();
 
             let mut run = Vec::new();
 
@@ -167,7 +167,7 @@ impl PassManager {
                     after_cost - before_cost
                 );
             }
-            let changed = f.dirty_hash() != before_hash;
+            let changed = f.get_hash() != before_hash;
             if !changed || counter >= pipeline.max_passes {
                 break;
             }

@@ -123,6 +123,8 @@ fn test() {
             fear::compiler::OutputType::Object,
             target_lexicon::Triple::host(),
             OptLevel::None,
+            true,
+            None,
         );
         let file = File::create("foo.o").unwrap();
         let writer = BufWriter::new(file);

@@ -122,7 +122,8 @@ int main(void)
     {
         fprintf(stderr, "=> mem2reg.o\n");
         FILE* exf_obj = fopen("mem2reg.o", "w");
-        fearEmitObject(m, backend, FearOptFull, fileno(exf_obj));
+        fearEmitObject(m, backend, FearOptFull, 1, /* host */ NULL,
+                       /* generic */ NULL, fileno(exf_obj));
         fclose(exf_obj);
     }
 

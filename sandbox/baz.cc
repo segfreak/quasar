@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <fear.hpp>
 #include <fstream>
+#include <optional>
 
 int main()
 {
@@ -28,6 +29,7 @@ int main()
 
     fprintf(stderr, "=> baz.o\n");
     FILE* file = fopen("baz.o", "w");
-    m.emitObject(fear::OptLevel::Full, fileno(file), Backend::Llvm);
+    m.emitObject(fear::OptLevel::Full, fileno(file), true, std::nullopt,
+                 std::nullopt, Backend::Llvm);
     fclose(file);
 }

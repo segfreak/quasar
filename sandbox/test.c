@@ -358,31 +358,12 @@ int faz()
 
     fearModuleVerify(mod);
 
-    uint32_t passes = fearModuleOptimize(mod, FearOptDefault);
-
-    fearDumpToFile(mod, 0);
-
-    FearBackend backend;
-    if ((backend = fearSelectBackendForObject()) &&
-        fearHasBackend(backend))
-    {
-        fprintf(stderr, "=> test.o\n");
-        FILE* f = fopen("test.o", "w");
-        fearEmitObject(mod, backend, FearOptFull, fileno(f));
-        fclose(f);
-    }
-
-    fprintf(stderr, "=> test.ssa\n");
-    FILE* f = fopen("test.ssa", "w");
-    fearDumpToFile(mod, fileno(f));
-
 		FILE *b = fopen("test.bin", "wb");
 		fearBinaryDumpToFile(mod, fileno(b));
 		fclose(b);
 
     uint32_t errors = fearModuleVerify(mod);
 
-    printf("passes: %u\n", passes);
     printf("errors: %u\n", errors);
 
     fearModuleDispose(mod);
@@ -407,32 +388,11 @@ int faz_multilevel()
     test_algebraic_simplification(mod);
 
     fearModuleVerify(mod);
-
-    uint32_t passes = fearModuleOptimizeMultilevel(mod, FearOptDefault);
-
-    fearDumpToFile(mod, 0);
-
-    FearBackend backend;
-    if ((backend = fearSelectBackendForObject()) &&
-        fearHasBackend(backend))
-    {
-        fprintf(stderr, "=> test-ml.o\n");
-        FILE* f = fopen("test-ml.o", "w");
-        fearEmitObject(mod, backend, FearOptFull, fileno(f));
-        fclose(f);
-    }
-
-    fprintf(stderr, "=> test-ml.ssa\n");
-    FILE* f = fopen("test-ml.ssa", "w");
-    fearDumpToFile(mod, fileno(f));
-
 		FILE *b = fopen("test-ml.bin", "wb");
 		fearBinaryDumpToFile(mod, fileno(b));
 		fclose(b);
 
     uint32_t errors = fearModuleVerify(mod);
-
-    printf("passes: %u\n", passes);
     printf("errors: %u\n", errors);
 
     fearModuleDispose(mod);

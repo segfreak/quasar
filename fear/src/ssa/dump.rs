@@ -193,86 +193,97 @@ impl FunctionDef {
 }
 
 impl Module {
+    pub fn dump_function(&self, id: FuncId) -> String {
+        let mut s = String::new();
+
+        let func = self.get_function(id).expect("cannot access to function");
+
+        let def = match func.get_definition() {
+            Some(d) => d,
+            None => {
+                let params = func
+                    .signature
+                    .params
+                    .iter()
+                    .map(|p| format!("{}", p))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                s.push_str(&format!(
+                    "__abi({}) declare {} {}({}) -> {}\n",
+                    func.calling_convention,
+                    func.linkage,
+                    func.name,
+                    params,
+                    func.signature.returns
+                ));
+
+                return s;
+            }
+        };
+
+        let params = def
+            .get_params()
+            .iter()
+            .map(|p| format!("%{}: {}", p, def.values[p].ty))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        s.push_str(&format!(
+            "__abi({}) define {} {}({}) -> {} {{\n",
+            func.calling_convention, func.linkage, func.name, params, func.signature.returns
+        ));
+
+        let blocks = def.compute_rpo();
+
+        for bid in &blocks {
+            let block = &def.blocks[bid];
+            let is_entry = def.entry == *bid;
+
+            if block.params.is_empty() || is_entry {
+                s.push_str(&format!("B{}:", bid));
+            } else {
+                let bparams = block
+                    .params
+                    .iter()
+                    .map(|p| format!("%{}: {}", p, def.values[p].ty))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                s.push_str(&format!("B{}({}):", bid, bparams));
+            }
+
+            if is_entry {
+                s.push_str(" __entry__\n");
+            } else {
+                s.push('\n');
+            }
+
+            for inst_id in &block.insts {
+                let inst = &def.insts[inst_id];
+
+                if let Some(res) = inst.result {
+                    s.push_str(&format!("  %{} = ", res));
+                } else {
+                    s.push_str("  ");
+                }
+
+                s.push_str(&def.fmt_inst(self, inst));
+                s.push('\n');
+            }
+        }
+
+        s.push_str("}\n\n");
+        s
+    }
+
     pub fn dump(&self) -> String {
         let mut s = String::new();
 
         s.push_str(&format!("# module \"{}\"\n\n", self.name));
 
-        for func in self.functions.values() {
-            let def = match func.get_definition() {
-                Some(d) => d,
-                None => {
-                    let params = func
-                        .signature
-                        .params
-                        .iter()
-                        .map(|p| format!("{}", p))
-                        .collect::<Vec<_>>()
-                        .join(", ");
-
-                    s.push_str(&format!(
-                        "__abi({}) declare {} {}({}) -> {}\n",
-                        func.calling_convention,
-                        func.linkage,
-                        func.name,
-                        params,
-                        func.signature.returns
-                    ));
-
-                    continue;
-                }
-            };
-
-            let params = def
-                .get_params()
-                .iter()
-                .map(|p| format!("%{}: {}", p, def.values[p].ty))
-                .collect::<Vec<_>>()
-                .join(", ");
-
-            s.push_str(&format!(
-                "__abi({}) define {} {}({}) -> {} {{\n",
-                func.calling_convention, func.linkage, func.name, params, func.signature.returns
-            ));
-
-            let blocks = def.compute_rpo();
-            for bid in &blocks {
-                let block = &def.blocks[bid];
-                let is_entry = def.entry == *bid;
-                if block.params.is_empty() || /* the entry block has no parameters of its own, only function parameters */ is_entry
-                {
-                    s.push_str(&format!("B{}:", bid));
-                } else {
-                    let bparams = block
-                        .params
-                        .iter()
-                        .map(|p| format!("%{}: {}", p, def.values[p].ty))
-                        .collect::<Vec<_>>()
-                        .join(", ");
-
-                    s.push_str(&format!("B{}({}):", bid, bparams));
-                }
-                if is_entry {
-                    s.push_str(" __entry__\n");
-                } else {
-                    s.push('\n');
-                }
-
-                for inst_id in &block.insts {
-                    let inst = &def.insts[inst_id];
-
-                    if let Some(res) = inst.result {
-                        s.push_str(&format!("  %{} = ", res));
-                    } else {
-                        s.push_str("  ");
-                    }
-
-                    s.push_str(&def.fmt_inst(self, inst));
-                    s.push('\n');
-                }
-            }
-
-            s.push_str("}\n\n");
+        for func in self.functions.keys() {
+            s.push_str(&self.dump_function(*func));
         }
 
         s

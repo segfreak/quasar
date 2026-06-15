@@ -11,6 +11,7 @@ use std::ffi::{c_int, CString};
 use std::io::Write;
 use std::os::fd::FromRawFd;
 use std::os::raw::c_char;
+use std::str::FromStr;
 use std::{ffi::CStr, ptr};
 
 use fear::{
@@ -91,20 +92,45 @@ pub unsafe extern "C" fn fearSelectBackendForObject() -> FearBackend {
     }
 }
 
-/// Compiles a `FearModule` into a native machine object file via target backend, streaming to a raw file descriptor.
+/// Compiles a `FearModule` into a native machine object file via target backend,
+///  streaming to a raw file descriptor.
+///
+/// Parameters:
+/// - `triple`: target triple (e.g. `"x86_64-unknown-linux-gnu"`).
+///   If `NULL`, the host target triple is used.
+/// - `cpu`: target CPU name (e.g. `"tigerlake"`, `"znver4"`).
+///   If `NULL`, the backend default generic CPU is used.
+/// - `fd`: writable file descriptor that receives the generated object file.
+///
+/// Returns:
+/// - `0` on success.
+/// - non-zero on compilation failure.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearEmitObject(
     m: *mut FearModule,
     backend: FearBackend,
     opt: FearOptLevel,
+    pic: bool,
+    triple: *const c_char,
+    cpu: *const c_char,
     fd: c_int,
 ) -> c_int {
+    let triple = match triple.is_null() {
+        true => Triple::host(),
+        false => Triple::from_str(&cstr(triple)).expect("invalid triple"),
+    };
+    let cpu = match cpu.is_null() {
+        true => None,
+        false => Some(cstr(cpu)),
+    };
     let m = as_module(m);
     let config = CompilerConfig {
         backend: Backend::from(backend),
         output_type: OutputType::Object,
-        triple: Triple::host(),
+        triple,
         opt_level: OptLevel::from(opt),
+        pic,
+        cpu,
     };
     let file = unsafe { std::fs::File::from_raw_fd(fd) };
     match compiler::compile_module(m, &config, file) {
@@ -117,20 +143,45 @@ pub unsafe extern "C" fn fearEmitObject(
 }
 
 /// Supported backends: FearBackendLlvm
-/// Compiles a `FearModule` into a native machine assembly file via target backend, streaming to a raw file descriptor.
+/// Compiles a `FearModule` into a native machine assembly file via target backend,
+///  streaming to a raw file descriptor.
+///
+/// Parameters:
+/// - `triple`: target triple (e.g. `"x86_64-unknown-linux-gnu"`).
+///   If `NULL`, the host target triple is used.
+/// - `cpu`: target CPU name (e.g. `"tigerlake"`, `"znver4"`).
+///   If `NULL`, the backend default generic CPU is used.
+/// - `fd`: writable file descriptor that receives the generated object file.
+///
+/// Returns:
+/// - `0` on success.
+/// - non-zero on compilation failure.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearEmitAssembly(
     m: *mut FearModule,
     backend: FearBackend,
     opt: FearOptLevel,
+    pic: bool,
+    triple: *const c_char,
+    cpu: *const c_char,
     fd: c_int,
 ) -> c_int {
+    let triple = match triple.is_null() {
+        true => Triple::host(),
+        false => Triple::from_str(&cstr(triple)).expect("invalid triple"),
+    };
+    let cpu = match cpu.is_null() {
+        true => None,
+        false => Some(cstr(cpu)),
+    };
     let m = as_module(m);
     let config = CompilerConfig {
         backend: Backend::from(backend),
         output_type: OutputType::Assembly,
-        triple: Triple::host(),
+        triple,
         opt_level: OptLevel::from(opt),
+        pic,
+        cpu,
     };
     let file = unsafe { std::fs::File::from_raw_fd(fd) };
     match compiler::compile_module(m, &config, file) {

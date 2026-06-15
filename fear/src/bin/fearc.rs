@@ -49,6 +49,12 @@ struct Cli {
         help = "Enable high-level Expression Tree optimizations"
     )]
     multilevel: bool,
+
+    #[arg(long = "pic", help = "Enable position-independent code generation")]
+    pic: bool,
+
+    #[arg(long = "cpu", help = "Target CPU (ignore in cranelift backend)")]
+    cpu: Option<String>,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -64,6 +70,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         output_type,
         triple: cli.triple.unwrap_or_else(Triple::host),
         opt_level: cli.opt_level.unwrap_or(OptLevel::Default),
+        pic: cli.pic,
+        cpu: cli.cpu,
     };
 
     let mut module = fear::binary::load_from_file::<Module>(&cli.input)

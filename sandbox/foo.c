@@ -1,7 +1,8 @@
 #include <fear.h>
+#include <stddef.h>
 #include <stdio.h>
 
-void foo_def(FearFunctionDef *def)
+void foo_def(FearFunctionDef* def)
 {
     FearValueId arg0       = fearCreateFuncParam(def, FearInt64);
     FearBlockId entryBlock = fearGetEntryBlock(def);
@@ -33,12 +34,12 @@ void foo_def(FearFunctionDef *def)
 
 int main()
 {
-    struct FearModule *m         = fearModuleCreate("ex");
+    struct FearModule* m         = fearModuleCreate("ex");
     FearType           params[1] = {FearInt32};
     FearFuncId foo = fearDeclareFunction(m, "foo", params, 1, FearInt32,
                                          FearLinkageExternal);
 
-    struct FearFunctionDef *def = fearDefinitionCreate();
+    struct FearFunctionDef* def = fearDefinitionCreate();
     foo_def(def);
     fearDefineFunction(m, foo, def);
     fearDefinitionDispose(def);
@@ -51,7 +52,7 @@ int main()
     fprintf(stderr, "postopt (%d passes)\n", total_passes);
     fearDumpToFile(m, fileno(stderr));
 
-    FILE *exf = fopen("foo.bin", "w");
+    FILE* exf = fopen("foo.bin", "w");
     fearBinaryDumpToFile(m, fileno(exf));
     fclose(exf);
 
@@ -64,7 +65,8 @@ int main()
 
     if (fearHasBackend(FearBackendLlvm))
     {
-        fearEmitAssembly(m, FearBackendLlvm, FearOptFull, 1);
+        fearEmitAssembly(m, FearBackendLlvm, FearOptFull, 1, NULL, NULL,
+                         1);
     }
 
     FearBackend backend;
@@ -72,8 +74,9 @@ int main()
         fearHasBackend(backend))
     {
         fprintf(stderr, "=> tmain.o\n");
-        FILE *exf_obj = fopen("tmain.o", "w");
-        fearEmitObject(m, backend, FearOptFull, fileno(exf_obj));
+        FILE* exf_obj = fopen("tmain.o", "w");
+        fearEmitObject(m, backend, FearOptFull, 1, NULL, NULL,
+                       fileno(exf_obj));
         fclose(exf_obj);
     }
 

@@ -16,7 +16,7 @@ pub fn dce(func: &mut FunctionDef) -> bool {
         }
     }
 
-    for block in func.reverse_post_order() {
+    for block in func.compute_rpo() {
         for param in func.get_block_param_exprs(block) {
             mark_expr(func, &param.clone(), &mut used);
         }

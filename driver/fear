@@ -9,6 +9,8 @@ OUTPUT_TYPE="object"
 BACKEND="cranelift"
 VERBOSE=0
 TRIPLE=""
+CPU=""
+PIC=0
 ETREE_PIPELINE=0
 
 log_error() {
@@ -31,6 +33,8 @@ Options:
   -fetree-pipeline  Enable expression tree optimisations pipeline
   -type <type>      Output type: [*object, text, assembly, llvm-ir]
   -triple <triple>  Set target triple
+  -cpu <cpu>        Set target cpu (generic, znver4, tigerlake, etc)
+  -fPIC             Enable position-independent code
   -fcranelift       Use cranelift backend (default)
   -fllvm            Use llvm backend
   -v                Enable verbose logs
@@ -72,12 +76,24 @@ while [[ $# -gt 0 ]]; do
             TRIPLE="$2"
             shift 2
             ;;
+        -cpu)
+            if [[ -z "${2:-}" ]]; then
+                log_error "option '-cpu' requires an argument"
+                exit 1
+            fi
+            CPU="$2"
+            shift 2
+            ;;
+        -fPIC)
+            PIC=1
+            shift
+            ;;
         -h|--help)
             show_help
             exit 0
             ;;
         -v)
-            VERBOSE="1"
+            VERBOSE=1
             shift
             ;;
         -fcranelift)
@@ -176,8 +192,16 @@ if [ -n "$TRIPLE" ]; then
     FEARC_ARGS+=("--triple" "$TRIPLE")
 fi
 
+if [ -n "$CPU" ]; then
+    FEARC_ARGS+=("--cpu" "$CPU")
+fi
+
 if [ "${VERBOSE:-0}" -eq 1 ]; then
     FEARC_ARGS+=("--multi-level")
+fi
+
+if [ "${PIC:-0}" -eq 1 ]; then
+    FEARC_ARGS+=("--pic")
 fi
 
 log_info "Compiling to target artifact: $OUTPUT_FILE"

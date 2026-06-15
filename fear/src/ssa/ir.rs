@@ -1,4 +1,7 @@
-use std::collections::{hash_map, HashMap, HashSet};
+use std::{
+    collections::{hash_map, HashMap, HashSet},
+    hash::{Hash, Hasher},
+};
 
 use crate::types::{
     CallingConvention, CastKind, FloatCmp, FunctionSignature, IntCmp, Linkage, Type,
@@ -9,7 +12,7 @@ pub type InstId = u32;
 pub type BlockId = u32;
 pub type FuncId = u32;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Value {
     pub ty: Type,
@@ -17,14 +20,14 @@ pub struct Value {
     pub uses: Vec<Use>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Use {
     pub inst: InstId,
     pub index: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Inst {
     pub kind: InstKind,
@@ -225,7 +228,7 @@ impl InstKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Block {
     pub params: Vec<ValueId>,
@@ -249,12 +252,44 @@ pub struct FunctionDef {
     next_value: ValueId,
 }
 
+impl Hash for FunctionDef {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.next_block.hash(state);
+        self.next_inst.hash(state);
+        self.next_value.hash(state);
+
+        let mut blocks: Vec<_> = self.blocks.iter().collect();
+        blocks.sort_by_key(|(id, _)| *id);
+
+        for (id, block) in blocks {
+            id.hash(state);
+            block.hash(state);
+        }
+
+        let mut values: Vec<_> = self.values.iter().collect();
+        values.sort_by_key(|(id, _)| *id);
+
+        for (id, value) in values {
+            id.hash(state);
+            value.hash(state);
+        }
+
+        self.entry.hash(state);
+    }
+}
+
 impl FunctionDef {
     pub fn new() -> Self {
         let mut f = Self::default();
         let entry = f.create_block();
         f.entry = entry;
         f
+    }
+
+    pub fn get_hash(&self) -> u64 {
+        let mut state = crate::DefaultHasher::default();
+        self.hash(&mut state);
+        state.finish()
     }
 
     pub fn get_entry(&self) -> BlockId {

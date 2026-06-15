@@ -90,6 +90,10 @@ enum class IntPredicate
     Le,
     Gt,
     Ge,
+    ULt,
+    ULe,
+    UGt,
+    UGe,
 };
 
 /**
@@ -151,6 +155,28 @@ namespace detail
 {
 
 /**
+ * @brief Converts an optional string_view into a C-style string pointer.
+ *
+ * This helper is intended for FFI boundaries where a `const char*`
+ * is required.
+ *
+ * @param opt_view Optional string_view input.
+ *
+ * @return Pointer to the underlying character data if the value is
+ * present, otherwise `nullptr`.
+ *
+ @warning The returned pointer is not guaranteed to be null-terminated.
+ *          It is only safe to use as a C-string if the original src
+ *          is known to be null-terminated (e.g. std::string::c_str(),
+ *          string literals, or similar sources).
+ *
+ * @warning The returned pointer does not own the data and becomes invalid
+ *          if the underlying string_view storage is destroyed or modified.
+ */
+inline const char* unwrap_cstr(std::optional<std::string_view> opt_view)
+{ return opt_view ? opt_view->data() : nullptr; }
+
+/**
  * @brief Converts C++ high-level enums to raw C API constants.
  */
 inline FearIntCmp into(IntPredicate pred)
@@ -169,6 +195,14 @@ inline FearIntCmp into(IntPredicate pred)
             return FearIntCmpGt;
         case IntPredicate::Ge:
             return FearIntCmpGe;
+        case IntPredicate::ULt:
+            return FearIntCmpULt;
+        case IntPredicate::ULe:
+            return FearIntCmpULe;
+        case IntPredicate::UGt:
+            return FearIntCmpUGt;
+        case IntPredicate::UGe:
+            return FearIntCmpUGe;
     }
     throw std::runtime_error("Unknown IntPredicate");
 }
@@ -321,6 +355,14 @@ inline IntPredicate from(FearIntCmp pred)
             return IntPredicate::Gt;
         case FearIntCmpGe:
             return IntPredicate::Ge;
+        case FearIntCmpULt:
+            return IntPredicate::ULt;
+        case FearIntCmpULe:
+            return IntPredicate::ULe;
+        case FearIntCmpUGt:
+            return IntPredicate::UGt;
+        case FearIntCmpUGe:
+            return IntPredicate::UGe;
     }
     throw std::runtime_error("Unknown FearIntCmp");
 }
@@ -694,7 +736,7 @@ struct FunctionDef
                const std::vector<ValueId>& false_args)
     {
         auto raw_true_args  = detail::into(true_args);
-        auto raw_false_args = detail::into(true_args);
+        auto raw_false_args = detail::into(/* bug-fix */ false_args);
 
         fearCreateCondJump(getRaw(), getCurrentBlock().getRaw(),
                            cond.getRaw(), true_block.getRaw(),
@@ -865,12 +907,27 @@ struct Module
     /**
      * @brief Compiles and emits a machine code object file into the
      * specified file descriptor.
+     *
+     * @param opt Optimization level.
+     * @param fd Output file descriptor.
+     * @param is_pic Generate position-independent code.
+     * @param triple Target triple (e.g. "x86_64-unknown-linux-gnu").
+     *               If std::nullopt, the host target triple is used.
+     * @param cpu Target CPU name (e.g. "tigerlake", "znver4").
+     *            If std::nullopt, the backend default generic CPU is used.
+     * @param backend Target backend. Defaults to the backend selected
+     *                for the current host.
+     *
+     * @return 0 on success, non-zero on failure.
      */
-    int emitObject(OptLevel opt, int fd,
+    int emitObject(OptLevel opt, int fd, bool is_pic,
+                   std::optional<std::string_view> triple,
+                   std::optional<std::string_view> cpu,
                    Backend backend = selectBackendForObject())
     {
-        return fearEmitObject(getRaw(), detail::into(backend),
-                              detail::into(opt), fd);
+        return fearEmitObject(
+            getRaw(), detail::into(backend), detail::into(opt), is_pic,
+            detail::unwrap_cstr(triple), detail::unwrap_cstr(cpu), fd);
     }
 
    private:
@@ -885,8 +942,8 @@ struct Function
     Function(Module* parent, FuncId id) : parent_(parent), id_(id) {}
 
     /**
-     * @brief Helper to declare a new function and return its high-level
-     * wrapper object.
+     * @brief Helper to declare a new function and return its
+     * high-level wrapper object.
      */
     static Function declare(Module* m, std::string_view name,
                             const std::vector<Type>& params, Type returns,
@@ -904,7 +961,8 @@ struct Function
     { parent_->defineFunction(getId(), def); }
 
     /**
-     * @brief Configures the target calling convention for the function.
+     * @brief Configures the target calling convention for the
+     * function.
      */
     void setCallingConvention(CallConv cc)
     {

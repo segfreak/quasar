@@ -51,6 +51,10 @@ typedef enum FearIntCmp {
   FearIntCmpLe,
   FearIntCmpGt,
   FearIntCmpGe,
+  FearIntCmpULt,
+  FearIntCmpULe,
+  FearIntCmpUGt,
+  FearIntCmpUGe,
 } FearIntCmp;
 
 /**
@@ -138,20 +142,50 @@ enum FearBackend fearSelectBackend(void);
 enum FearBackend fearSelectBackendForObject(void);
 
 /**
- * Compiles a `FearModule` into a native machine object file via target backend, streaming to a raw file descriptor.
+ * Compiles a `FearModule` into a native machine object file via target backend,
+ *  streaming to a raw file descriptor.
+ *
+ * Parameters:
+ * - `triple`: target triple (e.g. `"x86_64-unknown-linux-gnu"`).
+ *   If `NULL`, the host target triple is used.
+ * - `cpu`: target CPU name (e.g. `"tigerlake"`, `"znver4"`).
+ *   If `NULL`, the backend default generic CPU is used.
+ * - `fd`: writable file descriptor that receives the generated object file.
+ *
+ * Returns:
+ * - `0` on success.
+ * - non-zero on compilation failure.
  */
 int fearEmitObject(struct FearModule *m,
                    enum FearBackend backend,
                    enum FearOptLevel opt,
+                   bool pic,
+                   const char *triple,
+                   const char *cpu,
                    int fd);
 
 /**
  * Supported backends: FearBackendLlvm
- * Compiles a `FearModule` into a native machine assembly file via target backend, streaming to a raw file descriptor.
+ * Compiles a `FearModule` into a native machine assembly file via target backend,
+ *  streaming to a raw file descriptor.
+ *
+ * Parameters:
+ * - `triple`: target triple (e.g. `"x86_64-unknown-linux-gnu"`).
+ *   If `NULL`, the host target triple is used.
+ * - `cpu`: target CPU name (e.g. `"tigerlake"`, `"znver4"`).
+ *   If `NULL`, the backend default generic CPU is used.
+ * - `fd`: writable file descriptor that receives the generated object file.
+ *
+ * Returns:
+ * - `0` on success.
+ * - non-zero on compilation failure.
  */
 int fearEmitAssembly(struct FearModule *m,
                      enum FearBackend backend,
                      enum FearOptLevel opt,
+                     bool pic,
+                     const char *triple,
+                     const char *cpu,
                      int fd);
 
 /**

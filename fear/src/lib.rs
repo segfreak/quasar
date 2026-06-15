@@ -12,3 +12,6 @@ pub mod target;
 pub mod types;
 
 pub mod style;
+
+use xxhash_rust::xxh3::Xxh3;
+pub type DefaultHasher = Xxh3;
