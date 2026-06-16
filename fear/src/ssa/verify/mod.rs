@@ -132,8 +132,8 @@ impl Module {
                     .get(&res)
                     .ok_or(VerifyError::InvalidResultValue(*id, res))?;
 
-                if val.def != *id {
-                    return Err(VerifyError::ValueDefMismatch(res, *id, val.def));
+                if val.get_def() != *id {
+                    return Err(VerifyError::ValueDefMismatch(res, *id, val.get_def()));
                 }
             } else {
                 if !inst.kind.is_terminator() && !matches!(inst.kind, InstKind::Store { .. }) {
@@ -336,24 +336,24 @@ impl Module {
         // verify values
         for (vid, val) in f.get_values() {
             #[allow(clippy::collapsible_if)]
-            if val.def != InstId::MAX {
-                if !f.get_insts().contains_key(&val.def) {
-                    return Err(VerifyError::InvalidValueDef(*vid, val.def));
+            if val.get_def() != InstId::MAX {
+                if !f.get_insts().contains_key(&val.get_def()) {
+                    return Err(VerifyError::InvalidValueDef(*vid, val.get_def()));
                 }
             }
 
-            for u in &val.uses {
+            for u in val.get_uses() {
                 let inst = f
                     .get_insts()
-                    .get(&u.inst)
-                    .ok_or(VerifyError::InvalidUse(*vid, u.inst))?;
+                    .get(&u.get_inst())
+                    .ok_or(VerifyError::InvalidUse(*vid, u.get_index()))?;
 
-                if u.index as usize >= inst.operands.len() {
-                    return Err(VerifyError::UseIndexOutOfBounds(*vid, u.inst));
+                if u.get_index() as usize >= inst.operands.len() {
+                    return Err(VerifyError::UseIndexOutOfBounds(*vid, u.get_index()));
                 }
 
-                if inst.operands[u.index as usize] != *vid {
-                    return Err(VerifyError::UseMismatch(*vid, u.inst));
+                if inst.operands[u.get_index() as usize] != *vid {
+                    return Err(VerifyError::UseMismatch(*vid, u.get_inst()));
                 }
             }
         }

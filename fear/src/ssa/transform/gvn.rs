@@ -57,12 +57,12 @@ impl GvnCtx {
             }
         };
 
-        let key = if val.def == InstId::MAX {
+        let key = if val.get_def() == InstId::MAX {
             ValueKey::Param(v)
         } else {
-            match func.get_inst(val.def).map(|i| &i.kind) {
-                Some(InstKind::IConst(x)) => ValueKey::IConst(*x, val.ty),
-                Some(InstKind::FConst(x)) => ValueKey::FConst(*x, val.ty),
+            match func.get_inst(val.get_def()).map(|i| &i.kind) {
+                Some(InstKind::IConst(x)) => ValueKey::IConst(*x, val.get_type()),
+                Some(InstKind::FConst(x)) => ValueKey::FConst(*x, val.get_type()),
                 _ => {
                     let vn = self.fresh_vn();
                     self.value_vn.insert(v, vn);

@@ -45,11 +45,11 @@ pub fn copyprop(m: &mut Module, f: FuncId) -> bool {
         }
 
         for u in uses {
-            if let Some(user_inst) = func.get_inst_mut(u.inst) {
-                user_inst.operands[u.index as usize] = src;
+            if let Some(user_inst) = func.get_inst_mut(u.get_inst()) {
+                user_inst.operands[u.get_index() as usize] = src;
             }
 
-            func.add_use(src, u.inst, u.index);
+            func.add_use(src, u.get_inst(), u.get_index());
         }
 
         func.clear_uses(dst);

@@ -15,16 +15,53 @@ pub type FuncId = u32;
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Value {
-    pub ty: Type,
-    pub def: InstId,
-    pub uses: Vec<Use>,
+    ty: Type,
+    def: InstId,
+    uses: Vec<Use>,
+}
+
+impl Value {
+    pub fn new(ty: Type, def: InstId, uses: &[Use]) -> Self {
+        Self {
+            ty,
+            def,
+            uses: uses.into(),
+        }
+    }
+
+    /// Get type of value
+    pub fn get_type(&self) -> Type {
+        self.ty
+    }
+
+    /// Get instruction id who defines this value
+    pub fn get_def(&self) -> InstId {
+        self.def
+    }
+
+    /// Get value uses
+    pub fn get_uses(&self) -> &[Use] {
+        &self.uses
+    }
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Use {
-    pub inst: InstId,
-    pub index: u32,
+    inst: InstId,
+    index: u32,
+}
+
+impl Use {
+    /// Get user instruction
+    pub fn get_inst(&self) -> InstId {
+        self.inst
+    }
+
+    /// Get user operand index
+    pub fn get_index(&self) -> u32 {
+        self.index
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

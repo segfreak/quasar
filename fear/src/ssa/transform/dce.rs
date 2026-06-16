@@ -12,7 +12,7 @@ pub fn dce(m: &mut Module, f: FuncId) -> bool {
     let mut worklist: Vec<ValueId> = func
         .get_values()
         .iter()
-        .filter(|(_, v)| v.uses.is_empty())
+        .filter(|(_, v)| v.get_uses().is_empty())
         .map(|(&id, _)| id)
         .collect();
 
@@ -22,7 +22,7 @@ pub fn dce(m: &mut Module, f: FuncId) -> bool {
             None => continue,
         };
 
-        let inst_id = val.def;
+        let inst_id = val.get_def();
         if inst_id == InstId::MAX {
             continue;
         }
@@ -44,7 +44,7 @@ pub fn dce(m: &mut Module, f: FuncId) -> bool {
         for op in ops {
             #[allow(clippy::collapsible_if)]
             if let Some(v) = func.get_value(op) {
-                if v.uses.is_empty() {
+                if v.get_uses().is_empty() {
                     worklist.push(op);
                 }
             }

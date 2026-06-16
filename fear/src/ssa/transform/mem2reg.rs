@@ -68,15 +68,15 @@ fn collect_promotable(func: &FunctionDef) -> Vec<ValueId> {
             None => continue,
         };
 
-        let promotable = val.uses.iter().all(|u| {
-            let using_inst = match func.get_inst(u.inst) {
+        let promotable = val.get_uses().iter().all(|u| {
+            let using_inst = match func.get_inst(u.get_inst()) {
                 Some(i) => i,
                 None => return false,
             };
 
             match &using_inst.kind {
-                InstKind::Load { volatile: false } => u.index == 0,
-                InstKind::Store { volatile: false } => u.index == 0,
+                InstKind::Load { volatile: false } => u.get_index() == 0,
+                InstKind::Store { volatile: false } => u.get_index() == 0,
                 _ => false,
             }
         });
@@ -267,11 +267,11 @@ fn store_blocks(func: &FunctionDef, alloca_val: ValueId) -> HashSet<BlockId> {
 
     let uses = func
         .get_value(alloca_val)
-        .map(|v| v.uses.clone())
+        .map(|v| v.get_uses())
         .unwrap_or_default();
 
     for u in uses {
-        let inst = match func.get_inst(u.inst) {
+        let inst = match func.get_inst(u.get_inst()) {
             Some(i) => i,
             None => continue,
         };
