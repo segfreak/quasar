@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 /**
  * Fear backend type
@@ -162,7 +163,7 @@ int fearEmitObject(struct FearModule *m,
                    bool pic,
                    const char *triple,
                    const char *cpu,
-                   int fd);
+                   FILE *stream);
 
 /**
  * Supported backends: FearBackendLlvm
@@ -186,12 +187,12 @@ int fearEmitAssembly(struct FearModule *m,
                      bool pic,
                      const char *triple,
                      const char *cpu,
-                     int fd);
+                     FILE *stream);
 
 /**
  * Writes a readable, plain-text representation of the module's IR into a file descriptor.
  */
-void fearDumpToFile(struct FearModule *m, int fd);
+void fearDumpToFile(struct FearModule *m, FILE *stream);
 
 /**
  * Writes a readable, plain-text representation of the module's IR into a C String.
@@ -208,7 +209,7 @@ void fearStringDispose(char *s);
  * Serializes the module into the compiler's native binary format and outputs it to a file descriptor.
  */
 void fearBinaryDumpToFile(struct FearModule *m,
-                          int fd);
+                          FILE *stream);
 
 /**
  * Serializes the module into the compiler's native binary format and outputs it to a sized buffer.
@@ -644,7 +645,7 @@ struct FearModule *fearModuleCreate(const char *name);
 /**
  * Deserializes a complete `Module` structure from an input file descriptor. Returns null on error.
  */
-struct FearModule *fearReadBinaryFromFile(int fd);
+struct FearModule *fearReadBinaryFromFile(FILE *stream);
 
 /**
  * Reclaims ownership of a `FearModule` pointer and drops it, freeing all associated heap memory.

@@ -7,8 +7,13 @@ style = "both"
 
 cpp_compat = true
 
+sys_includes = ["stdio.h"]
+
 [export]
 include = []
+
+[export.rename]
+"FILE" = "FILE"
 
 [parse]
 parse_deps = false

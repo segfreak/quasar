@@ -1,0 +1,27 @@
+mod foo;
+
+# fn foo(x: int32): int32 {
+#   y = alloca 4 
+#   z = alloca 4
+#	  yz = alloca 4
+#   t = add x, 20
+#   store y, t
+#   store z, t
+#   yv = load y
+#   zv = load z
+#   t2 = add yv, zv
+#   store yz, t2
+#   yzv = load yz 
+#   return yzv
+# }
+
+func foo(x: int32): int32
+{
+		var y = x + 20;
+		var z = x + 20;
+		var yz = y + z;
+		return yz;
+}
+
+
+

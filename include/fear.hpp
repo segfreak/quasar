@@ -801,7 +801,7 @@ struct Module
     /**
      * @brief Deserializes a module from a Fear binary file descriptor.
      */
-    explicit Module(int fd) : raw_(fearReadBinaryFromFile(fd))
+    explicit Module(FILE* stream) : raw_(fearReadBinaryFromFile(stream))
     {
         if (!raw_)
             throw std::runtime_error(
@@ -870,10 +870,10 @@ struct Module
      * @brief Verifys the module for correctness and consistency.
      * @returns Returns the number of errors found.
      */
-    unsigned    verify() { return fearModuleVerify(getRaw()); }
+    unsigned verify() { return fearModuleVerify(getRaw()); }
 
     // Serialization and Diagnostics
-    void        dumpToFile(int fd) { fearDumpToFile(getRaw(), fd); }
+    void     dumpToFile(FILE* stream) { fearDumpToFile(getRaw(), stream); }
 
     /**
      * @brief Dumps a plain-text IR representation of the module to an
@@ -888,7 +888,8 @@ struct Module
         return out;
     }
 
-    void binaryDumpToFile(int fd) { fearBinaryDumpToFile(getRaw(), fd); }
+    void binaryDumpToFile(FILE* stream)
+    { fearBinaryDumpToFile(getRaw(), stream); }
 
     /**
      * @brief Serializes the module into the compiler's native binary
@@ -920,14 +921,14 @@ struct Module
      *
      * @return 0 on success, non-zero on failure.
      */
-    int emitObject(OptLevel opt, int fd, bool is_pic,
+    int emitObject(OptLevel opt, FILE* stream, bool is_pic,
                    std::optional<std::string_view> triple,
                    std::optional<std::string_view> cpu,
                    Backend backend = selectBackendForObject())
     {
         return fearEmitObject(
             getRaw(), detail::into(backend), detail::into(opt), is_pic,
-            detail::unwrap_cstr(triple), detail::unwrap_cstr(cpu), fd);
+            detail::unwrap_cstr(triple), detail::unwrap_cstr(cpu), stream);
     }
 
    private:

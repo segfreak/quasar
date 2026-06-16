@@ -9,7 +9,6 @@ use types::*;
 
 use std::ffi::{c_int, CString};
 use std::io::Write;
-use std::os::fd::FromRawFd;
 use std::os::raw::c_char;
 use std::str::FromStr;
 use std::{ffi::CStr, ptr};
@@ -44,6 +43,27 @@ unsafe fn as_module(m: *mut FearModule) -> &'static mut Module {
 /// Casts a raw C pointer back into a mutable reference to the core `FunctionDef`.
 unsafe fn as_def(f: *mut FearFunctionDef) -> &'static mut FunctionDef {
     &mut *(f as *mut FunctionDef)
+}
+
+unsafe fn file_from_c_stream(stream: *mut libc::FILE) -> std::fs::File {
+    if stream.is_null() {
+        panic!("Passed NULL as FILE* stream");
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::io::FromRawFd;
+        let fd = libc::fileno(stream);
+        std::fs::File::from_raw_fd(fd)
+    }
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::io::FromRawHandle;
+        let fd = libc::_fileno(stream);
+        let handle = libc::_get_osfhandle(fd);
+        std::fs::File::from_raw_handle(handle as *mut std::ffi::c_void)
+    }
 }
 
 /// Checks if the backend is supported in this library build.
@@ -113,7 +133,7 @@ pub unsafe extern "C" fn fearEmitObject(
     pic: bool,
     triple: *const c_char,
     cpu: *const c_char,
-    fd: c_int,
+    stream: *mut libc::FILE,
 ) -> c_int {
     let triple = match triple.is_null() {
         true => Triple::host(),
@@ -132,8 +152,7 @@ pub unsafe extern "C" fn fearEmitObject(
         pic,
         cpu,
     };
-    let file = unsafe { std::fs::File::from_raw_fd(fd) };
-    match compiler::compile_module(m, &config, file) {
+    match compiler::compile_module(m, &config, file_from_c_stream(stream)) {
         Ok(_) => 0,
         Err(e) => {
             log::error!("compile error: {}", e);
@@ -164,7 +183,7 @@ pub unsafe extern "C" fn fearEmitAssembly(
     pic: bool,
     triple: *const c_char,
     cpu: *const c_char,
-    fd: c_int,
+    stream: *mut libc::FILE,
 ) -> c_int {
     let triple = match triple.is_null() {
         true => Triple::host(),
@@ -183,8 +202,7 @@ pub unsafe extern "C" fn fearEmitAssembly(
         pic,
         cpu,
     };
-    let file = unsafe { std::fs::File::from_raw_fd(fd) };
-    match compiler::compile_module(m, &config, file) {
+    match compiler::compile_module(m, &config, file_from_c_stream(stream)) {
         Ok(_) => 0,
         Err(e) => {
             log::error!("compile error: {}", e);
@@ -195,10 +213,10 @@ pub unsafe extern "C" fn fearEmitAssembly(
 
 /// Writes a readable, plain-text representation of the module's IR into a file descriptor.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearDumpToFile(m: *mut FearModule, fd: c_int) {
+pub unsafe extern "C" fn fearDumpToFile(m: *mut FearModule, stream: *mut libc::FILE) {
     let m = as_module(m);
     let s = m.dump();
-    let mut file = unsafe { std::fs::File::from_raw_fd(fd) };
+    let mut file = file_from_c_stream(stream);
     let _ = file.write_all(s.as_bytes());
     std::mem::forget(file);
 }
@@ -227,11 +245,11 @@ pub unsafe extern "C" fn fearStringDispose(s: *mut c_char) {
 
 /// Serializes the module into the compiler's native binary format and outputs it to a file descriptor.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearBinaryDumpToFile(m: *mut FearModule, fd: c_int) {
+pub unsafe extern "C" fn fearBinaryDumpToFile(m: *mut FearModule, stream: *mut libc::FILE) {
     let m = as_module(m);
-    let file = unsafe { std::fs::File::from_raw_fd(fd) };
+    let file = file_from_c_stream(stream);
     if let Err(e) = binary::write(m, file) {
-        log::error!("cannot write binary module into fd({})", fd);
+        log::error!("cannot write binary module");
         log::error!("{}", e);
     }
 }
