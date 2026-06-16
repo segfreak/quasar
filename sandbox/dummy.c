@@ -1,5 +1,7 @@
 #include <fear.h>
 
+/// memory leak here
+/// idk..
 int main(void)
 {
     FearModule* m  = fearModuleCreate("dummy");
