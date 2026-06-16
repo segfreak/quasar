@@ -358,9 +358,9 @@ int faz()
 
     fearModuleVerify(mod);
 
-		FILE *b = fopen("test.bin", "wb");
-		fearBinaryDumpToFile(mod, fileno(b));
-		fclose(b);
+    FILE* b = fopen("test.bin", "wb");
+    fearBinaryDumpToFile(mod, b);
+    fclose(b);
 
     uint32_t errors = fearModuleVerify(mod);
 
@@ -388,9 +388,9 @@ int faz_multilevel()
     test_algebraic_simplification(mod);
 
     fearModuleVerify(mod);
-		FILE *b = fopen("test-ml.bin", "wb");
-		fearBinaryDumpToFile(mod, fileno(b));
-		fclose(b);
+    FILE* b = fopen("test-ml.bin", "wb");
+    fearBinaryDumpToFile(mod, b);
+    fclose(b);
 
     uint32_t errors = fearModuleVerify(mod);
     printf("errors: %u\n", errors);

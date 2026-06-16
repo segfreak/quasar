@@ -45,15 +45,15 @@ int main()
     fearDefinitionDispose(def);
 
     fprintf(stderr, "preopt\n");
-    fearDumpToFile(m, fileno(stderr));
+    fearDumpToFile(m, stderr);
 
     unsigned total_passes = fearModuleOptimize(m, FearOptFull);
 
     fprintf(stderr, "postopt (%d passes)\n", total_passes);
-    fearDumpToFile(m, fileno(stderr));
+    fearDumpToFile(m, stderr);
 
     FILE* exf = fopen("foo.bin", "w");
-    fearBinaryDumpToFile(m, fileno(exf));
+    fearBinaryDumpToFile(m, exf);
     fclose(exf);
 
     fearModuleDispose(m);
@@ -66,7 +66,7 @@ int main()
     if (fearHasBackend(FearBackendLlvm))
     {
         fearEmitAssembly(m, FearBackendLlvm, FearOptFull, 1, NULL, NULL,
-                         1);
+                         stdout);
     }
 
     FearBackend backend;
@@ -75,8 +75,7 @@ int main()
     {
         fprintf(stderr, "=> tmain.o\n");
         FILE* exf_obj = fopen("tmain.o", "w");
-        fearEmitObject(m, backend, FearOptFull, 1, NULL, NULL,
-                       fileno(exf_obj));
+        fearEmitObject(m, backend, FearOptFull, 1, NULL, NULL, exf_obj);
         fclose(exf_obj);
     }
 

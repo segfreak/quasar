@@ -12,8 +12,7 @@ pub unsafe extern "C" fn fearModuleCreate(name: *const c_char) -> *mut FearModul
 /// Deserializes a complete `Module` structure from an input file descriptor. Returns null on error.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearReadBinaryFromFile(stream: *mut libc::FILE) -> *mut FearModule {
-    let file = file_from_c_stream(stream);
-    match fear::binary::read::<fear::ssa::Module, _>(file) {
+    match fear::binary::read::<fear::ssa::Module, _>(CFile::from(stream)) {
         Ok(m) => Box::into_raw(Box::new(m)) as *mut FearModule,
         Err(e) => {
             log::error!("cannot read binary module");

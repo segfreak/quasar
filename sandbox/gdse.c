@@ -74,7 +74,7 @@ int main()
     fearModuleVerify(m);
 
     FILE* out = fopen("gdse.bin", "wb");
-    fearBinaryDumpToFile(m, fileno(out));
+    fearBinaryDumpToFile(m, out);
     fclose(out);
 
     fearModuleDispose(m);

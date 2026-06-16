@@ -8,7 +8,7 @@ pub mod types;
 use types::*;
 
 use std::ffi::{c_int, CString};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::os::raw::c_char;
 use std::str::FromStr;
 use std::{ffi::CStr, ptr};
@@ -21,6 +21,49 @@ use fear::{
 };
 
 use target_lexicon::Triple;
+
+struct CFile {
+    file: *mut libc::FILE,
+}
+
+impl From<*mut libc::FILE> for CFile {
+    fn from(value: *mut libc::FILE) -> Self {
+        Self { file: value }
+    }
+}
+
+impl Write for CFile {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let n = unsafe { libc::fwrite(buf.as_ptr() as *const _, 1, buf.len(), self.file) };
+        Ok(n)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        unsafe { libc::fflush(self.file) };
+        Ok(())
+    }
+}
+
+impl Read for CFile {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
+
+        let n = unsafe { libc::fread(buf.as_mut_ptr() as *mut _, 1, buf.len(), self.file) };
+
+        if n == 0 {
+            if unsafe { libc::feof(self.file) } != 0 {
+                return Ok(0);
+            }
+            if unsafe { libc::ferror(self.file) } != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+        }
+
+        Ok(n)
+    }
+}
 
 /// Converts a raw C-string pointer into an owned Rust `String`.
 fn cstr(s: *const c_char) -> String {
@@ -43,27 +86,6 @@ unsafe fn as_module(m: *mut FearModule) -> &'static mut Module {
 /// Casts a raw C pointer back into a mutable reference to the core `FunctionDef`.
 unsafe fn as_def(f: *mut FearFunctionDef) -> &'static mut FunctionDef {
     &mut *(f as *mut FunctionDef)
-}
-
-unsafe fn file_from_c_stream(stream: *mut libc::FILE) -> std::fs::File {
-    if stream.is_null() {
-        panic!("Passed NULL as FILE* stream");
-    }
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::io::FromRawFd;
-        let fd = libc::fileno(stream);
-        std::fs::File::from_raw_fd(fd)
-    }
-
-    #[cfg(windows)]
-    {
-        use std::os::windows::io::FromRawHandle;
-        let fd = libc::fileno(stream);
-        let handle = libc::get_osfhandle(fd);
-        std::fs::File::from_raw_handle(handle as *mut std::ffi::c_void)
-    }
 }
 
 /// Checks if the backend is supported in this library build.
@@ -152,7 +174,7 @@ pub unsafe extern "C" fn fearEmitObject(
         pic,
         cpu,
     };
-    match compiler::compile_module(m, &config, file_from_c_stream(stream)) {
+    match compiler::compile_module(m, &config, CFile::from(stream)) {
         Ok(_) => 0,
         Err(e) => {
             log::error!("compile error: {}", e);
@@ -202,7 +224,7 @@ pub unsafe extern "C" fn fearEmitAssembly(
         pic,
         cpu,
     };
-    match compiler::compile_module(m, &config, file_from_c_stream(stream)) {
+    match compiler::compile_module(m, &config, CFile::from(stream)) {
         Ok(_) => 0,
         Err(e) => {
             log::error!("compile error: {}", e);
@@ -216,9 +238,7 @@ pub unsafe extern "C" fn fearEmitAssembly(
 pub unsafe extern "C" fn fearDumpToFile(m: *mut FearModule, stream: *mut libc::FILE) {
     let m = as_module(m);
     let s = m.dump();
-    let mut file = file_from_c_stream(stream);
-    let _ = file.write_all(s.as_bytes());
-    std::mem::forget(file);
+    let _ = CFile::from(stream).write_all(s.as_bytes());
 }
 
 /// Writes a readable, plain-text representation of the module's IR into a C String.
@@ -247,8 +267,7 @@ pub unsafe extern "C" fn fearStringDispose(s: *mut c_char) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearBinaryDumpToFile(m: *mut FearModule, stream: *mut libc::FILE) {
     let m = as_module(m);
-    let file = file_from_c_stream(stream);
-    if let Err(e) = binary::write(m, file) {
+    if let Err(e) = binary::write(m, CFile::from(stream)) {
         log::error!("cannot write binary module");
         log::error!("{}", e);
     }

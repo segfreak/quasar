@@ -47,7 +47,7 @@ int main()
     fearModuleVerify(m);
 
     FILE* out = fopen("dse.bin", "wb");
-    fearBinaryDumpToFile(m, fileno(out));
+    fearBinaryDumpToFile(m, out);
     fclose(out);
 
     fearModuleDispose(m);

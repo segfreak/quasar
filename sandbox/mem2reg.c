@@ -113,7 +113,7 @@ int main(void)
     fearStringDispose(after);
 
     FILE* out = fopen("mem2reg.bin", "wb");
-    fearBinaryDumpToFile(m, fileno(out));
+    fearBinaryDumpToFile(m, out);
     fclose(out);
 
     FearBackend backend;
@@ -123,7 +123,7 @@ int main(void)
         fprintf(stderr, "=> mem2reg.o\n");
         FILE* exf_obj = fopen("mem2reg.o", "w");
         fearEmitObject(m, backend, FearOptFull, 1, /* host */ NULL,
-                       /* generic */ NULL, fileno(exf_obj));
+                       /* generic */ NULL, exf_obj);
         fclose(exf_obj);
     }
 

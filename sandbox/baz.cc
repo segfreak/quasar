@@ -29,7 +29,7 @@ int main()
 
     fprintf(stderr, "=> baz.o\n");
     FILE* file = fopen("baz.o", "w");
-    m.emitObject(fear::OptLevel::Full, fileno(file), true, std::nullopt,
+    m.emitObject(fear::OptLevel::Full, file, true, std::nullopt,
                  std::nullopt, Backend::Llvm);
     fclose(file);
 }
