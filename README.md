@@ -30,7 +30,7 @@ optimization passes, and backend components may change frequently.
 <ul>
     <li>[x] SSA IR</li>
     <li>[x] Lower into llvm</li>
-    <li>[?] Lower into cranelift</li>
+    <li>[x] Lower into cranelift</li>
     <li>[ ] IR Reader</li>
     <li>[ ] Instruction selection</li>
     <li>[ ] Register Allocation</li>
