@@ -303,8 +303,7 @@ pub unsafe extern "C" fn fearBinaryDumpToBuffer(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearBufferDispose(ptr: *mut u8, size: usize) {
     if !ptr.is_null() {
-        unsafe {
-            let _ = Vec::from_raw_parts(ptr, size, size);
-        }
+        let slice = std::ptr::slice_from_raw_parts_mut(ptr, size);
+        drop(Box::<[u8]>::from_raw(slice));
     }
 }

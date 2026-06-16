@@ -10,7 +10,7 @@ pub unsafe extern "C" fn fearCreateBlock(f: *mut FearFunctionDef) -> FearBlockId
 
 /// Adds a top-level input parameter to the function declaration.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fearCreateFuncParam(f: *mut FearFunctionDef, ty: FearType) -> FearBlockId {
+pub unsafe extern "C" fn fearCreateFuncParam(f: *mut FearFunctionDef, ty: FearType) -> FearValueId {
     as_def(f).add_param(ty.into())
 }
 
@@ -20,7 +20,7 @@ pub unsafe extern "C" fn fearCreateBlockParam(
     f: *mut FearFunctionDef,
     block: FearBlockId,
     ty: FearType,
-) -> FearBlockId {
+) -> FearValueId {
     as_def(f).add_block_param(block, ty.into())
 }
 

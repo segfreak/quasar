@@ -229,12 +229,12 @@ FearBlockId fearCreateBlock(struct FearFunctionDef *f);
 /**
  * Adds a top-level input parameter to the function declaration.
  */
-FearBlockId fearCreateFuncParam(struct FearFunctionDef *f, enum FearType ty);
+FearValueId fearCreateFuncParam(struct FearFunctionDef *f, enum FearType ty);
 
 /**
  * Appends a parameter to a specific basic block, used to pass values in SSA form (instead of PHI nodes).
  */
-FearBlockId fearCreateBlockParam(struct FearFunctionDef *f,
+FearValueId fearCreateBlockParam(struct FearFunctionDef *f,
                                  FearBlockId block,
                                  enum FearType ty);
 

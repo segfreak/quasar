@@ -4,7 +4,7 @@ use crate::{types::*, *};
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearModuleCreate(name: *const c_char) -> *mut FearModule {
     let name = cstr(name);
-    log::trace!("creating module with name {}", name);
+    log::trace!("creating module '{}'", name);
     let m = Module::new(name);
     Box::into_raw(Box::new(m)) as *mut FearModule
 }
@@ -25,6 +25,7 @@ pub unsafe extern "C" fn fearReadBinaryFromFile(stream: *mut libc::FILE) -> *mut
 /// Reclaims ownership of a `FearModule` pointer and drops it, freeing all associated heap memory.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearModuleDispose(m: *mut FearModule) {
+    log::trace!("disposing module '{}'", as_module(m).name);
     if !m.is_null() {
         drop(Box::from_raw(m));
     }
@@ -61,9 +62,7 @@ pub unsafe extern "C" fn fearModuleVerify(m: *mut FearModule) -> u32 {
     let m = as_module(m);
     let res = m.verify();
     if let Err(e) = res {
-        // errors count
         return e.len() as u32;
     }
-    // not a error, zero code
     0
 }
