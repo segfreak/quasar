@@ -67,11 +67,11 @@ pub unsafe extern "C" fn fearDefineFunction(
 /// Gets the identifier of the entry basic block automatically created for a function definition.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearGetEntryBlock(f: *mut FearFunctionDef) -> FearBlockId {
-    as_def(f).entry
+    as_def(f).get_entry()
 }
 
 /// Sets the identifier of the entry basic block.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearSetEntryBlock(f: *mut FearFunctionDef, block: FearBlockId) {
-    as_def(f).entry = block;
+    *as_def(f).get_entry_mut() = block;
 }

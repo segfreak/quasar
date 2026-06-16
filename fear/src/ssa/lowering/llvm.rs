@@ -223,13 +223,13 @@ impl<'ctx> LlvmLowerer<'ctx> {
         self.blocks.clear();
         self.phis.clear();
 
-        let entry = def.entry;
+        let entry = def.get_entry();
         let bb_entry = self
             .context
             .append_basic_block(llvm_fn, &format!("b{}", entry));
         self.blocks.insert(entry, bb_entry);
 
-        for &bid in def.blocks.keys() {
+        for bid in def.get_block_ids() {
             if bid != entry {
                 let bb = self
                     .context
@@ -238,7 +238,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
             }
         }
 
-        for (i, &param_val) in def.blocks[&entry].params.iter().enumerate() {
+        for (i, &param_val) in def.get_block(entry).unwrap().params.iter().enumerate() {
             let arg = llvm_fn
                 .get_nth_param(i as u32)
                 .unwrap_or_else(|| panic!("function '{}' missing param #{}", func.name, i));
@@ -252,7 +252,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
             self.compile_block(m, def, bid);
         }
 
-        let block_ids: Vec<BlockId> = def.blocks.keys().copied().collect();
+        let block_ids = def.get_block_ids();
         for bid in block_ids {
             self.fill_phi_incoming(def, bid);
         }
@@ -280,8 +280,8 @@ impl<'ctx> LlvmLowerer<'ctx> {
     }
 
     fn build_phi_nodes(&mut self, def: &FunctionDef) {
-        for (&bid, block) in &def.blocks {
-            if bid == def.entry {
+        for (&bid, block) in def.get_blocks() {
+            if bid == def.get_entry() {
                 continue;
             }
 
@@ -299,11 +299,11 @@ impl<'ctx> LlvmLowerer<'ctx> {
     }
 
     fn fill_phi_incoming(&mut self, def: &FunctionDef, bid: BlockId) {
-        if bid == def.entry {
+        if bid == def.get_entry() {
             return; /* entry params are function args */
         }
 
-        let block = &def.blocks[&bid];
+        let block = &def.get_block(bid).unwrap();
 
         for (param_idx, &param_val) in block.params.iter().enumerate() {
             let phi = match self.phis.get(&param_val) {
@@ -312,14 +312,14 @@ impl<'ctx> LlvmLowerer<'ctx> {
             };
 
             for &pred_bid in &block.preds {
-                let pred_block = &def.blocks[&pred_bid];
+                let pred_block = def.get_block(pred_bid).unwrap();
                 let pred_bb = self.blocks[&pred_bid];
 
                 let term_id = match pred_block.term {
                     Some(t) => t,
                     None => continue,
                 };
-                let term = &def.insts[&term_id];
+                let term = def.get_inst(term_id).unwrap();
 
                 let incoming_val: BasicValueEnum = match &term.kind {
                     InstKind::Jump(_) => {
@@ -365,10 +365,10 @@ impl<'ctx> LlvmLowerer<'ctx> {
         let llvm_bb = self.blocks[&bid];
         self.builder.position_at_end(llvm_bb);
 
-        let block = &def.blocks[&bid];
+        let block = def.get_block(bid).unwrap();
 
         for &inst_id in &block.insts {
-            let inst = &def.insts[&inst_id];
+            let inst = def.get_inst(inst_id).unwrap();
             self.compile_inst(m, def, inst);
         }
     }

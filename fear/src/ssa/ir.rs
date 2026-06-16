@@ -164,46 +164,44 @@ impl InstKind {
 
     pub fn get_cost(&self) -> u8 {
         match self {
-            Self::Select => 2,
-            Self::Undef => 0,
+            Self::Undef => 0,     // Purely a compiler placeholder, emits zero instructions.
+            Self::IConst(_) => 0, // Almost always encoded as an immediate or zeroed via XOR.
+            Self::FConst(_) => 1, // May force a constant pool load on RISC architectures.
+            Self::Jump(_) => 1,   // Unconditional branch; hardware front-end swallows this easily.
 
-            // constants (free)
-            Self::IConst(_) | Self::FConst(_) => 0,
-
-            // arithmetic (cheap ALU)
             Self::Add | Self::Sub => 2,
-            Self::FAdd | Self::FSub => 4,
-            // multiply/divide are expensive
-            Self::Mul | Self::Div { .. } | Self::Rem { .. } => 4,
-            Self::FMul | Self::FDiv | Self::FRem => 5,
+            Self::Not | Self::And | Self::Or | Self::Xor => 2,
+            Self::LShl | Self::LShr | Self::AShr => 2,
+            Self::Cmp(_) => 2,
 
-            // bitwise ops (very cheap)
-            Self::Not | Self::And | Self::Or | Self::Xor => 1,
+            Self::Alloca(_) | Self::NAlloca(_, _) => 2, // Just bumping the stack pointer (sub sp, imm).
+            Self::JumpIf { .. } => 4, // Conditional branch; penalized for potential mispredictions.
+            Self::Ret => 4, // Return; hits the Return Stack Buffer, but still costs a bit.
 
-            // shifts (cheap but not free)
-            Self::LShl | Self::LShr | Self::AShr => 1,
+            // Address arithmetic. x86 has LEA, but ARM/RISC-V might need an extra shift + add chain.
+            Self::PtrOffset | Self::ElementPtr(_) => 6,
 
-            // comparisons (ALU + flag logic)
-            Self::Cmp(_) | Self::FCmp(_) => 2,
+            Self::Select => 6, // Low-cost on x86 (cmov) and ARM (csel), but expands to branches on basic RISC-V.
+            Self::Cast(_) => 6, // Sign/zero extensions or float-to-int conversions.
 
-            // memory ops (expensive due to potential cache/memory)
-            Self::Load { .. } => 5,
-            Self::Store { .. } => 5,
+            Self::FAdd | Self::FSub => 8,
+            Self::FCmp(_) => 8,
 
-            Self::Alloca(_) | Self::NAlloca(_, _) => 3,
-            // address computation (usually cheap ALU-like)
-            Self::PtrOffset | Self::ElementPtr(_) => 2,
+            Self::Mul => 12, // Integer multiply is fully pipelined nowadays, but takes 3-5 cycles.
+            Self::FMul => 16, // Floating-point multiplication.
 
-            // function calls (very expensive, unknown cost)
-            Self::Call(_) => 10,
+            // Memory ops. Assuming L1 cache hit as best case, but we heavily penalize them
+            // to force the optimizer to keep variables in registers.
+            Self::Store { .. } => 20, // Hidden by store buffers, but still occupies execution slots.
+            Self::Load { .. } => 25, // Loads are blocking; later instructions usually have to wait for data.
 
-            // type conversions (varies, but usually cheap-medium)
-            Self::Cast(_) => 2,
+            Self::FDiv | Self::FRem => 60, // Floating-point division is never cheap.
 
-            // control flow (terminators)
-            Self::Jump(_) => 0,
-            Self::JumpIf { .. } => 0,
-            Self::Ret => 0,
+            // Integer division is a massive pain across all architectures.
+            // Non-pipelined, iterative microcode. On some RISC-V/ARM cores, this can take up to 60+ cycles.
+            Self::Div { .. } | Self::Rem { .. } => 120,
+
+            Self::Call(_) => 200,
         }
     }
 
@@ -241,11 +239,10 @@ pub struct Block {
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FunctionDef {
-    pub blocks: HashMap<BlockId, Block>,
-    pub insts: HashMap<InstId, Inst>,
-    pub values: HashMap<ValueId, Value>,
-
-    pub entry: BlockId,
+    blocks: HashMap<BlockId, Block>,
+    insts: HashMap<InstId, Inst>,
+    values: HashMap<ValueId, Value>,
+    entry: BlockId,
 
     next_block: BlockId,
     next_inst: InstId,
@@ -296,24 +293,32 @@ impl FunctionDef {
         self.entry
     }
 
+    pub fn get_entry_mut(&mut self) -> &mut BlockId {
+        &mut self.entry
+    }
+
     pub fn get_blocks(&self) -> &HashMap<BlockId, Block> {
         &self.blocks
     }
 
-    pub fn try_get_block(&self, block: BlockId) -> Option<&Block> {
+    pub fn get_blocks_mut(&mut self) -> &mut HashMap<BlockId, Block> {
+        &mut self.blocks
+    }
+
+    pub fn get_block(&self, block: BlockId) -> Option<&Block> {
         self.blocks.get(&block)
     }
 
-    pub fn get_block(&self, block: BlockId) -> &Block {
-        self.try_get_block(block).unwrap()
+    pub fn get_block_mut(&mut self, block: BlockId) -> Option<&mut Block> {
+        self.blocks.get_mut(&block)
     }
 
     pub fn get_entry_block(&self) -> &Block {
-        self.get_block(self.get_entry())
+        self.get_block(self.get_entry()).unwrap()
     }
 
     pub fn get_block_params(&self, block: BlockId) -> &[ValueId] {
-        &self.get_block(block).params
+        &self.get_block(block).unwrap().params
     }
 
     pub fn get_params(&self) -> &[ValueId] {
@@ -328,6 +333,14 @@ impl FunctionDef {
 
     pub fn add_param(&mut self, ty: Type) -> ValueId {
         self.add_block_param(self.entry, ty)
+    }
+
+    pub fn get_block_ids(&self) -> Vec<BlockId> {
+        self.get_blocks().keys().cloned().collect()
+    }
+
+    pub fn get_inst_ids(&self) -> Vec<InstId> {
+        self.get_insts().keys().cloned().collect()
     }
 
     pub fn compute_rpo(&self) -> Vec<BlockId> {
@@ -878,8 +891,24 @@ impl FunctionDef {
         &self.values
     }
 
+    pub fn get_value(&self, v: ValueId) -> Option<&Value> {
+        self.get_values().get(&v)
+    }
+
+    pub fn get_values_mut(&mut self) -> &mut HashMap<ValueId, Value> {
+        &mut self.values
+    }
+
+    pub fn get_value_mut(&mut self, v: ValueId) -> Option<&mut Value> {
+        self.get_values_mut().get_mut(&v)
+    }
+
     pub fn get_insts(&self) -> &HashMap<InstId, Inst> {
         &self.insts
+    }
+
+    pub fn get_inst(&self, id: InstId) -> Option<&Inst> {
+        self.insts.get(&id)
     }
 
     pub fn get_insts_mut(&mut self) -> &mut HashMap<InstId, Inst> {
@@ -905,6 +934,12 @@ impl FunctionDef {
         }
 
         if let Some(v) = self.values.get_mut(&from) {
+            v.uses.clear();
+        }
+    }
+
+    pub fn clear_uses(&mut self, val: ValueId) {
+        if let Some(v) = self.values.get_mut(&val) {
             v.uses.clear();
         }
     }

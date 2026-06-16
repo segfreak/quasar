@@ -32,15 +32,15 @@ fn fold_constant_branches(m: &mut Module, f: FuncId) -> bool {
     let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
     let mut changed = false;
 
-    let block_ids: Vec<BlockId> = func.blocks.keys().cloned().collect();
+    let block_ids: Vec<BlockId> = func.get_blocks().keys().cloned().collect();
 
     for block_id in block_ids {
-        let term_id = match func.blocks.get(&block_id).and_then(|b| b.term) {
+        let term_id = match func.get_blocks().get(&block_id).and_then(|b| b.term) {
             Some(t) => t,
             None => continue,
         };
 
-        let term = match func.insts.get(&term_id) {
+        let term = match func.get_insts().get(&term_id) {
             Some(i) => i.clone(),
             None => continue,
         };
@@ -59,12 +59,12 @@ fn fold_constant_branches(m: &mut Module, f: FuncId) -> bool {
         };
 
         let t_params = func
-            .blocks
+            .get_blocks()
             .get(&then_block)
             .map(|b| b.params.len())
             .unwrap_or(0);
         let e_params = func
-            .blocks
+            .get_blocks()
             .get(&else_block)
             .map(|b| b.params.len())
             .unwrap_or(0);
@@ -77,10 +77,10 @@ fn fold_constant_branches(m: &mut Module, f: FuncId) -> bool {
             (else_block, else_args, then_block)
         };
 
-        if let Some(db) = func.blocks.get_mut(&dead_target) {
+        if let Some(db) = func.get_blocks_mut().get_mut(&dead_target) {
             db.preds.retain(|&p| p != block_id);
         }
-        if let Some(b) = func.blocks.get_mut(&block_id) {
+        if let Some(b) = func.get_blocks_mut().get_mut(&block_id) {
             b.succs.retain(|&s| s != dead_target);
         }
 
@@ -92,7 +92,7 @@ fn fold_constant_branches(m: &mut Module, f: FuncId) -> bool {
         };
         func.replace_inst(term_id, new_term);
 
-        if let Some(b) = func.blocks.get_mut(&block_id) {
+        if let Some(b) = func.get_blocks_mut().get_mut(&block_id) {
             b.term = Some(term_id);
         }
 
@@ -108,11 +108,11 @@ fn eliminate_dead_blocks(m: &mut Module, f: FuncId) -> bool {
     let reachable = {
         let mut visited = HashSet::new();
         let mut queue = VecDeque::new();
-        queue.push_back(func.entry);
-        visited.insert(func.entry);
+        queue.push_back(func.get_entry());
+        visited.insert(func.get_entry());
         while let Some(b) = queue.pop_front() {
             for &s in &func
-                .blocks
+                .get_blocks()
                 .get(&b)
                 .map(|bl| bl.succs.clone())
                 .unwrap_or_default()
@@ -126,7 +126,7 @@ fn eliminate_dead_blocks(m: &mut Module, f: FuncId) -> bool {
     };
 
     let dead: Vec<BlockId> = func
-        .blocks
+        .get_blocks()
         .keys()
         .cloned()
         .filter(|b| !reachable.contains(b))
@@ -145,12 +145,12 @@ fn eliminate_dead_blocks(m: &mut Module, f: FuncId) -> bool {
 
 fn eliminate_forwarding_blocks(m: &mut Module, f: FuncId) -> bool {
     let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
-    let entry = func.entry;
+    let entry = func.get_entry();
     let mut changed = false;
 
     'outer: loop {
         let candidates: Vec<BlockId> = func
-            .blocks
+            .get_blocks()
             .iter()
             .filter(|(bid, b)| {
                 **bid != entry && b.params.is_empty() && is_forwarding_block(func, **bid)
@@ -173,7 +173,7 @@ fn eliminate_forwarding_blocks(m: &mut Module, f: FuncId) -> bool {
             }
 
             let preds: Vec<BlockId> = func
-                .blocks
+                .get_blocks()
                 .get(&fwd)
                 .map(|b| b.preds.clone())
                 .unwrap_or_default();
@@ -182,7 +182,7 @@ fn eliminate_forwarding_blocks(m: &mut Module, f: FuncId) -> bool {
                 redirect_successor(func, *pred, fwd, target, &fwd_args);
             }
 
-            if let Some(tb) = func.blocks.get_mut(&target) {
+            if let Some(tb) = func.get_blocks_mut().get_mut(&target) {
                 tb.preds.retain(|&p| p != fwd);
                 for &p in &preds {
                     if !tb.preds.contains(&p) {
@@ -204,7 +204,7 @@ fn eliminate_forwarding_blocks(m: &mut Module, f: FuncId) -> bool {
 }
 
 fn is_forwarding_block(func: &FunctionDef, bid: BlockId) -> bool {
-    let insts = match func.blocks.get(&bid) {
+    let insts = match func.get_blocks().get(&bid) {
         Some(b) => &b.insts,
         None => return false,
     };
@@ -214,14 +214,14 @@ fn is_forwarding_block(func: &FunctionDef, bid: BlockId) -> bool {
     }
 
     matches!(
-        func.insts.get(&insts[0]).map(|i| &i.kind),
+        func.get_insts().get(&insts[0]).map(|i| &i.kind),
         Some(InstKind::Jump(_))
     )
 }
 
 fn forwarding_target(func: &FunctionDef, bid: BlockId) -> Option<(BlockId, Vec<ValueId>)> {
-    let inst_id = func.blocks.get(&bid)?.insts.first().copied()?;
-    let inst = func.insts.get(&inst_id)?;
+    let inst_id = func.get_blocks().get(&bid)?.insts.first().copied()?;
+    let inst = func.get_insts().get(&inst_id)?;
     match inst.kind {
         InstKind::Jump(target) => Some((target, inst.operands.clone())),
         _ => None,
@@ -235,12 +235,12 @@ fn redirect_successor(
     new: BlockId,
     new_args: &[ValueId],
 ) {
-    let term_id = match func.blocks.get(&pred).and_then(|b| b.term) {
+    let term_id = match func.get_blocks().get(&pred).and_then(|b| b.term) {
         Some(t) => t,
         None => return,
     };
 
-    let term = match func.insts.get(&term_id).cloned() {
+    let term = match func.get_insts().get(&term_id).cloned() {
         Some(i) => i,
         None => return,
     };
@@ -258,12 +258,12 @@ fn redirect_successor(
             else_block,
         } => {
             let t_params = func
-                .blocks
+                .get_blocks()
                 .get(then_block)
                 .map(|b| b.params.len())
                 .unwrap_or(0);
             let e_params = func
-                .blocks
+                .get_blocks()
                 .get(else_block)
                 .map(|b| b.params.len())
                 .unwrap_or(0);
@@ -302,7 +302,7 @@ fn redirect_successor(
 
     func.replace_inst(term_id, new_term);
 
-    if let Some(pb) = func.blocks.get_mut(&pred) {
+    if let Some(pb) = func.get_blocks_mut().get_mut(&pred) {
         pb.succs.retain(|&s| s != old);
         if !pb.succs.contains(&new) {
             pb.succs.push(new);
@@ -316,9 +316,9 @@ fn merge_blocks(m: &mut Module, f: FuncId) -> bool {
 
     'outer: loop {
         // Find a mergeable pair (B, S).
-        let pair = func.blocks.iter().find_map(|(&bid, b)| {
+        let pair = func.get_blocks().iter().find_map(|(&bid, b)| {
             let term_id = b.term?;
-            let term = func.insts.get(&term_id)?;
+            let term = func.get_insts().get(&term_id)?;
             let succ = match term.kind {
                 InstKind::Jump(s) => s,
                 _ => return None,
@@ -326,7 +326,7 @@ fn merge_blocks(m: &mut Module, f: FuncId) -> bool {
             if succ == bid {
                 return None; // self-loop
             }
-            let succ_block = func.blocks.get(&succ)?;
+            let succ_block = func.get_blocks().get(&succ)?;
             // S must have exactly one predecessor and no block params.
             if succ_block.preds.len() == 1 && succ_block.params.is_empty() {
                 Some((bid, succ, term_id))
@@ -342,42 +342,42 @@ fn merge_blocks(m: &mut Module, f: FuncId) -> bool {
 
         // Remove the jump terminator from pred.
         func.remove_inst(term_id);
-        if let Some(b) = func.blocks.get_mut(&pred) {
+        if let Some(b) = func.get_blocks_mut().get_mut(&pred) {
             b.term = None;
             b.succs.clear();
         }
 
         // Move all instructions from succ into pred.
         let succ_insts: Vec<InstId> = func
-            .blocks
+            .get_blocks()
             .get(&succ)
             .map(|b| b.insts.clone())
             .unwrap_or_default();
-        let succ_term = func.blocks.get(&succ).and_then(|b| b.term);
+        let succ_term = func.get_blocks().get(&succ).and_then(|b| b.term);
         let succ_succs: Vec<BlockId> = func
-            .blocks
+            .get_blocks()
             .get(&succ)
             .map(|b| b.succs.clone())
             .unwrap_or_default();
 
         for &inst_id in &succ_insts {
-            if let Some(inst) = func.insts.get_mut(&inst_id) {
+            if let Some(inst) = func.get_insts_mut().get_mut(&inst_id) {
                 inst.parent = pred;
             }
-            if let Some(b) = func.blocks.get_mut(&pred) {
+            if let Some(b) = func.get_blocks_mut().get_mut(&pred) {
                 b.insts.push(inst_id);
             }
         }
 
         // Update terminator / succs of pred.
-        if let Some(b) = func.blocks.get_mut(&pred) {
+        if let Some(b) = func.get_blocks_mut().get_mut(&pred) {
             b.term = succ_term;
             b.succs = succ_succs.clone();
         }
 
         // Rewrite succ_succs: replace succ with pred in their preds lists.
         for &ss in &succ_succs {
-            if let Some(sb) = func.blocks.get_mut(&ss) {
+            if let Some(sb) = func.get_blocks_mut().get_mut(&ss) {
                 for p in &mut sb.preds {
                     if *p == succ {
                         *p = pred;
@@ -388,14 +388,14 @@ fn merge_blocks(m: &mut Module, f: FuncId) -> bool {
 
         // Also rewrite any terminator that references succ as a target block id.
         // (JumpIf kind stores BlockId inline.)
-        if let Some(b) = func.blocks.get_mut(&pred) {
+        if let Some(b) = func.get_blocks_mut().get_mut(&pred) {
             b.insts.retain(|_| true); // no-op; just keep ownership
         }
         if let Some(tid) = succ_term {
-            let _term = match func.insts.get(&tid).cloned() {
+            let _term = match func.get_insts().get(&tid).cloned() {
                 Some(i) => i,
                 None => {
-                    func.blocks.remove(&succ);
+                    func.get_blocks_mut().remove(&succ);
                     changed = true;
                     continue 'outer;
                 }
@@ -404,7 +404,7 @@ fn merge_blocks(m: &mut Module, f: FuncId) -> bool {
             // ids embedded in JumpIf refer to *targets*, not the current block.
         }
 
-        func.blocks.remove(&succ);
+        func.get_blocks_mut().remove(&succ);
         changed = true;
     }
 
@@ -415,15 +415,15 @@ fn thread_jumps(m: &mut Module, f: FuncId) -> bool {
     let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
     let mut changed = false;
 
-    let block_ids: Vec<BlockId> = func.blocks.keys().cloned().collect();
+    let block_ids: Vec<BlockId> = func.get_blocks().keys().cloned().collect();
 
     for pred_id in block_ids {
-        let term_id = match func.blocks.get(&pred_id).and_then(|b| b.term) {
+        let term_id = match func.get_blocks().get(&pred_id).and_then(|b| b.term) {
             Some(t) => t,
             None => continue,
         };
 
-        let term = match func.insts.get(&term_id).cloned() {
+        let term = match func.get_insts().get(&term_id).cloned() {
             Some(i) => i,
             None => continue,
         };
@@ -441,7 +441,7 @@ fn thread_jumps(m: &mut Module, f: FuncId) -> bool {
         for &(arm, known_val) in &[(then_block, 1i64), (else_block, 0i64)] {
             // The arm block must have no block params and end with a jmpif on
             // the *same* condition value.
-            let arm_block = match func.blocks.get(&arm) {
+            let arm_block = match func.get_blocks().get(&arm) {
                 Some(b) => b,
                 None => continue,
             };
@@ -455,7 +455,7 @@ fn thread_jumps(m: &mut Module, f: FuncId) -> bool {
                 None => continue,
             };
 
-            let arm_term = match func.insts.get(&arm_term_id).cloned() {
+            let arm_term = match func.get_insts().get(&arm_term_id).cloned() {
                 Some(i) => i,
                 None => continue,
             };
@@ -478,13 +478,13 @@ fn thread_jumps(m: &mut Module, f: FuncId) -> bool {
             // Check that arm_block's insts are all either the jmpif or
             // pure no-side-effect instructions.
             let arm_insts: Vec<InstId> = func
-                .blocks
+                .get_blocks()
                 .get(&arm)
                 .map(|b| b.insts.clone())
                 .unwrap_or_default();
 
             let only_jmpif = arm_insts.iter().all(|&iid| {
-                func.insts
+                func.get_insts()
                     .get(&iid)
                     .is_some_and(|i| i.kind.is_terminator() || !i.kind.has_side_effects())
             });
@@ -499,12 +499,12 @@ fn thread_jumps(m: &mut Module, f: FuncId) -> bool {
 
             // Replace arm's jmpif with an unconditional jump to thread_target.
             let t_params = func
-                .blocks
+                .get_blocks()
                 .get(&arm_then)
                 .map(|b| b.params.len())
                 .unwrap_or(0);
             let e_params = func
-                .blocks
+                .get_blocks()
                 .get(&arm_else)
                 .map(|b| b.params.len())
                 .unwrap_or(0);
@@ -526,7 +526,7 @@ fn thread_jumps(m: &mut Module, f: FuncId) -> bool {
             };
             func.replace_inst(arm_term_id, new_arm_term);
 
-            if let Some(ab) = func.blocks.get_mut(&arm) {
+            if let Some(ab) = func.get_blocks_mut().get_mut(&arm) {
                 ab.succs.retain(|&s| s != dead_target);
                 if !ab.succs.contains(&thread_target) {
                     ab.succs.push(thread_target);
@@ -534,7 +534,7 @@ fn thread_jumps(m: &mut Module, f: FuncId) -> bool {
                 ab.term = Some(arm_term_id);
             }
 
-            if let Some(db) = func.blocks.get_mut(&dead_target) {
+            if let Some(db) = func.get_blocks_mut().get_mut(&dead_target) {
                 db.preds.retain(|&p| p != arm);
             }
 
@@ -549,15 +549,15 @@ fn eliminate_redundant_phis(m: &mut Module, f: FuncId) -> bool {
     let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
     let mut changed = false;
 
-    let block_ids: Vec<BlockId> = func.blocks.keys().cloned().collect();
+    let block_ids: Vec<BlockId> = func.get_blocks().keys().cloned().collect();
 
     'outer: for block_id in block_ids {
-        let params: Vec<ValueId> = match func.blocks.get(&block_id) {
+        let params: Vec<ValueId> = match func.get_blocks().get(&block_id) {
             Some(b) => b.params.clone(),
             None => continue,
         };
 
-        let preds: Vec<BlockId> = match func.blocks.get(&block_id) {
+        let preds: Vec<BlockId> = match func.get_blocks().get(&block_id) {
             Some(b) => b.preds.clone(),
             None => continue,
         };
@@ -571,11 +571,11 @@ fn eliminate_redundant_phis(m: &mut Module, f: FuncId) -> bool {
             let mut incoming: Vec<ValueId> = Vec::new();
 
             for &pred in &preds {
-                let term_id = match func.blocks.get(&pred).and_then(|b| b.term) {
+                let term_id = match func.get_blocks().get(&pred).and_then(|b| b.term) {
                     Some(t) => t,
                     None => continue 'outer,
                 };
-                let term = match func.insts.get(&term_id) {
+                let term = match func.get_insts().get(&term_id) {
                     Some(i) => i,
                     None => continue 'outer,
                 };
@@ -587,12 +587,12 @@ fn eliminate_redundant_phis(m: &mut Module, f: FuncId) -> bool {
                         else_block,
                     } => {
                         let t_params = func
-                            .blocks
+                            .get_blocks()
                             .get(then_block)
                             .map(|b| b.params.len())
                             .unwrap_or(0);
                         let _e_params = func
-                            .blocks
+                            .get_blocks()
                             .get(else_block)
                             .map(|b| b.params.len())
                             .unwrap_or(0);
@@ -623,10 +623,10 @@ fn eliminate_redundant_phis(m: &mut Module, f: FuncId) -> bool {
 
             if all_same {
                 func.replace_uses(param_val, first);
-                if let Some(b) = func.blocks.get_mut(&block_id) {
+                if let Some(b) = func.get_blocks_mut().get_mut(&block_id) {
                     b.params.retain(|&p| p != param_val);
                 }
-                func.values.remove(&param_val);
+                func.get_values_mut().remove(&param_val);
                 changed = true;
             }
         }

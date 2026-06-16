@@ -29,7 +29,7 @@ pub fn mem2reg(m: &mut Module, f: FuncId) -> bool {
             None => continue,
         };
 
-        let alloca_ty = match func.insts.get(&alloca_inst).map(|i| i.kind.clone()) {
+        let alloca_ty = match func.get_inst(alloca_inst).map(|i| i.kind.clone()) {
             Some(InstKind::Alloca(ty)) => ty,
             _ => continue,
         };
@@ -53,7 +53,7 @@ pub fn mem2reg(m: &mut Module, f: FuncId) -> bool {
 fn collect_promotable(func: &FunctionDef) -> Vec<ValueId> {
     let mut out = Vec::new();
 
-    for inst in func.insts.values() {
+    for inst in func.get_insts().values() {
         if !inst.kind.is_alloca() {
             continue;
         }
@@ -63,13 +63,13 @@ fn collect_promotable(func: &FunctionDef) -> Vec<ValueId> {
             None => continue,
         };
 
-        let val = match func.values.get(&result) {
+        let val = match func.get_value(result) {
             Some(v) => v,
             None => continue,
         };
 
         let promotable = val.uses.iter().all(|u| {
-            let using_inst = match func.insts.get(&u.inst) {
+            let using_inst = match func.get_inst(u.inst) {
                 Some(i) => i,
                 None => return false,
             };
@@ -123,7 +123,7 @@ fn rename(
     idom: &HashMap<BlockId, BlockId>,
     phi_blocks: &HashMap<BlockId, ValueId>,
 ) {
-    let entry = func.entry;
+    let entry = func.get_entry();
     if rpo.is_empty() {
         return;
     }
@@ -170,14 +170,14 @@ fn rename_block(
     let mut current = stack.last().copied().unwrap_or(undef);
 
     let insts: Vec<InstId> = func
-        .try_get_block(block_id)
+        .get_block(block_id)
         .map(|b| b.insts.clone())
         .unwrap_or_default();
 
     let mut to_remove: Vec<InstId> = Vec::new();
 
     for inst_id in insts {
-        let inst = match func.insts.get(&inst_id) {
+        let inst = match func.get_inst(inst_id) {
             Some(i) => i.clone(),
             None => continue,
         };
@@ -215,8 +215,7 @@ fn rename_block(
     let outgoing = stack.last().copied().unwrap_or(undef);
 
     let succs: Vec<BlockId> = func
-        .blocks
-        .get(&block_id)
+        .get_block(block_id)
         .map(|b| b.succs.clone())
         .unwrap_or_default();
 
@@ -244,17 +243,17 @@ fn rename_block(
 }
 
 fn append_edge_value(func: &mut FunctionDef, pred: BlockId, value: ValueId) {
-    let term_id = match func.blocks.get(&pred).and_then(|b| b.term) {
+    let term_id = match func.get_block(pred).and_then(|b| b.term) {
         Some(id) => id,
         None => return,
     };
 
-    if let Some(term) = func.insts.get_mut(&term_id) {
+    if let Some(term) = func.get_inst_mut(term_id) {
         term.operands.push(value);
     }
 
     func.add_use(value, term_id, {
-        let term = func.insts.get(&term_id).unwrap();
+        let term = func.get_inst(term_id).unwrap();
         (term.operands.len() - 1) as u32
     });
 }
@@ -267,13 +266,12 @@ fn store_blocks(func: &FunctionDef, alloca_val: ValueId) -> HashSet<BlockId> {
     let mut out = HashSet::new();
 
     let uses = func
-        .values
-        .get(&alloca_val)
+        .get_value(alloca_val)
         .map(|v| v.uses.clone())
         .unwrap_or_default();
 
     for u in uses {
-        let inst = match func.insts.get(&u.inst) {
+        let inst = match func.get_inst(u.inst) {
             Some(i) => i,
             None => continue,
         };

@@ -147,14 +147,13 @@ impl FunctionDef {
         }
     }
 
-    pub fn dump(&self) -> String {
+    pub fn dump(&self, m: &Module) -> String {
         let mut s = String::new();
-        let m = Module::new("__unnamed");
 
         let blocks = self.compute_rpo();
         for bid in &blocks {
-            let block = &self.blocks[bid];
-            let is_entry = self.entry == *bid;
+            let block = &self.get_block(*bid).unwrap();
+            let is_entry = self.get_entry() == *bid;
             if block.params.is_empty() || /* the entry block has no parameters of its own, only function parameters */ is_entry
             {
                 s.push_str(&format!("B{}:", bid));
@@ -162,7 +161,7 @@ impl FunctionDef {
                 let bparams = block
                     .params
                     .iter()
-                    .map(|p| format!("%{}: {}", p, self.values[p].ty))
+                    .map(|p| format!("%{}: {}", p, self.get_type_of(*p)))
                     .collect::<Vec<_>>()
                     .join(", ");
 
@@ -175,7 +174,7 @@ impl FunctionDef {
             }
 
             for inst_id in &block.insts {
-                let inst = &self.insts[inst_id];
+                let inst = self.get_inst(*inst_id).unwrap();
 
                 if let Some(res) = inst.result {
                     s.push_str(&format!("  %{} = ", res));
@@ -183,7 +182,7 @@ impl FunctionDef {
                     s.push_str("  ");
                 }
 
-                s.push_str(&self.fmt_inst(&m, inst));
+                s.push_str(&self.fmt_inst(m, inst));
                 s.push('\n');
             }
         }
@@ -225,7 +224,7 @@ impl Module {
         let params = def
             .get_params()
             .iter()
-            .map(|p| format!("%{}: {}", p, def.values[p].ty))
+            .map(|p| format!("%{}: {}", p, def.get_type_of(*p)))
             .collect::<Vec<_>>()
             .join(", ");
 
@@ -234,41 +233,13 @@ impl Module {
             func.calling_convention, func.linkage, func.name, params, func.signature.returns
         ));
 
-        let blocks = def.compute_rpo();
+        let body = def.dump(self);
 
-        for bid in &blocks {
-            let block = &def.blocks[bid];
-            let is_entry = def.entry == *bid;
-
-            if block.params.is_empty() || is_entry {
-                s.push_str(&format!("B{}:", bid));
-            } else {
-                let bparams = block
-                    .params
-                    .iter()
-                    .map(|p| format!("%{}: {}", p, def.values[p].ty))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-
-                s.push_str(&format!("B{}({}):", bid, bparams));
-            }
-
-            if is_entry {
-                s.push_str(" __entry__\n");
-            } else {
+        for line in body.lines() {
+            if line.is_empty() {
                 s.push('\n');
-            }
-
-            for inst_id in &block.insts {
-                let inst = &def.insts[inst_id];
-
-                if let Some(res) = inst.result {
-                    s.push_str(&format!("  %{} = ", res));
-                } else {
-                    s.push_str("  ");
-                }
-
-                s.push_str(&def.fmt_inst(self, inst));
+            } else {
+                s.push_str(line);
                 s.push('\n');
             }
         }
@@ -309,14 +280,14 @@ impl Module {
             ));
             s.push_str("    style=rounded;\n\n");
 
-            for (bid, block) in &def.blocks {
+            for (bid, block) in def.get_blocks() {
                 let mut label = if block.params.is_empty() {
                     format!("B{}:\\l", bid)
                 } else {
                     let params = block
                         .params
                         .iter()
-                        .map(|p| format!("%{}:{}", p, def.values[p].ty))
+                        .map(|p| format!("%{}:{}", p, def.get_type_of(*p)))
                         .collect::<Vec<_>>()
                         .join(", ");
 
@@ -324,7 +295,7 @@ impl Module {
                 };
 
                 for inst_id in &block.insts {
-                    let inst = &def.insts[inst_id];
+                    let inst = def.get_inst(*inst_id).unwrap();
 
                     if let Some(res) = inst.result {
                         label.push_str(&format!("  %{} = ", res));
@@ -341,7 +312,7 @@ impl Module {
 
             s.push('\n');
 
-            for (bid, block) in &def.blocks {
+            for (bid, block) in def.get_blocks() {
                 for succ in &block.succs {
                     s.push_str(&format!("    f{}_b{} -> f{}_b{};\n", fid, bid, fid, succ));
                 }

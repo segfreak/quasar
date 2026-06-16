@@ -16,7 +16,7 @@ name = "feardump"
 name = "fearlink"
 
 [features]
-default = ["binary-ir"]
+default = ["llvm", "inkwell/llvm22-1", "cranelift", "binary-ir"]
 serde = ["dep:serde", "target-lexicon/serde"]
 binary-ir = ["serde", "dep:bincode", "dep:zstd"]
 llvm = ["dep:inkwell"]

@@ -8,7 +8,7 @@ use fear::{binary, compiler::CompilerConfig, ssa::*, types::*};
 
 fn foo_def() -> FunctionDef {
     let mut fun = FunctionDef::new();
-    let b0 = fun.entry;
+    let b0 = fun.get_entry();
     let a0 = fun.add_param(Type::Int32);
     let a1 = fun.add_param(Type::Int32);
     let v0 = fun.make_int_const(b0, Type::Int32, 42);
@@ -24,7 +24,7 @@ fn foo_def() -> FunctionDef {
 fn bar_def(mfoo: FuncId) -> FunctionDef {
     let mut fun = FunctionDef::new();
     let _a0 = fun.add_param(Type::Int32);
-    let b0 = fun.entry;
+    let b0 = fun.get_entry();
     let v0 = fun.make_int_const(b0, Type::Int32, 42);
     let v1 = fun.make_int_const(b0, Type::Int32, 2);
     let v2 = fun.make_int_mul(b0, fun.get_type_of(v0), v0, v1);
@@ -42,7 +42,7 @@ fn bar_def(mfoo: FuncId) -> FunctionDef {
 
 fn baz_def() -> FunctionDef {
     let mut fun = FunctionDef::new();
-    let b0 = fun.entry;
+    let b0 = fun.get_entry();
     let v0 = fun.make_alloca(b0, Type::Int32);
     fun.make_alloca(b0, Type::Int32);
 
@@ -58,7 +58,7 @@ fn baz_def() -> FunctionDef {
 fn opt_def() -> FunctionDef {
     let mut fdef = FunctionDef::new();
 
-    let entry = fdef.entry;
+    let entry = fdef.get_entry();
 
     let x = fdef.add_param(Type::Int32);
 
@@ -95,7 +95,7 @@ fn opt_def() -> FunctionDef {
 
 fn fib_def(fib_id: FuncId) -> FunctionDef {
     let mut f = FunctionDef::new();
-    let entry = f.entry;
+    let entry = f.get_entry();
 
     // param n
     let n = f.add_param(Type::Int32);
@@ -136,7 +136,7 @@ fn fib_def(fib_id: FuncId) -> FunctionDef {
 // tail-recursive factorial
 fn fact_tr_def(fact_id: FuncId) -> FunctionDef {
     let mut f = FunctionDef::new();
-    let entry = f.entry;
+    let entry = f.get_entry();
 
     let n = f.add_param(Type::Int32);
     let acc = f.add_param(Type::Int32);
@@ -165,7 +165,7 @@ fn fact_tr_def(fact_id: FuncId) -> FunctionDef {
 
 fn example1_def() -> FunctionDef {
     let mut f = FunctionDef::new();
-    let entry = f.entry;
+    let entry = f.get_entry();
 
     let then_bb = f.create_block();
     let else_bb = f.create_block();
@@ -184,7 +184,7 @@ fn example1_def() -> FunctionDef {
 
 fn min_def() -> FunctionDef {
     let mut f = FunctionDef::new();
-    let entry = f.entry;
+    let entry = f.get_entry();
     let left = f.add_param(Type::Int32);
     let right = f.add_param(Type::Int32);
     let lt = f.make_int_cmp(entry, IntCmp::Lt, left, right);

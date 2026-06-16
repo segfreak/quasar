@@ -10,14 +10,14 @@ pub fn dce(m: &mut Module, f: FuncId) -> bool {
     let mut changed = false;
 
     let mut worklist: Vec<ValueId> = func
-        .values
+        .get_values()
         .iter()
         .filter(|(_, v)| v.uses.is_empty())
         .map(|(&id, _)| id)
         .collect();
 
     while let Some(v) = worklist.pop() {
-        let val = match func.values.get(&v) {
+        let val = match func.get_value(v) {
             Some(v) => v,
             None => continue,
         };
@@ -27,7 +27,7 @@ pub fn dce(m: &mut Module, f: FuncId) -> bool {
             continue;
         }
 
-        let inst = match func.insts.get(&inst_id) {
+        let inst = match func.get_inst(inst_id) {
             Some(i) => i.clone(),
             None => continue,
         };
@@ -43,7 +43,7 @@ pub fn dce(m: &mut Module, f: FuncId) -> bool {
 
         for op in ops {
             #[allow(clippy::collapsible_if)]
-            if let Some(v) = func.values.get(&op) {
+            if let Some(v) = func.get_value(op) {
                 if v.uses.is_empty() {
                     worklist.push(op);
                 }

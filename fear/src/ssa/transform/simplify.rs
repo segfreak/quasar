@@ -29,7 +29,7 @@ fn is_all_ones(func: &FunctionDef, v: ValueId) -> bool {
 }
 
 pub fn try_simplify(func: &mut FunctionDef, id: InstId) -> bool {
-    let inst = match func.insts.get(&id) {
+    let inst = match func.get_inst(id) {
         Some(i) => &i.clone(),
         None => return false,
     };
@@ -173,10 +173,9 @@ pub fn simplify(m: &mut Module, f: FuncId) -> bool {
     loop {
         let mut local_change = false;
 
-        let inst_ids: Vec<InstId> = func.insts.keys().copied().collect();
-
+        let inst_ids = func.get_inst_ids();
         for id in inst_ids {
-            if !func.insts.contains_key(&id) {
+            if !func.get_insts().contains_key(&id) {
                 continue;
             }
 

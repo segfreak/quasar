@@ -102,14 +102,14 @@ impl Module {
         let f = fun.get_definition().unwrap();
 
         // block verify
-        for (bid, block) in &f.blocks {
+        for (bid, block) in f.get_blocks() {
             if block.insts.is_empty() && block.term.is_none() {
                 return Err(VerifyError::EmptyBlock(*bid));
             }
 
             if let Some(&last) = block.insts.last() {
                 let inst = f
-                    .insts
+                    .get_insts()
                     .get(&last)
                     .ok_or(VerifyError::InvalidInstInBlock(*bid, last))?;
 
@@ -119,16 +119,16 @@ impl Module {
             }
         }
 
-        for (id, inst) in &f.insts {
+        for (id, inst) in f.get_insts() {
             for &op in &inst.operands {
-                if !f.values.contains_key(&op) {
+                if !f.get_values().contains_key(&op) {
                     return Err(VerifyError::UndefinedValueUse(*id, op));
                 }
             }
 
             if let Some(res) = inst.result {
                 let val = f
-                    .values
+                    .get_values()
                     .get(&res)
                     .ok_or(VerifyError::InvalidResultValue(*id, res))?;
 
@@ -190,7 +190,7 @@ impl Module {
 
                 InstKind::Jump(target) => {
                     let target_block = f
-                        .blocks
+                        .get_blocks()
                         .get(&target)
                         .ok_or(VerifyError::InvalidJumpTarget(target))?;
 
@@ -221,12 +221,12 @@ impl Module {
                     let ops = f.get_jumpif_params(inst).unwrap();
 
                     let then_target = f
-                        .blocks
+                        .get_blocks()
                         .get(&then_block)
                         .ok_or(VerifyError::InvalidJumpTarget(then_block))?;
 
                     let else_target = f
-                        .blocks
+                        .get_blocks()
                         .get(&else_block)
                         .ok_or(VerifyError::InvalidJumpTarget(else_block))?;
 
@@ -334,17 +334,17 @@ impl Module {
         }
 
         // verify values
-        for (vid, val) in &f.values {
+        for (vid, val) in f.get_values() {
             #[allow(clippy::collapsible_if)]
             if val.def != InstId::MAX {
-                if !f.insts.contains_key(&val.def) {
+                if !f.get_insts().contains_key(&val.def) {
                     return Err(VerifyError::InvalidValueDef(*vid, val.def));
                 }
             }
 
             for u in &val.uses {
                 let inst = f
-                    .insts
+                    .get_insts()
                     .get(&u.inst)
                     .ok_or(VerifyError::InvalidUse(*vid, u.inst))?;
 
@@ -359,13 +359,13 @@ impl Module {
         }
 
         // verify cfg
-        for (bid, block) in &f.blocks {
+        for (bid, block) in f.get_blocks() {
             for &inst_id in &block.insts {
-                let inst = &f.insts[&inst_id];
+                let inst = f.get_inst(inst_id).unwrap();
 
                 match &inst.kind {
                     InstKind::Jump(target) => {
-                        if !f.blocks.contains_key(target) {
+                        if !f.get_blocks().contains_key(target) {
                             return Err(VerifyError::InvalidJumpTarget(*target));
                         }
 
@@ -378,7 +378,7 @@ impl Module {
                         then_block,
                         else_block,
                     } => {
-                        if !f.blocks.contains_key(then_block) {
+                        if !f.get_blocks().contains_key(then_block) {
                             return Err(VerifyError::InvalidJumpTarget(*then_block));
                         }
 
@@ -386,7 +386,7 @@ impl Module {
                             return Err(VerifyError::CFGMissingEdge(*bid, *then_block));
                         }
 
-                        if !f.blocks.contains_key(else_block) {
+                        if !f.get_blocks().contains_key(else_block) {
                             return Err(VerifyError::InvalidJumpTarget(*else_block));
                         }
 
@@ -407,7 +407,7 @@ impl Module {
 
             // check preds/succs consistency
             for succ in &block.succs {
-                if !f.blocks.contains_key(succ) {
+                if !f.get_blocks().contains_key(succ) {
                     return Err(VerifyError::InvalidSuccessor(*bid, *succ));
                 }
             }

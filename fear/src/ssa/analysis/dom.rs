@@ -62,7 +62,7 @@ pub fn compute_idom(func: &FunctionDef) -> HashMap<BlockId, BlockId> {
         rpo_index.insert(block, idx);
     }
 
-    let start = func.entry;
+    let start = func.get_entry();
 
     let mut idom = HashMap::<BlockId, BlockId>::new();
     idom.insert(start, start);
@@ -73,7 +73,7 @@ pub fn compute_idom(func: &FunctionDef) -> HashMap<BlockId, BlockId> {
         changed = false;
 
         for &block in rpo.iter().skip(1) {
-            let preds = &func.blocks[&block].preds;
+            let preds = &func.get_block(block).unwrap().preds;
 
             let mut new_idom = None;
 
@@ -150,11 +150,11 @@ pub fn compute_df(
 ) -> HashMap<BlockId, HashSet<BlockId>> {
     let mut df = HashMap::<BlockId, HashSet<BlockId>>::new();
 
-    for &block in func.blocks.keys() {
+    for block in func.get_block_ids() {
         df.insert(block, HashSet::new());
     }
 
-    for (&block, bb) in &func.blocks {
+    for (&block, bb) in func.get_blocks() {
         if bb.preds.len() < 2 {
             continue;
         }

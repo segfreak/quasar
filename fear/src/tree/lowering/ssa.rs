@@ -32,7 +32,7 @@ impl SsaRaiser {
             let block = &src.blocks[id];
             let is_entry = src.get_entry() == *id;
             let did = if is_entry {
-                dst.entry
+                dst.get_entry()
             } else {
                 dst.create_block()
             };

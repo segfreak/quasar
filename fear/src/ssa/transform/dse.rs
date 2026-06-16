@@ -14,12 +14,8 @@ fn definitely_not_alias(func: &FunctionDef, a: ValueId, b: ValueId) -> bool {
     let inst_id_a = func.get_value_def(a);
     let inst_id_b = func.get_value_def(b);
 
-    let kind_a = inst_id_a
-        .and_then(|id| func.insts.get(&id))
-        .map(|i| &i.kind);
-    let kind_b = inst_id_b
-        .and_then(|id| func.insts.get(&id))
-        .map(|i| &i.kind);
+    let kind_a = inst_id_a.and_then(|id| func.get_inst(id)).map(|i| &i.kind);
+    let kind_b = inst_id_b.and_then(|id| func.get_inst(id)).map(|i| &i.kind);
 
     match (kind_a, kind_b) {
         (
@@ -48,11 +44,11 @@ fn elementptr_not_alias(func: &FunctionDef, a: ValueId, b: ValueId) -> bool {
         None => return false,
     };
 
-    let inst_a = match func.insts.get(&id_a) {
+    let inst_a = match func.get_inst(id_a) {
         Some(i) => i,
         None => return false,
     };
-    let inst_b = match func.insts.get(&id_b) {
+    let inst_b = match func.get_inst(id_b) {
         Some(i) => i,
         None => return false,
     };
@@ -123,7 +119,7 @@ fn global_dse(m: &mut Module, f: FuncId) -> bool {
 
         live_in.insert(bid, new_live_in);
 
-        if let Some(block) = func_ro.blocks.get(&bid) {
+        if let Some(block) = func_ro.get_block(bid) {
             for &pred in &block.preds {
                 if !worklist.contains(&pred) {
                     worklist.push(pred);
@@ -136,14 +132,13 @@ fn global_dse(m: &mut Module, f: FuncId) -> bool {
     let mut changed = false;
 
     for &block_id in &blocks {
-        let insts: Vec<InstId> = match func.blocks.get(&block_id) {
+        let insts: Vec<InstId> = match func.get_block(block_id) {
             Some(b) => b.insts.clone(),
             None => continue,
         };
 
         let succs: Vec<BlockId> = func
-            .blocks
-            .get(&block_id)
+            .get_block(block_id)
             .map(|b| b.succs.clone())
             .unwrap_or_default();
 
@@ -158,7 +153,7 @@ fn global_dse(m: &mut Module, f: FuncId) -> bool {
         let mut to_remove: Vec<InstId> = Vec::new();
 
         for &inst_id in insts.iter().rev() {
-            let inst = match func.insts.get(&inst_id) {
+            let inst = match func.get_inst(inst_id) {
                 Some(i) => i.clone(),
                 None => continue,
             };
@@ -203,8 +198,7 @@ fn compute_live_in(
     live_in: &HashMap<BlockId, Option<HashSet<ValueId>>>,
 ) -> Option<HashSet<ValueId>> {
     let succs = func
-        .blocks
-        .get(&block_id)
+        .get_block(block_id)
         .map(|b| b.succs.as_slice())
         .unwrap_or(&[]);
 
@@ -217,13 +211,13 @@ fn compute_live_in(
     }
 
     // walk the block backwards
-    let insts = match func.blocks.get(&block_id) {
+    let insts = match func.get_block(block_id) {
         Some(b) => b.insts.clone(),
         None => return live,
     };
 
     for &inst_id in insts.iter().rev() {
-        let inst = match func.insts.get(&inst_id) {
+        let inst = match func.get_inst(inst_id) {
             Some(i) => i,
             None => continue,
         };

@@ -12,8 +12,8 @@ pub fn tre(module: &mut Module, fid: FuncId) -> bool {
             None => return false,
         };
         (
-            def.entry,
-            def.blocks[&def.entry].params.clone(),
+            def.get_entry(),
+            def.get_entry_block().params.clone(),
             func.signature.returns,
         )
     };
@@ -26,13 +26,13 @@ pub fn tre(module: &mut Module, fid: FuncId) -> bool {
 
         let mut found = Vec::new();
 
-        for (&bid, block) in &def.blocks {
+        for (&bid, block) in def.get_blocks() {
             let term_id = match block.term {
                 Some(t) => t,
                 None => continue,
             };
 
-            let term = &def.insts[&term_id];
+            let term = def.get_inst(term_id).unwrap();
             if !matches!(term.kind, InstKind::Ret) {
                 continue;
             }
@@ -44,8 +44,7 @@ pub fn tre(module: &mut Module, fid: FuncId) -> bool {
                 None => continue,
             };
 
-            let call_inst = &def.insts[&call_id];
-
+            let call_inst = def.get_inst(call_id).unwrap();
             if !matches!(call_inst.kind, InstKind::Call(callee) if callee == fid) {
                 continue;
             }
@@ -92,24 +91,24 @@ pub fn tre(module: &mut Module, fid: FuncId) -> bool {
         def.replace_uses(old_param, new_param);
     }
 
-    let entry_insts: Vec<InstId> = def.blocks[&entry_block].insts.clone();
-    let entry_term = def.blocks[&entry_block].term;
+    let entry_insts: Vec<InstId> = def.get_entry_block().insts.clone();
+    let entry_term = def.get_entry_block().term;
 
     for &inst_id in &entry_insts {
-        def.insts.get_mut(&inst_id).unwrap().parent = loop_header;
+        def.get_inst_mut(inst_id).unwrap().parent = loop_header;
     }
-    def.blocks.get_mut(&loop_header).unwrap().insts = entry_insts;
-    def.blocks.get_mut(&entry_block).unwrap().insts = Vec::new();
+    def.get_block_mut(loop_header).unwrap().insts = entry_insts;
+    def.get_block_mut(entry_block).unwrap().insts = Vec::new();
 
-    def.blocks.get_mut(&loop_header).unwrap().term = entry_term;
-    def.blocks.get_mut(&entry_block).unwrap().term = None;
+    def.get_block_mut(loop_header).unwrap().term = entry_term;
+    def.get_block_mut(entry_block).unwrap().term = None;
 
-    let entry_succs = def.blocks[&entry_block].succs.clone();
-    def.blocks.get_mut(&loop_header).unwrap().succs = entry_succs.clone();
-    def.blocks.get_mut(&entry_block).unwrap().succs = vec![loop_header];
+    let entry_succs = def.get_entry_block().succs.clone();
+    def.get_block_mut(loop_header).unwrap().succs = entry_succs.clone();
+    def.get_block_mut(entry_block).unwrap().succs = vec![loop_header];
 
     for succ in &entry_succs {
-        let preds = &mut def.blocks.get_mut(succ).unwrap().preds;
+        let preds = &mut def.get_block_mut(*succ).unwrap().preds;
         for p in preds.iter_mut() {
             if *p == entry_block {
                 *p = loop_header;
@@ -117,13 +116,13 @@ pub fn tre(module: &mut Module, fid: FuncId) -> bool {
         }
     }
 
-    def.blocks.get_mut(&loop_header).unwrap().preds = vec![entry_block];
+    def.get_block_mut(loop_header).unwrap().preds = vec![entry_block];
 
-    let entry_param_ids = def.blocks[&entry_block].params.clone();
+    let entry_param_ids = def.get_entry_block().params.clone();
     def.make_jump(entry_block, loop_header, entry_param_ids);
 
     for (call_id, term_id, bid) in candidates {
-        let call_args = def.insts[&call_id].operands.clone();
+        let call_args = def.get_inst(call_id).unwrap().operands.clone();
 
         def.remove_inst(call_id);
 
@@ -137,7 +136,7 @@ pub fn tre(module: &mut Module, fid: FuncId) -> bool {
         def.replace_inst(term_id, new_term);
 
         {
-            let block = def.blocks.get_mut(&bid).unwrap();
+            let block = def.get_block_mut(bid).unwrap();
             block.term = Some(term_id);
 
             if !block.succs.contains(&loop_header) {
@@ -146,7 +145,7 @@ pub fn tre(module: &mut Module, fid: FuncId) -> bool {
         }
 
         {
-            let header = def.blocks.get_mut(&loop_header).unwrap();
+            let header = def.get_block_mut(loop_header).unwrap();
             if !header.preds.contains(&bid) {
                 header.preds.push(bid);
             }

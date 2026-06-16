@@ -23,22 +23,13 @@ pub fn constfold(m: &mut Module, f: FuncId) -> bool {
 
     let mut changed = false;
 
-    let insts: Vec<InstId> = func.insts.keys().cloned().collect();
+    let inst_ids = func.get_inst_ids();
+    for id in inst_ids {
+        let inst = match func.get_inst(id).cloned() {
+            Some(i) => i,
+            None => continue,
+        };
 
-    for id in insts {
-        if !func.insts.contains_key(&id) {
-            continue;
-        }
-
-        let inst = func.insts[&id].clone();
-        // let result = match inst.result {
-        //     Some(v) => v,
-        //     None => continue,
-        // };
-
-        // let block = inst.parent;
-
-        // Try to read operands as constants
         let c: Vec<Option<i64>> = inst
             .operands
             .iter()
@@ -147,7 +138,7 @@ pub fn constfold(m: &mut Module, f: FuncId) -> bool {
 
         if let Some(val) = folded {
             func.remove_inst_uses(id);
-            let inst = func.insts.get_mut(&id).unwrap();
+            let inst = func.get_inst_mut(id).unwrap();
 
             // 2. mutate instruction
             inst.kind = InstKind::IConst(val);

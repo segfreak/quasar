@@ -160,7 +160,7 @@ impl Linker {
 }
 
 fn remap_function_def(mut def: FunctionDef, id_remap: &HashMap<FuncId, FuncId>) -> FunctionDef {
-    for inst in def.insts.values_mut() {
+    for inst in def.get_insts_mut().values_mut() {
         #[allow(clippy::collapsible_if)]
         if let InstKind::Call(ref mut fid) = inst.kind {
             if let Some(&new_id) = id_remap.get(fid) {

@@ -31,8 +31,8 @@ impl TreeSsaRaiser {
         let rpo = src.compute_rpo();
 
         for &bid in &rpo {
-            let block = &src.blocks[&bid];
-            let is_entry = bid == src.entry;
+            let block = src.get_block(bid).unwrap();
+            let is_entry = bid == src.get_entry();
             let dst_bid = if is_entry {
                 dst.get_entry()
             } else {
@@ -40,7 +40,7 @@ impl TreeSsaRaiser {
             };
             self.block_map.insert(bid, dst_bid);
             for &param in &block.params {
-                let ty = src.values[&param].ty;
+                let ty = src.get_type_of(param);
                 let var_expr = dst.add_block_param(dst_bid, ty);
                 if let ExprKind::Var(v) = &var_expr.kind {
                     self.value_map.insert(param, *v);
@@ -55,10 +55,10 @@ impl TreeSsaRaiser {
 
     fn raise_block(&mut self, bid: ssa::BlockId, src: &ssa::FunctionDef, dst: &mut FunctionDef) {
         let dst_bid = self.block_map[&bid];
-        let block = &src.blocks[&bid];
+        let block = src.get_block(bid).unwrap();
 
         for &iid in &block.insts {
-            let inst = &src.insts[&iid];
+            let inst = &src.get_inst(iid).unwrap();
             if inst.kind.is_terminator() {
                 continue;
             }
@@ -72,7 +72,7 @@ impl TreeSsaRaiser {
         }
 
         if let Some(term_id) = block.term {
-            let inst = &src.insts[&term_id];
+            let inst = &src.get_inst(term_id).unwrap();
             self.raise_terminator(inst, src, dst, dst_bid);
         }
     }

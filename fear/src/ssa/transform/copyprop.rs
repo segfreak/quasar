@@ -9,10 +9,9 @@ pub fn copyprop(m: &mut Module, f: FuncId) -> bool {
 
     let mut changed = false;
 
-    let insts: Vec<InstId> = func.insts.keys().copied().collect();
-
-    for id in insts {
-        let inst = match func.insts.get(&id).cloned() {
+    let inst_ids = func.get_inst_ids();
+    for id in inst_ids {
+        let inst = match func.get_inst(id).cloned() {
             Some(i) => i,
             None => continue,
         };
@@ -37,10 +36,7 @@ pub fn copyprop(m: &mut Module, f: FuncId) -> bool {
             continue;
         }
 
-        let uses = match func.values.get(&dst) {
-            Some(v) => v.uses.clone(),
-            None => continue,
-        };
+        let uses = func.get_uses(dst).to_vec();
 
         if uses.is_empty() {
             func.remove_inst(id);
@@ -49,16 +45,14 @@ pub fn copyprop(m: &mut Module, f: FuncId) -> bool {
         }
 
         for u in uses {
-            if let Some(user_inst) = func.insts.get_mut(&u.inst) {
+            if let Some(user_inst) = func.get_inst_mut(u.inst) {
                 user_inst.operands[u.index as usize] = src;
             }
 
             func.add_use(src, u.inst, u.index);
         }
 
-        if let Some(v) = func.values.get_mut(&dst) {
-            v.uses.clear();
-        }
+        func.clear_uses(dst);
 
         func.remove_inst(id);
         changed = true;

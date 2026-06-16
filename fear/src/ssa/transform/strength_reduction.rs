@@ -26,7 +26,7 @@ fn normalize_commutative(a: ValueId, b: ValueId, func: &FunctionDef) -> (ValueId
 }
 
 fn try_reduce_inst(func: &mut FunctionDef, id: InstId) -> bool {
-    let inst = match func.insts.get(&id).cloned() {
+    let inst = match func.get_inst(id).cloned() {
         Some(i) => i,
         None => return false,
     };
@@ -79,10 +79,9 @@ pub fn strength_reduction(m: &mut Module, f: FuncId) -> bool {
 
     let mut changed = false;
 
-    let inst_ids: Vec<InstId> = func.insts.keys().copied().collect();
-
+    let inst_ids = func.get_inst_ids();
     for id in inst_ids {
-        if !func.insts.contains_key(&id) {
+        if !func.get_insts().contains_key(&id) {
             continue;
         }
 

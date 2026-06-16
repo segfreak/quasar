@@ -26,14 +26,13 @@ pub fn cse(m: &mut Module, f: FuncId) -> bool {
     let mut changed = false;
 
     let mut table: HashMap<(BlockId, InstKey), ValueId> = HashMap::new();
-    let insts: Vec<InstId> = func.insts.keys().cloned().collect();
 
-    for id in insts {
-        if !func.insts.contains_key(&id) {
-            continue;
-        }
-
-        let inst = func.insts[&id].clone();
+    let inst_ids = func.get_inst_ids();
+    for id in inst_ids {
+        let inst = match func.get_inst(id).cloned() {
+            Some(i) => i,
+            None => continue,
+        };
 
         let result = match inst.result {
             Some(v) => v,

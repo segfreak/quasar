@@ -10,11 +10,10 @@ pub fn tcf(m: &mut Module, f: FuncId) -> bool {
     let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
     let mut changed = false;
 
-    let inst_ids: Vec<InstId> = func.insts.keys().cloned().collect();
-
-    for inst_id in inst_ids {
-        let inst = match func.insts.get(&inst_id) {
-            Some(i) => i.clone(),
+    let inst_ids = func.get_inst_ids();
+    for id in inst_ids {
+        let inst = match func.get_inst(id).cloned() {
+            Some(i) => i,
             None => continue,
         };
 
@@ -46,7 +45,7 @@ pub fn tcf(m: &mut Module, f: FuncId) -> bool {
             let parent = inst.parent;
             let new_val = func.make_int_const(parent, Type::Int1, val);
             func.replace_uses(result, new_val);
-            func.remove_inst(inst_id);
+            func.remove_inst(id);
             changed = true;
         }
     }

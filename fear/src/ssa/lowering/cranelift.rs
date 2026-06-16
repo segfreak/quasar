@@ -187,8 +187,8 @@ impl CraneliftLowerer {
         let mut values: HashMap<ValueId, cranelift::prelude::Value> = HashMap::new();
         let mut blocks: HashMap<BlockId, cranelift::prelude::Block> = HashMap::new();
 
-        let entry = def.entry;
-        for &bid in def.blocks.keys() {
+        let entry = def.get_entry();
+        for bid in def.get_block_ids() {
             let cl_block = fx.create_block();
             blocks.insert(bid, cl_block);
         }
@@ -199,14 +199,14 @@ impl CraneliftLowerer {
             fx.switch_to_block(entry_block);
             fx.seal_block(entry_block);
 
-            let entry_ir = &def.blocks[&entry];
+            let entry_ir = def.get_block(entry).unwrap();
             for (i, &param_val) in entry_ir.params.iter().enumerate() {
                 let cl_val = fx.block_params(entry_block)[i];
                 values.insert(param_val, cl_val);
             }
         }
 
-        for (&bid, block) in &def.blocks {
+        for (&bid, block) in def.get_blocks() {
             if bid == entry {
                 continue;
             }
@@ -225,9 +225,9 @@ impl CraneliftLowerer {
                 fx.switch_to_block(blocks[&bid]);
             }
 
-            let block = &def.blocks[&bid];
+            let block = def.get_block(bid).unwrap();
             for &inst_id in &block.insts {
-                let inst = &def.insts[&inst_id];
+                let inst = def.get_inst(inst_id).unwrap();
                 compile_inst(
                     def,
                     inst,
@@ -240,7 +240,7 @@ impl CraneliftLowerer {
             }
         }
 
-        for &bid in def.blocks.keys() {
+        for bid in def.get_block_ids() {
             if bid != entry {
                 fx.seal_block(blocks[&bid]);
             }

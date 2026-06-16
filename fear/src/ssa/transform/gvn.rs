@@ -48,7 +48,7 @@ impl GvnCtx {
             return vn;
         }
 
-        let val = match func.values.get(&v) {
+        let val = match func.get_value(v) {
             Some(v) => v,
             None => {
                 let vn = self.fresh_vn();
@@ -60,7 +60,7 @@ impl GvnCtx {
         let key = if val.def == InstId::MAX {
             ValueKey::Param(v)
         } else {
-            match func.insts.get(&val.def).map(|i| &i.kind) {
+            match func.get_inst(val.def).map(|i| &i.kind) {
                 Some(InstKind::IConst(x)) => ValueKey::IConst(*x, val.ty),
                 Some(InstKind::FConst(x)) => ValueKey::FConst(*x, val.ty),
                 _ => {
@@ -159,13 +159,13 @@ fn collect_gvn(
 ) {
     let scope_start = scope_keys.len();
 
-    let insts = match func.blocks.get(&block) {
+    let insts = match func.get_block(block) {
         Some(b) => b.insts.clone(),
         None => return,
     };
 
     for inst_id in insts {
-        let inst = match func.insts.get(&inst_id) {
+        let inst = match func.get_inst(inst_id) {
             Some(i) => i.clone(),
             None => continue,
         };
@@ -251,7 +251,7 @@ pub fn gvn(module: &mut Module, f: FuncId) -> bool {
 
     let dom = Dominance::build(func);
     let dom_children = build_dom_children(&dom);
-    let entry = func.entry;
+    let entry = func.get_entry();
 
     let mut ctx = GvnCtx::new();
     let mut repl: HashMap<ValueId, ValueId> = HashMap::new();
