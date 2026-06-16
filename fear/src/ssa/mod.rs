@@ -1,4 +1,5 @@
 pub mod analysis;
+pub mod builder;
 pub mod dump;
 pub mod ir;
 pub mod lowering;
