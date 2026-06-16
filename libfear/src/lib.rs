@@ -60,8 +60,8 @@ unsafe fn file_from_c_stream(stream: *mut libc::FILE) -> std::fs::File {
     #[cfg(windows)]
     {
         use std::os::windows::io::FromRawHandle;
-        let fd = libc::_fileno(stream);
-        let handle = libc::_get_osfhandle(fd);
+        let fd = libc::fileno(stream);
+        let handle = libc::get_osfhandle(fd);
         std::fs::File::from_raw_handle(handle as *mut std::ffi::c_void)
     }
 }
