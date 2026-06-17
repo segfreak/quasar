@@ -106,23 +106,17 @@ impl PassManager {
 
             if opts.level >= OptLevel::Default {
                 run_pass!(constfold::constfold, PassKind::ConstantFolding);
-                run_pass!(
-                    simplify::simplify,
-                    PassKind::Simplify
-                );
-                run_pass!(
-                    strength_reduction::strength_reduction,
-                    PassKind::StrengthReduction
-                );
+                run_pass!(simplify::simplify, PassKind::Simplify);
+                run_pass!(strength_reduction::strength_reduction, PassKind::StrengthReduction);
                 run_pass!(copyprop::copyprop, PassKind::CopyPropagation);
                 run_pass!(gvn::gvn, PassKind::GlobalValueNumbering);
                 run_pass!(cse::cse, PassKind::CommonSubexpressionElimination);
-                run_pass!(dse::dse, PassKind::DeadStoreElimination);
-                run_pass!(tre::tre, PassKind::TailRecursionElimination);
-                run_pass!(dce::dce, PassKind::DeadCodeElimination);
-                run_pass!(mem2reg::mem2reg, PassKind::Mem2Reg);
-                run_pass!(tcf::tcf, PassKind::TrivialComparesFolding);
                 run_pass!(cfg_simplify::cfg_simplify, PassKind::CFGSimplify);
+                run_pass!(tcf::tcf, PassKind::TrivialComparesFolding);
+                run_pass!(dse::dse, PassKind::DeadStoreElimination);
+                run_pass!(dce::dce, PassKind::DeadCodeElimination);
+                run_pass!(tre::tre, PassKind::TailRecursionElimination);
+                run_pass!(mem2reg::mem2reg, PassKind::Mem2Reg);
             }
 
 

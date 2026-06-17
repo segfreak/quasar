@@ -40,11 +40,13 @@ impl GvnCtx {
     fn fresh_vn(&mut self) -> VN {
         let vn = VN(self.next_vn);
         self.next_vn += 1;
+        log::trace!("fresh_vn -> {:?}", vn);
         vn
     }
 
     fn vn_of(&mut self, v: ValueId, func: &FunctionDef) -> VN {
         if let Some(&vn) = self.value_vn.get(&v) {
+            log::trace!("vn_of %{} -> cached {:?}", v, vn);
             return vn;
         }
 

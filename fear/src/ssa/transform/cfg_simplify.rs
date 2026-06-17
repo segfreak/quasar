@@ -8,9 +8,12 @@ pub fn cfg_simplify(m: &mut Module, f: FuncId) -> bool {
     loop {
         let mut changed = false;
         changed |= fold_constant_branches(m, f);
+        changed |= fold_identical_branches(m, f);
         changed |= eliminate_dead_blocks(m, f);
         changed |= eliminate_forwarding_blocks(m, f);
         changed |= merge_blocks(m, f);
+        changed |= merge_identical_blocks(m, f);
+        changed |= simplify_redundant_branches(m, f);
         changed |= thread_jumps(m, f);
         changed |= eliminate_redundant_phis(m, f);
 
@@ -94,6 +97,70 @@ fn fold_constant_branches(m: &mut Module, f: FuncId) -> bool {
 
         if let Some(b) = func.get_blocks_mut().get_mut(&block_id) {
             b.term = Some(term_id);
+        }
+
+        changed = true;
+    }
+
+    changed
+}
+
+fn simplify_redundant_branches(m: &mut Module, f: FuncId) -> bool {
+    let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
+
+    let block_ids: Vec<BlockId> = func.get_blocks().keys().copied().collect();
+    let mut changed = false;
+
+    for block_id in block_ids {
+        let term_id = match func.get_blocks().get(&block_id).and_then(|b| b.term) {
+            Some(t) => t,
+            None => continue,
+        };
+
+        let term = match func.get_insts().get(&term_id).cloned() {
+            Some(i) => i,
+            None => continue,
+        };
+
+        let (then_block, else_block) = match &term.kind {
+            InstKind::JumpIf {
+                then_block,
+                else_block,
+            } => (*then_block, *else_block),
+            _ => continue,
+        };
+
+        if then_block != else_block {
+            continue;
+        }
+
+        let param_count = func
+            .get_blocks()
+            .get(&then_block)
+            .map(|b| b.params.len())
+            .unwrap_or(0);
+
+        let then_args: Vec<ValueId> = term.operands[1..1 + param_count].to_vec();
+
+        let else_args: Vec<ValueId> = term.operands[1 + param_count..1 + param_count * 2].to_vec();
+
+        if then_args != else_args {
+            continue;
+        }
+
+        let new_term = Inst {
+            kind: InstKind::Jump(then_block),
+            operands: then_args,
+            parent: block_id,
+            result: None,
+        };
+
+        func.replace_inst(term_id, new_term);
+
+        if let Some(block) = func.get_blocks_mut().get_mut(&block_id) {
+            block.succs.clear();
+            block.succs.push(then_block);
+            block.term = Some(term_id);
         }
 
         changed = true;
@@ -633,4 +700,228 @@ fn eliminate_redundant_phis(m: &mut Module, f: FuncId) -> bool {
     }
 
     changed
+}
+
+fn merge_identical_blocks(m: &mut Module, f: FuncId) -> bool {
+    let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
+
+    let blocks: Vec<BlockId> = func.get_blocks().keys().copied().collect();
+
+    for i in 0..blocks.len() {
+        for j in (i + 1)..blocks.len() {
+            let a = blocks[i];
+            let b = blocks[j];
+
+            if a == func.get_entry() || b == func.get_entry() {
+                continue;
+            }
+
+            if !blocks_equal(func, a, b) {
+                continue;
+            }
+
+            redirect_all_preds(func, b, a);
+            func.remove_block(b);
+
+            return true;
+        }
+    }
+
+    false
+}
+
+fn blocks_equal(func: &FunctionDef, a: BlockId, b: BlockId) -> bool {
+    let ba = match func.get_block(a) {
+        Some(x) => x,
+        None => return false,
+    };
+
+    let bb = match func.get_block(b) {
+        Some(x) => x,
+        None => return false,
+    };
+
+    if ba.params.len() != bb.params.len() {
+        return false;
+    }
+
+    if ba.insts.len() != bb.insts.len() {
+        return false;
+    }
+
+    for (&ia, &ib) in ba.insts.iter().zip(bb.insts.iter()) {
+        let ia = match func.get_inst(ia) {
+            Some(x) => x,
+            None => return false,
+        };
+
+        let ib = match func.get_inst(ib) {
+            Some(x) => x,
+            None => return false,
+        };
+
+        if ia.kind != ib.kind {
+            return false;
+        }
+
+        if ia.operands != ib.operands {
+            return false;
+        }
+    }
+
+    true
+}
+
+fn redirect_all_preds(func: &mut FunctionDef, from: BlockId, to: BlockId) {
+    let preds = func
+        .get_block(from)
+        .map(|b| b.preds.clone())
+        .unwrap_or_default();
+
+    for pred in preds {
+        redirect_successor(func, pred, from, to, &[]);
+    }
+}
+
+pub fn fold_identical_branches(m: &mut Module, f: FuncId) -> bool {
+    let func = m.get_function_mut(f).unwrap().get_definition_mut().unwrap();
+
+    let mut changed = false;
+    let blocks: Vec<BlockId> = func.get_block_ids();
+
+    'outer: for entry in blocks {
+        let term_id = match func.get_block(entry).and_then(|b| b.term) {
+            Some(t) => t,
+            None => continue,
+        };
+
+        let (then_b, else_b) = match func.get_inst(term_id).map(|i| &i.kind) {
+            Some(InstKind::JumpIf {
+                then_block,
+                else_block,
+            }) => (*then_block, *else_block),
+            _ => continue,
+        };
+
+        if then_b == else_b {
+            let b = func.get_block_mut(entry).unwrap();
+            b.insts.retain(|&i| i != term_id);
+            b.term = None;
+            b.succs.clear();
+            func.get_block_mut(then_b)
+                .unwrap()
+                .preds
+                .retain(|&p| p != entry);
+            func.get_insts_mut().remove(&term_id);
+            func.make_jump(entry, then_b, vec![]);
+            changed = true;
+            continue;
+        }
+
+        for &blk in &[then_b, else_b] {
+            let block = match func.get_block(blk) {
+                Some(b) => b,
+                None => continue 'outer,
+            };
+            if block.params.is_empty() {
+                continue 'outer;
+            }
+            if block.preds.len() != 1 || block.preds[0] != entry {
+                continue 'outer;
+            }
+        }
+
+        let then_insts = non_term_insts(func, then_b);
+        let else_insts = non_term_insts(func, else_b);
+
+        if then_insts.len() != else_insts.len() {
+            continue;
+        }
+
+        let mut result_map: Vec<(ValueId, ValueId)> = Vec::new(); // (then_res, else_res)
+
+        for (&tid, &eid) in then_insts.iter().zip(else_insts.iter()) {
+            let ti = func.get_inst(tid).unwrap().clone();
+            let ei = func.get_inst(eid).unwrap().clone();
+
+            if ti.kind != ei.kind {
+                continue 'outer;
+            }
+
+            if ti.operands.len() != ei.operands.len() {
+                continue 'outer;
+            }
+
+            for (&t_op, &e_op) in ti.operands.iter().zip(ei.operands.iter()) {
+                if !ops_equal(t_op, e_op, &result_map) {
+                    continue 'outer;
+                }
+            }
+
+            match (ti.result, ei.result) {
+                (Some(tr), Some(er)) => result_map.push((tr, er)),
+                (None, None) => {}
+                _ => continue 'outer,
+            }
+        }
+
+        let then_term_id = func.get_block(then_b).unwrap().term.unwrap();
+        let else_term_id = func.get_block(else_b).unwrap().term.unwrap();
+
+        let tt = func.get_inst(then_term_id).unwrap().clone();
+        let et = func.get_inst(else_term_id).unwrap().clone();
+
+        if tt.kind != et.kind {
+            continue;
+        }
+        if tt.operands.len() != et.operands.len() {
+            continue;
+        }
+        for (&t_op, &e_op) in tt.operands.iter().zip(et.operands.iter()) {
+            if !ops_equal(t_op, e_op, &result_map) {
+                continue 'outer;
+            }
+        }
+
+        {
+            let b = func.get_block_mut(entry).unwrap();
+            b.insts.retain(|&i| i != term_id);
+            b.term = None;
+            b.succs.clear();
+        }
+        func.remove_inst_uses(term_id);
+        func.get_insts_mut().remove(&term_id);
+
+        func.get_block_mut(else_b)
+            .unwrap()
+            .preds
+            .retain(|&p| p != entry);
+        func.make_jump(entry, then_b, vec![]);
+        func.remove_block(else_b);
+
+        changed = true;
+    }
+
+    changed
+}
+
+fn non_term_insts(func: &FunctionDef, b: BlockId) -> Vec<InstId> {
+    func.get_block(b)
+        .unwrap()
+        .insts
+        .iter()
+        .copied()
+        .filter(|&i| {
+            func.get_inst(i)
+                .map(|inst| !inst.kind.is_terminator())
+                .unwrap_or(false)
+        })
+        .collect()
+}
+
+fn ops_equal(t_op: ValueId, e_op: ValueId, result_map: &[(ValueId, ValueId)]) -> bool {
+    if t_op == e_op {
+        return true;
+    }
+    result_map.iter().any(|&(tr, er)| tr == t_op && er == e_op)
 }
