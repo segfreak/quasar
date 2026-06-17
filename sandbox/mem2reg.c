@@ -1,11 +1,14 @@
+#include <getopt.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #include "fear.h"
 
-int main(void)
+void emit(int do_opt, const char* triple)
 {
     fearInitLogging();
+
+    printf("triple: %s\n", triple);
 
     FearModule*   m        = fearModuleCreate("mem2reg");
 
@@ -100,17 +103,19 @@ int main(void)
 
     fearDefinitionDispose(f);
 
-    printf("Before optimization:\n");
+    printf("noopt\n");
     char* before = fearDumpToString(m);
     printf("%s\n", before);
     fearStringDispose(before);
 
-    fearModuleOptimize(m, FearOptFull);
-
-    printf("After optimization:\n");
-    char* after = fearDumpToString(m);
-    printf("%s\n", after);
-    fearStringDispose(after);
+    if (do_opt)
+    {
+        fearModuleOptimize(m, FearOptFull);
+        printf("opt:\n");
+        char* after = fearDumpToString(m);
+        printf("%s\n", after);
+        fearStringDispose(after);
+    }
 
     FILE* out = fopen("mem2reg.bin", "wb");
     fearBinaryDumpToFile(m, out);
@@ -122,12 +127,43 @@ int main(void)
     {
         fprintf(stderr, "=> mem2reg.o\n");
         FILE* exf_obj = fopen("mem2reg.o", "w");
-        fearEmitObject(m, backend, FearOptFull, 1, /* host */ NULL,
-                       /* generic */ NULL, exf_obj);
+        fearEmitObject(m, backend, FearOptFull, 1, triple, NULL, exf_obj);
         fclose(exf_obj);
     }
 
     fearModuleDispose(m);
+}
 
-    return 0;
+int main(int argc, char** argv)
+{
+    int                  opt;
+
+    int                  do_opt         = 0;
+    char*                triple         = NULL;
+
+    static struct option long_options[] = {
+        {"triple", required_argument, 0, 't'},
+        {   "opt",       no_argument, 0, 'o'},
+        {       0,                 0, 0,   0}
+    };
+
+    while ((opt = getopt_long(argc, argv, "t:o", long_options, NULL)) !=
+           -1)
+    {
+        switch (opt)
+        {
+            case 't':
+                triple = optarg;
+                break;
+            case 'o':
+                do_opt = 1;
+                break;
+            default:
+                fprintf(stderr, "usage: %s [--triple TRIPLE] [--opt]\n",
+                        argv[0]);
+                exit(EXIT_FAILURE);
+        }
+    }
+
+    emit(do_opt, triple);
 }

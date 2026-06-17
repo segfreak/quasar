@@ -364,7 +364,12 @@ pub fn compile_module<W: Write>(
                     .finish(flags)
                     .map_err(|e| format!("failed to initialize cranelift isa: {}", e))?;
 
-                let mut lowerer = CraneliftLowerer::new(&module.name, isa, default_libcall_names());
+                let mut lowerer = CraneliftLowerer::new(
+                    &module.name,
+                    config.triple.clone(),
+                    isa,
+                    default_libcall_names(),
+                );
                 lowerer.lower_module(module);
                 let object_bytes = lowerer.finish();
 
