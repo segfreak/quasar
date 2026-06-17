@@ -139,7 +139,7 @@ impl FunctionDef {
                 }
             }
 
-            InstKind::Undef => "undef".into(),
+            InstKind::Undef => format!("undef.{}", ty),
             InstKind::Select => format!(
                 "select.{} %{}, %{}, %{}",
                 ty, inst.operands[0], inst.operands[1], inst.operands[2]
@@ -187,6 +187,40 @@ impl FunctionDef {
             }
         }
 
+        s
+    }
+
+    pub fn dump_cfg(&self) -> String {
+        let mut s = String::new();
+
+        s.push_str("digraph control_flow {\n");
+        s.push_str("  node [style=\"rounded\",fontname=\"monospace\"];\n\n");
+
+        for (bid, block) in self.get_blocks() {
+            let label = if block.params.is_empty() {
+                format!("B{}", bid)
+            } else {
+                let params = block
+                    .params
+                    .iter()
+                    .map(|p| format!("%{}", p))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("B{}({})", bid, params)
+            };
+
+            s.push_str(&format!("  B{} [label=\"{}\"];\n", bid, label));
+        }
+
+        s.push('\n');
+
+        for (bid, block) in self.get_blocks() {
+            for succ in &block.succs {
+                s.push_str(&format!("  B{} -> B{};\n", bid, succ));
+            }
+        }
+
+        s.push_str("}\n");
         s
     }
 }

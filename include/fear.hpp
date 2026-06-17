@@ -572,7 +572,7 @@ struct FunctionDef
     }
 
     // Memory operations
-    ValueId alloca(Type ty)
+    ValueId alloc(Type ty)
     {
         return fearCreateAlloca(getRaw(), getCurrentBlock().getRaw(),
                                 detail::into(ty));
@@ -774,6 +774,23 @@ struct FunctionDef
         return fearCreateSelect(getRaw(), getCurrentBlock().getRaw(),
                                 detail::into(ty), cond.getRaw(),
                                 then_value.getRaw(), else_value.getRaw());
+    }
+
+    // Serialization and Diagnostics
+    void dumpCfgToFile(FILE* stream)
+    { fearDumpCfgToFile(getRaw(), stream); }
+
+    /**
+     * @brief Dumps a plain-text IR representation of the module to an
+     * std::string.
+     */
+    std::string dumpCfgToString()
+    {
+        char* raw = fearDumpCfgToString(getRaw());
+        if (!raw) return "";
+        std::string out{raw};
+        fearStringDispose(raw);
+        return out;
     }
 
    private:

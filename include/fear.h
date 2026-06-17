@@ -103,14 +103,14 @@ typedef struct FearModule {
   int8_t __[0];
 } FearModule;
 
-typedef uint32_t FearBlockId;
-
 /**
  * Opaque wrapper for the internal `FunctionDef` struct, used to build function bodies.
  */
 typedef struct FearFunctionDef {
   int8_t __[0];
 } FearFunctionDef;
+
+typedef uint32_t FearBlockId;
 
 typedef uint32_t FearValueId;
 
@@ -196,9 +196,20 @@ void fearDumpToFile(struct FearModule *m, FILE *stream);
 
 /**
  * Writes a readable, plain-text representation of the module's IR into a C String.
- * Needs to free()
+ * Needs to fearStringDispose()
  */
 char *fearDumpToString(struct FearModule *m);
+
+/**
+ * Writes a 'dot' representation of the CFG into a file descriptor.
+ */
+void fearDumpCfgToFile(struct FearFunctionDef *def, FILE *stream);
+
+/**
+ * Writes a 'dot' representation of the CFG into a C String.
+ * Needs to fearStringDispose()
+ */
+char *fearDumpCfgToString(struct FearFunctionDef *def);
 
 /**
  * Frees rust-side allocated string

@@ -242,11 +242,31 @@ pub unsafe extern "C" fn fearDumpToFile(m: *mut FearModule, stream: *mut libc::F
 }
 
 /// Writes a readable, plain-text representation of the module's IR into a C String.
-/// Needs to free()
+/// Needs to fearStringDispose()
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fearDumpToString(m: *mut FearModule) -> *mut c_char {
     let m = as_module(m);
     let s = m.dump();
+    match CString::new(s) {
+        Ok(c_str) => c_str.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+/// Writes a 'dot' representation of the CFG into a file descriptor.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearDumpCfgToFile(def: *mut FearFunctionDef, stream: *mut libc::FILE) {
+    let f = as_def(def);
+    let s = f.dump_cfg();
+    let _ = CFile::from(stream).write_all(s.as_bytes());
+}
+
+/// Writes a 'dot' representation of the CFG into a C String.
+/// Needs to fearStringDispose()
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fearDumpCfgToString(def: *mut FearFunctionDef) -> *mut c_char {
+    let f = as_def(def);
+    let s = f.dump_cfg();
     match CString::new(s) {
         Ok(c_str) => c_str.into_raw(),
         Err(_) => std::ptr::null_mut(),
