@@ -44,11 +44,13 @@ impl FunctionDef {
                 inst.operands[0],
                 inst.operands[1]
             ),
+            InstKind::Neg => format!("neg.{} %{}", ty, inst.operands[0]),
             InstKind::FAdd => format!("add.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
             InstKind::FSub => format!("sub.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
             InstKind::FMul => format!("mul.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
             InstKind::FDiv => format!("div.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
             InstKind::FRem => format!("rem.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
+            InstKind::FNeg => format!("neg.{} %{}", ty, inst.operands[0]),
             InstKind::Not => format!("not.{} %{}", ty, inst.operands[0]),
             InstKind::And => format!("and.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),
             InstKind::Or => format!("or.{} %{}, %{}", ty, inst.operands[0], inst.operands[1]),

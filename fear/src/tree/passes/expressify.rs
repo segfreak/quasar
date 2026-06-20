@@ -179,6 +179,16 @@ fn expand_expr(
             }
         }
 
+        ExprKind::Neg(a) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            ExprKind::Neg(Box::new(a))
+        }
+
+        ExprKind::FNeg(a) => {
+            let a = expand_expr(func, *a, cache, uses, params, changed);
+            ExprKind::Neg(Box::new(a))
+        }
+
         ExprKind::Undef => expr.kind,
 
         ExprKind::Select(c, t, e) => {

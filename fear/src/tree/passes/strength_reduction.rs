@@ -21,6 +21,16 @@ pub fn reduce_expr(expr: Expr, changed: &mut bool) -> Expr {
         | ExprKind::Alloca(_)
         | ExprKind::NAlloca(_, _) => expr.kind,
 
+        ExprKind::Neg(a) => {
+            let a = reduce_expr(*a, changed);
+            ExprKind::Neg(Box::new(a))
+        }
+
+        ExprKind::FNeg(a) => {
+            let a = reduce_expr(*a, changed);
+            ExprKind::Neg(Box::new(a))
+        }
+
         ExprKind::Call(func, params) => {
             let reducted: Vec<Expr> = params
                 .iter()

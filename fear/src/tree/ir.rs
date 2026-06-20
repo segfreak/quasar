@@ -35,6 +35,7 @@ pub enum ExprKind {
     Div(bool, Box<Expr>, Box<Expr>),
     Rem(bool, Box<Expr>, Box<Expr>),
     Square(Box<Expr>),
+    Neg(Box<Expr>),
 
     FAdd(Box<Expr>, Box<Expr>),
     FSub(Box<Expr>, Box<Expr>),
@@ -42,6 +43,7 @@ pub enum ExprKind {
     FDiv(Box<Expr>, Box<Expr>),
     FRem(Box<Expr>, Box<Expr>),
     FSquare(Box<Expr>),
+    FNeg(Box<Expr>),
 
     BitShl(Box<Expr>, Box<Expr>),
     BitShr(Box<Expr>, Box<Expr>),
@@ -123,7 +125,9 @@ impl ExprKind {
             | Self::FSquare(v)
             | Self::BitNeg(v)
             | Self::Cast(_, v)
-            | Self::Load(_, v) => {
+            | Self::Load(_, v)
+            | Self::Neg(v)
+            | Self::FNeg(v) => {
                 vec![v.as_ref().clone()]
             }
 
@@ -178,7 +182,9 @@ impl ExprKind {
             | Self::FSquare(v)
             | Self::BitNeg(v)
             | Self::Cast(_, v)
-            | Self::Load(_, v) => {
+            | Self::Load(_, v)
+            | Self::Neg(v)
+            | Self::FNeg(v) => {
                 vec![v.as_mut()]
             }
 
@@ -277,6 +283,8 @@ impl ExprKind {
             Self::Cmp(_, a, b) => 1 + a.get_cost() + b.get_cost(),
             Self::FCmp(_, a, b) => 4 + a.get_cost() + b.get_cost(),
             Self::Cast(kind, a) => Self::cast_cost(*kind) + a.get_cost(),
+
+            Self::Neg(a) | Self::FNeg(a) => 1 + a.get_cost(),
 
             Self::Alloca(_) | ExprKind::NAlloca(_, _) => 2,
             Self::PtrOffset(_, _) | Self::ElementPtr(_, _, _) => 2,
@@ -618,6 +626,16 @@ impl FunctionDef {
         )
     }
 
+    pub fn make_neg(&mut self, block: BlockId, ty: Type, value: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::Neg(Box::new(value.clone())),
+            },
+        )
+    }
+
     pub fn make_fadd(&mut self, block: BlockId, ty: Type, left: &Expr, right: &Expr) -> Expr {
         self.append_expr(
             block,
@@ -674,6 +692,16 @@ impl FunctionDef {
             Expr {
                 ty,
                 kind: ExprKind::FSquare(Box::new(value.clone())),
+            },
+        )
+    }
+
+    pub fn make_fneg(&mut self, block: BlockId, ty: Type, value: &Expr) -> Expr {
+        self.append_expr(
+            block,
+            Expr {
+                ty,
+                kind: ExprKind::FNeg(Box::new(value.clone())),
             },
         )
     }

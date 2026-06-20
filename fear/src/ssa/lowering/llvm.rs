@@ -291,7 +291,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
             for &param in &block.params {
                 let ty = def.get_type_of(param);
                 let llvm_ty = self.map_type(ty);
-                let phi = self.builder.build_phi(llvm_ty, "param").unwrap();
+                let phi = self.builder.build_phi(llvm_ty, "").unwrap();
                 self.phis.insert(param, phi);
                 self.values.insert(param, phi.as_basic_value());
             }
@@ -402,22 +402,16 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 self.values.insert(inst.result.unwrap(), val);
             }
 
-            InstKind::Add => {
-                self.bin_int(def, inst, |b, l, r| b.build_int_add(l, r, "add").unwrap())
-            }
-            InstKind::Sub => {
-                self.bin_int(def, inst, |b, l, r| b.build_int_sub(l, r, "sub").unwrap())
-            }
-            InstKind::Mul => {
-                self.bin_int(def, inst, |b, l, r| b.build_int_mul(l, r, "mul").unwrap())
-            }
+            InstKind::Add => self.bin_int(def, inst, |b, l, r| b.build_int_add(l, r, "").unwrap()),
+            InstKind::Sub => self.bin_int(def, inst, |b, l, r| b.build_int_sub(l, r, "").unwrap()),
+            InstKind::Mul => self.bin_int(def, inst, |b, l, r| b.build_int_mul(l, r, "").unwrap()),
             InstKind::Div { signed } => {
                 let s = *signed;
                 self.bin_int(def, inst, move |b, l, r| {
                     if s {
-                        b.build_int_signed_div(l, r, "sdiv").unwrap()
+                        b.build_int_signed_div(l, r, "").unwrap()
                     } else {
-                        b.build_int_unsigned_div(l, r, "udiv").unwrap()
+                        b.build_int_unsigned_div(l, r, "").unwrap()
                     }
                 });
             }
@@ -425,55 +419,65 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 let s = *signed;
                 self.bin_int(def, inst, move |b, l, r| {
                     if s {
-                        b.build_int_signed_rem(l, r, "sdiv").unwrap()
+                        b.build_int_signed_rem(l, r, "").unwrap()
                     } else {
-                        b.build_int_unsigned_rem(l, r, "udiv").unwrap()
+                        b.build_int_unsigned_rem(l, r, "").unwrap()
                     }
+                });
+            }
+            InstKind::Neg => {
+                self.un_int(def, inst, |b, v| {
+                    let zero = v.get_type().const_zero();
+                    b.build_int_sub(zero, v, "").unwrap()
                 });
             }
 
             InstKind::FAdd => {
-                self.bin_float(def, inst, |b, l, r| b.build_float_add(l, r, "add").unwrap())
+                self.bin_float(def, inst, |b, l, r| b.build_float_add(l, r, "").unwrap())
             }
             InstKind::FSub => {
-                self.bin_float(def, inst, |b, l, r| b.build_float_sub(l, r, "sub").unwrap())
+                self.bin_float(def, inst, |b, l, r| b.build_float_sub(l, r, "").unwrap())
             }
             InstKind::FMul => {
-                self.bin_float(def, inst, |b, l, r| b.build_float_mul(l, r, "mul").unwrap())
+                self.bin_float(def, inst, |b, l, r| b.build_float_mul(l, r, "").unwrap())
             }
             InstKind::FDiv => {
                 self.bin_float(def, inst, move |b, l, r| {
-                    b.build_float_div(l, r, "udiv").unwrap()
+                    b.build_float_div(l, r, "").unwrap()
                 });
             }
             InstKind::FRem => {
                 self.bin_float(def, inst, move |b, l, r| {
-                    b.build_float_rem(l, r, "sdiv").unwrap()
+                    b.build_float_rem(l, r, "").unwrap()
+                });
+            }
+            InstKind::FNeg => {
+                self.un_float(def, inst, |b, v| {
+                    let ty = v.get_type();
+                    let neg_zero = ty.const_float(-0.0);
+                    b.build_float_sub(neg_zero, v, "").unwrap()
                 });
             }
 
-            InstKind::Not => self.un_int(def, inst, |b, v| b.build_not(v, "not").unwrap()),
-            InstKind::And => self.bin_int(def, inst, |b, l, r| b.build_and(l, r, "and").unwrap()),
-            InstKind::Or => self.bin_int(def, inst, |b, l, r| b.build_or(l, r, "or").unwrap()),
-            InstKind::Xor => self.bin_int(def, inst, |b, l, r| b.build_xor(l, r, "xor").unwrap()),
-            InstKind::LShl => self.bin_int(def, inst, |b, l, r| {
-                b.build_left_shift(l, r, "shl").unwrap()
-            }),
+            InstKind::Not => self.un_int(def, inst, |b, v| b.build_not(v, "").unwrap()),
+            InstKind::And => self.bin_int(def, inst, |b, l, r| b.build_and(l, r, "").unwrap()),
+            InstKind::Or => self.bin_int(def, inst, |b, l, r| b.build_or(l, r, "").unwrap()),
+            InstKind::Xor => self.bin_int(def, inst, |b, l, r| b.build_xor(l, r, "").unwrap()),
+            InstKind::LShl => {
+                self.bin_int(def, inst, |b, l, r| b.build_left_shift(l, r, "").unwrap())
+            }
             InstKind::LShr => self.bin_int(def, inst, |b, l, r| {
-                b.build_right_shift(l, r, false, "lshr").unwrap()
+                b.build_right_shift(l, r, false, "").unwrap()
             }),
             InstKind::AShr => self.bin_int(def, inst, |b, l, r| {
-                b.build_right_shift(l, r, true, "ashr").unwrap()
+                b.build_right_shift(l, r, true, "").unwrap()
             }),
 
             InstKind::Cmp(kind) => {
                 let lhs = self.get_int_or_const(def, inst.operands[0]);
                 let rhs = self.get_int_or_const(def, inst.operands[1]);
                 let pred = self.map_int_pred(*kind);
-                let val = self
-                    .builder
-                    .build_int_compare(pred, lhs, rhs, "cmp")
-                    .unwrap();
+                let val = self.builder.build_int_compare(pred, lhs, rhs, "").unwrap();
                 self.values.insert(inst.result.unwrap(), val.into());
             }
 
@@ -483,14 +487,14 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 let pred = self.map_float_pred(*kind);
                 let val = self
                     .builder
-                    .build_float_compare(pred, lhs, rhs, "fcmp")
+                    .build_float_compare(pred, lhs, rhs, "")
                     .unwrap();
                 self.values.insert(inst.result.unwrap(), val.into());
             }
 
             InstKind::Alloca(ty) => {
                 let llvm_ty = self.map_type(*ty);
-                let ptr = self.builder.build_alloca(llvm_ty, "alloca").unwrap();
+                let ptr = self.builder.build_alloca(llvm_ty, "").unwrap();
                 self.values.insert(inst.result.unwrap(), ptr.into());
             }
 
@@ -501,7 +505,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
                     .build_array_alloca(
                         llvm_ty,
                         self.context.i64_type().const_int(*size as u64, true),
-                        "alloca",
+                        "",
                     )
                     .unwrap();
                 self.values.insert(inst.result.unwrap(), ptr.into());
@@ -511,7 +515,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 let ptr_val = self.get(inst.operands[0]).into_pointer_value();
                 let result_ty = def.get_type_of(inst.result.unwrap());
                 let llvm_ty = self.map_type(result_ty);
-                let load = self.builder.build_load(llvm_ty, ptr_val, "load").unwrap();
+                let load = self.builder.build_load(llvm_ty, ptr_val, "").unwrap();
                 load.as_instruction_value()
                     .unwrap()
                     .set_volatile(*volatile)
@@ -530,11 +534,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 let base = self.get(inst.operands[0]).into_pointer_value();
                 let offset = self.get_int_or_const(def, inst.operands[1]);
                 let i8_ty = self.context.i8_type();
-                let ptr = unsafe {
-                    self.builder
-                        .build_gep(i8_ty, base, &[offset], "ptroffset")
-                        .unwrap()
-                };
+                let ptr = unsafe { self.builder.build_gep(i8_ty, base, &[offset], "").unwrap() };
                 self.values.insert(inst.result.unwrap(), ptr.into());
             }
 
@@ -542,11 +542,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 let base = self.get(inst.operands[0]).into_pointer_value();
                 let offset = self.get_int_or_const(def, inst.operands[1]);
                 let ty = self.map_type(*ty);
-                let ptr = unsafe {
-                    self.builder
-                        .build_gep(ty, base, &[offset], "elementptr")
-                        .unwrap()
-                };
+                let ptr = unsafe { self.builder.build_gep(ty, base, &[offset], "").unwrap() };
                 self.values.insert(inst.result.unwrap(), ptr.into());
             }
 
@@ -557,7 +553,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
 
                 let meta_args: Vec<_> = args.iter().map(|v| (*v).into()).collect();
 
-                let call = self.builder.build_call(callee, &meta_args, "call").unwrap();
+                let call = self.builder.build_call(callee, &meta_args, "").unwrap();
 
                 if let Some(res) = inst.result {
                     let ret_val = call
@@ -623,10 +619,7 @@ impl<'ctx> LlvmLowerer<'ctx> {
                 let cond = self.get_int_or_const(def, inst.operands[0]);
                 let tvalue = self.get(inst.operands[1]);
                 let evalue = self.get(inst.operands[2]);
-                let result = self
-                    .builder
-                    .build_select(cond, tvalue, evalue, "select")
-                    .unwrap();
+                let result = self.builder.build_select(cond, tvalue, evalue, "").unwrap();
                 self.values.insert(inst.result.unwrap(), result);
             }
         }
@@ -765,6 +758,18 @@ impl<'ctx> LlvmLowerer<'ctx> {
         let a = self.get_float_or_const(def, inst.operands[0]);
         let b = self.get_float_or_const(def, inst.operands[1]);
         let res = f(&self.builder, a, b);
+        self.values.insert(inst.result.unwrap(), res.into());
+    }
+
+    fn un_float<F>(&mut self, def: &FunctionDef, inst: &Inst, f: F)
+    where
+        F: Fn(
+            &Builder<'ctx>,
+            inkwell::values::FloatValue<'ctx>,
+        ) -> inkwell::values::FloatValue<'ctx>,
+    {
+        let a = self.get_float_or_const(def, inst.operands[0]);
+        let res = f(&self.builder, a);
         self.values.insert(inst.result.unwrap(), res.into());
     }
 

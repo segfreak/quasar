@@ -20,6 +20,16 @@ pub fn canonicalize_expr(expr: Expr, changed: &mut bool) -> Expr {
 
         ExprKind::Undef => expr.kind,
 
+        ExprKind::Neg(a) => {
+            let a = canonicalize_expr(*a, changed);
+            ExprKind::Neg(Box::new(a))
+        }
+
+        ExprKind::FNeg(a) => {
+            let a = canonicalize_expr(*a, changed);
+            ExprKind::Neg(Box::new(a))
+        }
+
         ExprKind::Select(c, t, e) => {
             let c = canonicalize_expr(*c, changed);
             let t = canonicalize_expr(*t, changed);

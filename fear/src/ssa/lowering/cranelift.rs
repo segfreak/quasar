@@ -382,6 +382,7 @@ fn compile_inst(
         InstKind::Rem { signed: false } => bin_int(def, inst, values, fx, triple, |fx, a, b| {
             fx.ins().urem(a, b)
         }),
+        InstKind::Neg => un_int(def, inst, values, fx, triple, |fx, a| fx.ins().ineg(a)),
 
         InstKind::FAdd => bin_float(def, inst, values, fx, |fx, a, b| fx.ins().fadd(a, b)),
         InstKind::FSub => bin_float(def, inst, values, fx, |fx, a, b| fx.ins().fsub(a, b)),
@@ -390,6 +391,7 @@ fn compile_inst(
         InstKind::FRem => {
             panic!("frem is not a native Cranelift opcode; use an fmodf/fmod libcall")
         }
+        InstKind::FNeg => un_float(def, inst, values, fx, |fx, a| fx.ins().fneg(a)),
 
         InstKind::Not => un_int(def, inst, values, fx, triple, |fx, v| fx.ins().bnot(v)),
         InstKind::And => bin_int(def, inst, values, fx, triple, |fx, a, b| {
@@ -686,5 +688,19 @@ fn bin_float<F>(
     let a = get_float_or_const(def, inst.operands[0], values, fx);
     let b = get_float_or_const(def, inst.operands[1], values, fx);
     let res = f(fx, a, b);
+    values.insert(inst.result.unwrap(), res);
+}
+
+fn un_float<F>(
+    def: &FunctionDef,
+    inst: &Inst,
+    values: &mut HashMap<ValueId, cranelift::prelude::Value>,
+    fx: &mut FunctionBuilder,
+    f: F,
+) where
+    F: Fn(&mut FunctionBuilder, cranelift::prelude::Value) -> cranelift::prelude::Value,
+{
+    let a = get_float_or_const(def, inst.operands[0], values, fx);
+    let res = f(fx, a);
     values.insert(inst.result.unwrap(), res);
 }

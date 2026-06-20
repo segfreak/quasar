@@ -135,6 +135,10 @@ impl FunctionDef {
         self.make_binary(block, InstKind::Rem { signed }, ty, lhs, rhs)
     }
 
+    pub fn make_int_neg(&mut self, block: BlockId, ty: Type, value: ValueId) -> ValueId {
+        self.make_unary(block, InstKind::Neg, ty, value)
+    }
+
     pub fn make_float_add(
         &mut self,
         block: BlockId,
@@ -183,6 +187,10 @@ impl FunctionDef {
         rhs: ValueId,
     ) -> ValueId {
         self.make_binary(block, InstKind::FRem, ty, lhs, rhs)
+    }
+
+    pub fn make_float_neg(&mut self, block: BlockId, ty: Type, value: ValueId) -> ValueId {
+        self.make_unary(block, InstKind::FNeg, ty, value)
     }
 
     pub fn make_bitnot(&mut self, block: BlockId, ty: Type, value: ValueId) -> ValueId {

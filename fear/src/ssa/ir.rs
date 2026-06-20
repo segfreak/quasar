@@ -90,12 +90,14 @@ pub enum InstKind {
     Rem {
         signed: bool,
     },
+    Neg,
 
     FAdd,
     FSub,
     FMul,
     FDiv,
     FRem,
+    FNeg,
 
     Not,
     And,
@@ -190,7 +192,7 @@ impl InstKind {
             Cast(_) => 1,
             Ret => 1,
 
-            Not => 1,
+            Not | Neg | FNeg => 1,
 
             Select => 3,
 
@@ -206,7 +208,7 @@ impl InstKind {
             Self::FConst(_) => 1, // May force a constant pool load on RISC architectures.
             Self::Jump(_) => 1,   // Unconditional branch; hardware front-end swallows this easily.
 
-            Self::Add | Self::Sub => 2,
+            Self::Add | Self::Sub | Self::Neg => 2,
             Self::Not | Self::And | Self::Or | Self::Xor => 2,
             Self::LShl | Self::LShr | Self::AShr => 2,
             Self::Cmp(_) => 2,
@@ -222,6 +224,7 @@ impl InstKind {
             Self::Cast(_) => 6, // Sign/zero extensions or float-to-int conversions.
 
             Self::FAdd | Self::FSub => 8,
+            Self::FNeg => 1,
             Self::FCmp(_) => 8,
 
             Self::Mul => 12, // Integer multiply is fully pipelined nowadays, but takes 3-5 cycles.
@@ -229,7 +232,7 @@ impl InstKind {
 
             // Memory ops. Assuming L1 cache hit as best case, but we heavily penalize them
             // to force the optimizer to keep variables in registers.
-            Self::Store { .. } => 20, // Hidden by store buffers, but still occupies execution slots.
+            Self::Store { .. } => 15, // Hidden by store buffers, but still occupies execution slots.
             Self::Load { .. } => 25, // Loads are blocking; later instructions usually have to wait for data.
 
             Self::FDiv | Self::FRem => 60, // Floating-point division is never cheap.

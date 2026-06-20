@@ -203,6 +203,11 @@ impl SsaRaiser {
                 dst.make_int_rem(block, *signed, ty, l, r)
             }
 
+            ExprKind::Neg(a) => {
+                let a = self.raise_expr(a, dst, block);
+                dst.make_int_neg(block, ty, a)
+            }
+
             ExprKind::FAdd(a, b) => {
                 let l = self.raise_expr(a, dst, block);
                 let r = self.raise_expr(b, dst, block);
@@ -231,6 +236,11 @@ impl SsaRaiser {
                 let l = self.raise_expr(a, dst, block);
                 let r = self.raise_expr(b, dst, block);
                 dst.make_float_rem(block, ty, l, r)
+            }
+
+            ExprKind::FNeg(a) => {
+                let a = self.raise_expr(a, dst, block);
+                dst.make_float_neg(block, ty, a)
             }
 
             ExprKind::FSquare(a) => {

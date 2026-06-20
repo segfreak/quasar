@@ -130,6 +130,9 @@ impl TreeSsaRaiser {
                 &self.v(ops[0], dst),
                 &self.v(ops[1], dst),
             ),
+            ssa::InstKind::Neg => {
+                dst.make_neg(block, ty, &self.v(ops[0], dst))
+            }
 
             ssa::InstKind::FAdd => {
                 dst.make_fadd(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))
@@ -145,6 +148,9 @@ impl TreeSsaRaiser {
             }
             ssa::InstKind::FRem => {
                 dst.make_frem(block, ty, &self.v(ops[0], dst), &self.v(ops[1], dst))
+            }
+            ssa::InstKind::FNeg => {
+                dst.make_fneg(block, ty, &self.v(ops[0], dst))
             }
 
             ssa::InstKind::LShl => {

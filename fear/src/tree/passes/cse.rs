@@ -154,6 +154,24 @@ fn rewrite(
 
         ExprKind::Undef => expr,
 
+        ExprKind::Neg(a) => {
+            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::Neg(Box::new(a)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
+        }
+
+        ExprKind::FNeg(a) => {
+            let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
+            let new_expr = Expr {
+                ty,
+                kind: ExprKind::FNeg(Box::new(a)),
+            };
+            hoist_if_needed(func, new_expr, cnt, memo, new_values, changed)
+        }
+
         ExprKind::Cast(kind, a) => {
             let a = rewrite(m, func, bid, *a.clone(), cnt, memo, new_values, changed);
             let new_expr = Expr {
