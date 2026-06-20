@@ -139,7 +139,7 @@ if [ "$DO_INSTALL" = "1" ]; then
   # sudo cargo install --path "./fear" --root "$INSTALL_PREFIX" --features "$FEAR_FEATURES_STR"
   sudo install -m 644 "./include/fear.h" "$INC_DIR/fear.h"
   sudo install -m 644 "./include/fear.hpp" "$INC_DIR/fear.hpp"
-  sudo install -m 755 "./driver/fear"      "$BIN_DIR/"
+  sudo install -m 755 "./utils/fear"       "$BIN_DIR/"
   sudo install -m 755 "./target/$TARGET_SUBDIR/fearc"      "$BIN_DIR/"
   sudo install -m 755 "./target/$TARGET_SUBDIR/fearopt"    "$BIN_DIR/"
   sudo install -m 755 "./target/$TARGET_SUBDIR/feardump"   "$BIN_DIR/"
