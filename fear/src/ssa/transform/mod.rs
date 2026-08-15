@@ -31,6 +31,7 @@ pub enum PassKind {
     CFGSimplify,
     Mem2Reg,
     TrivialComparesFolding,
+    SCCP,
 }
 
 #[derive(Debug, Default)]

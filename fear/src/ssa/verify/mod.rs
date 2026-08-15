@@ -103,17 +103,17 @@ impl Module {
 
         // block verify
         for (bid, block) in f.get_blocks() {
-            if block.insts.is_empty() && block.term.is_none() {
+            if block.get_insts().is_empty() && block.get_terminator().is_none() {
                 return Err(VerifyError::EmptyBlock(*bid));
             }
 
-            if let Some(&last) = block.insts.last() {
+            if let Some(&last) = block.get_insts().last() {
                 let inst = f
                     .get_insts()
                     .get(&last)
                     .ok_or(VerifyError::InvalidInstInBlock(*bid, last))?;
 
-                if !inst.kind.is_terminator() && block.term.is_none() {
+                if !inst.kind.is_terminator() && block.get_terminator().is_none() {
                     return Err(VerifyError::InvalidTerminator(*bid));
                 }
             }
@@ -194,7 +194,7 @@ impl Module {
                         .get(&target)
                         .ok_or(VerifyError::InvalidJumpTarget(target))?;
 
-                    let expected = target_block.params.len();
+                    let expected = target_block.get_params().len();
                     let actual = inst.operands.len();
 
                     if expected != actual {
@@ -205,7 +205,7 @@ impl Module {
                     for (i, &op) in inst.operands.iter().enumerate() {
                         let op_ty = f.get_type_of(op);
 
-                        let param_id = target_block.params[i];
+                        let param_id = target_block.get_params()[i];
                         let param_ty = f.get_type_of(param_id);
 
                         if op_ty != param_ty {
@@ -239,8 +239,8 @@ impl Module {
                         });
                     }
 
-                    let then_param_count = then_target.params.len();
-                    let else_param_count = else_target.params.len();
+                    let then_param_count = then_target.get_params().len();
+                    let else_param_count = else_target.get_params().len();
 
                     if then_param_count != ops.1.len() {
                         return Err(VerifyError::OperandCountMismatch(*id, then_param_count));
@@ -252,7 +252,7 @@ impl Module {
 
                     for (i, &op) in ops.1.iter().enumerate() {
                         let op_ty = f.get_type_of(op);
-                        let param_id = then_target.params[i];
+                        let param_id = then_target.get_params()[i];
                         let param_ty = f.get_type_of(param_id);
 
                         if op_ty != param_ty {
@@ -264,7 +264,7 @@ impl Module {
 
                     for (i, &op) in ops.2.iter().enumerate() {
                         let op_ty = f.get_type_of(op);
-                        let param_id = else_target.params[i];
+                        let param_id = else_target.get_params()[i];
                         let param_ty = f.get_type_of(param_id);
 
                         if op_ty != param_ty {
@@ -360,7 +360,7 @@ impl Module {
 
         // verify cfg
         for (bid, block) in f.get_blocks() {
-            for &inst_id in &block.insts {
+            for &inst_id in block.get_insts() {
                 let inst = f.get_inst(inst_id).unwrap();
 
                 match &inst.kind {
@@ -369,7 +369,7 @@ impl Module {
                             return Err(VerifyError::InvalidJumpTarget(*target));
                         }
 
-                        if !block.succs.contains(target) {
+                        if !block.get_succs().contains(target) {
                             return Err(VerifyError::CFGMissingEdge(*bid, *target));
                         }
                     }
@@ -382,7 +382,7 @@ impl Module {
                             return Err(VerifyError::InvalidJumpTarget(*then_block));
                         }
 
-                        if !block.succs.contains(then_block) {
+                        if !block.get_succs().contains(then_block) {
                             return Err(VerifyError::CFGMissingEdge(*bid, *then_block));
                         }
 
@@ -390,7 +390,7 @@ impl Module {
                             return Err(VerifyError::InvalidJumpTarget(*else_block));
                         }
 
-                        if !block.succs.contains(else_block) {
+                        if !block.get_succs().contains(else_block) {
                             return Err(VerifyError::CFGMissingEdge(*bid, *else_block));
                         }
                     }
@@ -406,7 +406,7 @@ impl Module {
             }
 
             // check preds/succs consistency
-            for succ in &block.succs {
+            for succ in block.get_succs() {
                 if !f.get_blocks().contains_key(succ) {
                     return Err(VerifyError::InvalidSuccessor(*bid, *succ));
                 }

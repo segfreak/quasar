@@ -156,12 +156,12 @@ impl FunctionDef {
         for bid in &blocks {
             let block = &self.get_block(*bid).unwrap();
             let is_entry = self.get_entry() == *bid;
-            if block.params.is_empty() || /* the entry block has no parameters of its own, only function parameters */ is_entry
+            if block.get_params().is_empty() || /* the entry block has no parameters of its own, only function parameters */ is_entry
             {
                 s.push_str(&format!("B{}:", bid));
             } else {
                 let bparams = block
-                    .params
+                    .get_params()
                     .iter()
                     .map(|p| format!("%{}: {}", p, self.get_type_of(*p)))
                     .collect::<Vec<_>>()
@@ -175,7 +175,7 @@ impl FunctionDef {
                 s.push('\n');
             }
 
-            for inst_id in &block.insts {
+            for inst_id in block.get_insts() {
                 let inst = self.get_inst(*inst_id).unwrap();
 
                 if let Some(res) = inst.result {
@@ -199,11 +199,11 @@ impl FunctionDef {
         s.push_str("  node [style=\"rounded\",fontname=\"monospace\"];\n\n");
 
         for (bid, block) in self.get_blocks() {
-            let label = if block.params.is_empty() {
+            let label = if block.get_params().is_empty() {
                 format!("B{}", bid)
             } else {
                 let params = block
-                    .params
+                    .get_params()
                     .iter()
                     .map(|p| format!("%{}", p))
                     .collect::<Vec<_>>()
@@ -217,7 +217,7 @@ impl FunctionDef {
         s.push('\n');
 
         for (bid, block) in self.get_blocks() {
-            for succ in &block.succs {
+            for succ in block.get_succs() {
                 s.push_str(&format!("  B{} -> B{};\n", bid, succ));
             }
         }
@@ -317,11 +317,11 @@ impl Module {
             s.push_str("    style=rounded;\n\n");
 
             for (bid, block) in def.get_blocks() {
-                let mut label = if block.params.is_empty() {
+                let mut label = if block.get_params().is_empty() {
                     format!("B{}:\\l", bid)
                 } else {
                     let params = block
-                        .params
+                        .get_params()
                         .iter()
                         .map(|p| format!("%{}:{}", p, def.get_type_of(*p)))
                         .collect::<Vec<_>>()
@@ -330,7 +330,7 @@ impl Module {
                     format!("B{}({}):\\l", bid, params)
                 };
 
-                for inst_id in &block.insts {
+                for inst_id in block.get_insts() {
                     let inst = def.get_inst(*inst_id).unwrap();
 
                     if let Some(res) = inst.result {
@@ -349,7 +349,7 @@ impl Module {
             s.push('\n');
 
             for (bid, block) in def.get_blocks() {
-                for succ in &block.succs {
+                for succ in block.get_succs() {
                     s.push_str(&format!("    f{}_b{} -> f{}_b{};\n", fid, bid, fid, succ));
                 }
             }

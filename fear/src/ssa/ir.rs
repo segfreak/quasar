@@ -269,11 +269,53 @@ impl InstKind {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Block {
-    pub params: Vec<ValueId>,
-    pub insts: Vec<InstId>,
-    pub term: Option<InstId>,
-    pub preds: Vec<BlockId>,
-    pub succs: Vec<BlockId>,
+    pub(crate) params: Vec<ValueId>,
+    pub(crate) insts: Vec<InstId>,
+    pub(crate) term: Option<InstId>,
+    pub(crate) preds: Vec<BlockId>,
+    pub(crate) succs: Vec<BlockId>,
+}
+
+impl Block {
+    pub fn get_params(&self) -> &Vec<ValueId> {
+        &self.params
+    }
+
+    pub fn get_params_mut(&mut self) -> &mut Vec<ValueId> {
+        &mut self.params
+    }
+
+    pub fn get_insts(&self) -> &Vec<InstId> {
+        &self.insts
+    }
+
+    pub fn get_insts_mut(&mut self) -> &mut Vec<InstId> {
+        &mut self.insts
+    }
+
+    pub fn get_terminator(&self) -> &Option<InstId> {
+        &self.term
+    }
+
+    pub fn get_terminator_mut(&mut self) -> &mut Option<InstId> {
+        &mut self.term
+    }
+
+    pub fn get_preds(&self) -> &Vec<BlockId> {
+        &self.preds
+    }
+
+    pub fn get_preds_mut(&mut self) -> &mut Vec<BlockId> {
+        &mut self.preds
+    }
+
+    pub fn get_succs(&self) -> &Vec<BlockId> {
+        &self.succs
+    }
+
+    pub fn get_succs_mut(&mut self) -> &mut Vec<BlockId> {
+        &mut self.succs
+    }
 }
 
 #[derive(Debug, Clone, Default)]

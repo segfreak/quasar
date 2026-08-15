@@ -1,8 +1,8 @@
 use crate::ssa::*;
 
-pub(super) fn eval_icmp(kind: crate::types::IntCmp, a: i64, b: i64) -> i64 {
+pub fn eval_int_cmp(kind: crate::types::IntCmp, a: i64, b: i64) -> bool {
     use crate::types::IntCmp;
-    let result = match kind {
+    match kind {
         IntCmp::Eq => a == b,
         IntCmp::Ne => a != b,
         IntCmp::Lt => a < b,
@@ -14,8 +14,27 @@ pub(super) fn eval_icmp(kind: crate::types::IntCmp, a: i64, b: i64) -> i64 {
         IntCmp::ULe => (a as u64) <= (b as u64),
         IntCmp::UGt => (a as u64) > (b as u64),
         IntCmp::UGe => (a as u64) >= (b as u64),
-    };
-    result as i64
+    }
+}
+
+pub fn eval_float_cmp(cmp: crate::types::FloatCmp, a: f64, b: f64) -> bool {
+    use crate::types::FloatCmp::*;
+    match cmp {
+        Ord => !a.is_nan() && !b.is_nan(),
+        Uno => a.is_nan() || b.is_nan(),
+        OEq => a == b,
+        ONe => a != b,
+        OGt => a > b,
+        OGe => a >= b,
+        OLt => a < b,
+        OLe => a <= b,
+        UEq => a.is_nan() || b.is_nan() || a == b,
+        UNe => a.is_nan() || b.is_nan() || a != b,
+        UGt => a.is_nan() || a > b,
+        UGe => a.is_nan() || a >= b,
+        ULt => a.is_nan() || a < b,
+        ULe => a.is_nan() || a <= b,
+    }
 }
 
 pub fn constfold(m: &mut Module, f: FuncId) -> bool {
@@ -123,7 +142,7 @@ pub fn constfold(m: &mut Module, f: FuncId) -> bool {
                 _ => None,
             },
             InstKind::Cmp(kind) => match (c[0], c[1]) {
-                (Some(a), Some(b)) => Some(eval_icmp(kind, a, b)),
+                (Some(a), Some(b)) => Some(eval_int_cmp(kind, a, b) as i64),
                 _ => None,
             },
             _ => None,

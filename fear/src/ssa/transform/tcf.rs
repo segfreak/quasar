@@ -1,5 +1,5 @@
 use crate::{
-    ssa::{transform::constfold::eval_icmp, *},
+    ssa::{transform::constfold::eval_int_cmp, *},
     types::Type,
 };
 
@@ -36,7 +36,7 @@ pub fn tcf(m: &mut Module, f: FuncId) -> bool {
             })
         } else {
             match (func.get_int_const(lhs), func.get_int_const(rhs)) {
-                (Some(a), Some(b)) => Some(eval_icmp(cmp_kind, a, b)),
+                (Some(a), Some(b)) => Some(eval_int_cmp(cmp_kind, a, b) as i64),
                 _ => None,
             }
         };
